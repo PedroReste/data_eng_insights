@@ -23,7 +23,7 @@ Por se tratar de uma forma de web scraping, é importante tormar cuidado na quan
 
 </div>
 
-O Google Trends é uma ferramenta disponibilizada gratuitamente para acompanhar e analisar a popularidade de palavras-chaves que foram buscadas na pesquisa do Google em uma janela de tempo.
+O Google Trends é uma ferramenta disponibilizada gratuitamente para acompanhar e analisar a popularidade de palavras-chave que foram buscadas na pesquisa do Google em uma janela de tempo.
 
 
  **<span style="color:#6a5acd">**Como funciona o índice de popularidade?**</span>**
