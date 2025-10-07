@@ -23,7 +23,7 @@ class ChatBotAnalyzer:
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://data-analyzer.streamlit.app",
+            "HTTP-Referer": "https://data-analyzer-pr.streamlit.app",
             "X-Title": "Data Analyzer"
         }
         self.df = None

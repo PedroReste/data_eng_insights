@@ -1,3 +1,4 @@
-*.txt
+api_key.txt
+ideais.txt
 *.csv
 __pycache__
