@@ -745,10 +745,18 @@ def main():
                     except ValueError as e:
                         st.error(f"❌ API Key Error: {e}")
                         st.info("""
-                        **To fix this:**
-                        1. Create a file named `api_key.txt` in the same folder as this application
-                        2. Add your OpenRouter API key to the file
-                        3. Format: `open_router:your_key_here` or just `your_key_here`
+                        **To fix this on Streamlit Cloud:**
+                        1. Go to your app settings → Secrets
+                        2. Add your OpenRouter API key like this:
+                        
+                        ```toml
+                        OPENROUTER_API_KEY = "your_actual_api_key_here"
+                        ```
+                        
+                        **For local development:**
+                        - Set OPENROUTER_API_KEY environment variable
+                        - OR create .streamlit/secrets.toml file
+                        - OR create api_key.txt file in the same folder
                         """)
                     except Exception as e:
                         st.error(f"❌ Analysis error: {str(e)}")

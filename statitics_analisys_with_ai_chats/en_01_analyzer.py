@@ -43,29 +43,39 @@ class ChatBotAnalyzer:
         2. Environment Variable
         3. Local file (for development only)
         """
+        print(f"🔍 Starting API key search...")
+        print(f"🔍 STREAMLIT_AVAILABLE: {STREAMLIT_AVAILABLE}")
+        
         # 1. Try Streamlit Secrets
         if STREAMLIT_AVAILABLE:
             try:
+                print("🔍 Checking Streamlit secrets...")
                 if hasattr(st, 'secrets') and 'OPENROUTER_API_KEY' in st.secrets:
                     api_key = st.secrets['OPENROUTER_API_KEY']
+                    print(f"🔍 Found key in secrets, length: {len(api_key) if api_key else 0}")
                     if api_key and api_key.strip():
                         print("✅ API key loaded from Streamlit Secrets")
                         return api_key.strip()
+                else:
+                    print("❌ OPENROUTER_API_KEY not found in Streamlit secrets")
             except Exception as e:
                 print(f"⚠️ Streamlit secrets not accessible: {e}")
         
         # 2. Try Environment Variable
         env_key = os.getenv('OPENROUTER_API_KEY')
+        print(f"🔍 Environment variable check: {'Found' if env_key else 'Not found'}")
         if env_key and env_key.strip():
             print("✅ API key loaded from environment variable")
             return env_key.strip()
         
         # 3. Try local file (for development only)
         file_key = self.read_api_key_from_file()
+        print(f"🔍 File check: {'Found' if file_key else 'Not found'}")
         if file_key:
             print("✅ API key loaded from local file")
             return file_key
         
+        print("❌ No API key found in any source")
         return None
 
     def read_api_key_from_file(self, file_path: str = None) -> Optional[str]:
