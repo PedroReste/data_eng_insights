@@ -677,7 +677,7 @@ def main():
         
         st.markdown("---")
         st.markdown("#### 🔑 API Setup")
-        st.info("API key is automatically loaded from 'api_key.txt' file in the same folder.")
+        st.info("API key is automatically loaded from Streamlit Secrets or environment variables.")
     
     # Main content area
     if uploaded_file is not None:
@@ -740,7 +740,13 @@ def main():
                                 )
                         
                         else:
-                            st.error("❌ Analysis failed. Please check your API key file 'api_key.txt'.")
+                            st.error("❌ Analysis failed. Please check your API key configuration.")
+                            st.info("""
+                            **Possible solutions:**
+                            - On Streamlit Cloud: Check your Secrets configuration
+                            - Verify your OpenRouter API key is valid  
+                            - Check the app logs for detailed error information
+                            """)
                     
                     except ValueError as e:
                         st.error(f"❌ API Key Error: {e}")
