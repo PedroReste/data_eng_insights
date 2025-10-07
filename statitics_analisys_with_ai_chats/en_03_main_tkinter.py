@@ -1,4 +1,4 @@
-# main_tkinter.py
+# en_04_main_tkinter.py
 import tkinter as tk
 from tkinter import ttk, filedialog, scrolledtext, messagebox
 import threading
@@ -6,7 +6,6 @@ import os
 
 # Import from our modules
 from en_01_analyzer import ChatBotAnalyzer
-from en_02_api_key_reader import read_api_key_from_file
 
 class AnalyzerApp:
     def __init__(self, root):
@@ -14,7 +13,6 @@ class AnalyzerApp:
         self.root.title("Data Analyzer")
         self.root.geometry("1000x700")
         
-        self.api_key = ""
         self.current_file = ""
         self.results = None
         
@@ -29,15 +27,13 @@ class AnalyzerApp:
         title = ttk.Label(main_frame, text="📊 Data Analyzer", font=('Arial', 16, 'bold'))
         title.pack(pady=10)
         
-        # API Section
-        api_frame = ttk.LabelFrame(main_frame, text="API Configuration", padding="10")
-        api_frame.pack(fill=tk.X, pady=5)
+        # Info Section
+        info_frame = ttk.LabelFrame(main_frame, text="Information", padding="10")
+        info_frame.pack(fill=tk.X, pady=5)
         
-        ttk.Label(api_frame, text="API Key:").pack(side=tk.LEFT)
-        self.api_entry = ttk.Entry(api_frame, width=50, show="*")
-        self.api_entry.pack(side=tk.LEFT, padx=5)
-        
-        ttk.Button(api_frame, text="Load from File", command=self.load_api_file).pack(side=tk.LEFT)
+        info_text = "API key is automatically loaded from 'api_key.txt' file in the same folder."
+        info_label = ttk.Label(info_frame, text=info_text, wraplength=800)
+        info_label.pack()
         
         # File Section
         file_frame = ttk.LabelFrame(main_frame, text="Data File", padding="10")
@@ -80,16 +76,8 @@ class AnalyzerApp:
                   command=self.save_stats).pack(side=tk.LEFT, padx=5)
         ttk.Button(save_frame, text="Save AI Analysis", 
                   command=self.save_ai).pack(side=tk.LEFT, padx=5)
-    
-    def load_api_file(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
-        if file_path:
-            api_key = read_api_key_from_file(file_path)
-            if api_key:
-                self.api_entry.delete(0, tk.END)
-                self.api_entry.insert(0, api_key)
-                messagebox.showinfo("Success", "API key loaded!")
-                self.check_ready()
+        ttk.Button(save_frame, text="Save Complete Report", 
+                  command=self.save_complete).pack(side=tk.LEFT, padx=5)
     
     def select_csv(self):
         file_path = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
@@ -99,11 +87,10 @@ class AnalyzerApp:
             self.check_ready()
     
     def check_ready(self):
-        if self.current_file and self.api_entry.get().strip():
+        if self.current_file:
             self.analyze_btn.config(state="normal")
     
     def start_analysis(self):
-        self.api_key = self.api_entry.get().strip()
         thread = threading.Thread(target=self.run_analysis)
         thread.daemon = True
         thread.start()
@@ -112,7 +99,8 @@ class AnalyzerApp:
     
     def run_analysis(self):
         try:
-            analyzer = ChatBotAnalyzer(self.api_key)
+            # API key is automatically loaded by ChatBotAnalyzer
+            analyzer = ChatBotAnalyzer()
             self.results = analyzer.analyze_csv(self.current_file, save_output=False)
             self.root.after(0, self.show_results)
         except Exception as e:
@@ -130,10 +118,15 @@ class AnalyzerApp:
             self.stats_text.insert(tk.END, self.results['statistics'])
             
             messagebox.showinfo("Success", "Analysis complete!")
+        else:
+            messagebox.showerror("Error", "Analysis failed. Please check your API key file.")
     
     def save_stats(self):
         if self.results:
-            file_path = filedialog.asksaveasfilename(defaultextension=".txt")
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".md",
+                filetypes=[("Markdown files", "*.md"), ("Text files", "*.txt")]
+            )
             if file_path:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(self.results['statistics'])
@@ -141,11 +134,26 @@ class AnalyzerApp:
     
     def save_ai(self):
         if self.results:
-            file_path = filedialog.asksaveasfilename(defaultextension=".txt")
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".md",
+                filetypes=[("Markdown files", "*.md"), ("Text files", "*.txt")]
+            )
             if file_path:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write(self.results['ai_analysis'])
                 messagebox.showinfo("Success", "AI analysis saved!")
+    
+    def save_complete(self):
+        if self.results:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".md",
+                filetypes=[("Markdown files", "*.md"), ("Text files", "*.txt")]
+            )
+            if file_path:
+                combined = f"# Comprehensive Analysis Report\n\n## Statistics\n\n{self.results['statistics']}\n\n## AI Insights\n\n{self.results['ai_analysis']}"
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(combined)
+                messagebox.showinfo("Success", "Complete report saved!")
 
 if __name__ == "__main__":
     root = tk.Tk()

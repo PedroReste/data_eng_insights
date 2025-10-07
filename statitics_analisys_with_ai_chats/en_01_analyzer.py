@@ -10,17 +10,78 @@ import numpy as np
 from typing import Dict, Any, Optional, List
 
 class ChatBotAnalyzer:
-    def __init__(self, api_key: str):
+    def __init__(self, api_key: str = None):
+        # If no API key provided, try to read from file
+        if api_key is None:
+            api_key = self.read_api_key_from_file()
+        
+        if not api_key:
+            raise ValueError("API key not found. Please create an 'api_key.txt' file in the same folder.")
+        
         self.api_key = api_key.strip()
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
         self.headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://csv-analyzer.streamlit.app",
-            "X-Title": "CSV Data Analyzer"
+            "HTTP-Referer": "https://data-analyzer.streamlit.app",
+            "X-Title": "Data Analyzer"
         }
         self.df = None
-    
+
+    def read_api_key_from_file(self, file_path: str = None) -> Optional[str]:
+        """
+        Read API key from text file in the same folder
+        Supports formats: 'open_router:your_key' or just 'your_key'
+        """
+        try:
+            # Use relative path to current script directory
+            if file_path is None:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                file_path = os.path.join(current_dir, "api_key.txt")
+            
+            print(f"🔍 Looking for API key file at: {file_path}")
+            
+            if not os.path.exists(file_path):
+                print(f"❌ API key file not found: {file_path}")
+                # Try alternative locations
+                alternative_paths = [
+                    "api_key.txt",  # Current working directory
+                    "./api_key.txt",  # Current working directory
+                    "../api_key.txt",  # Parent directory
+                ]
+                
+                for alt_path in alternative_paths:
+                    if os.path.exists(alt_path):
+                        file_path = alt_path
+                        print(f"✅ Found API key file at: {file_path}")
+                        break
+                else:
+                    print("❌ API key file not found in any common locations")
+                    return None
+            
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content = file.read().strip()
+                print(f"📄 API key file content length: {len(content)} characters")
+                
+                # Handle different possible formats
+                if content.startswith('open_router:'):
+                    key = content.split('open_router:')[1].strip()
+                elif ':' in content:
+                    key = content.split(':', 1)[1].strip()
+                else:
+                    key = content.strip()
+                
+                if key:
+                    print(f"✅ API key loaded successfully (first 05 chars): {key[:5]}...")
+                    return key
+                else:
+                    print("❌ No API key found in file")
+                    return None
+                    
+        except Exception as e:
+            print(f"❌ Error reading API key file: {e}")
+            return None
+
     def load_and_preview_data(self, file_path: str) -> pd.DataFrame:
         """Load CSV file and return basic information"""
         try:
@@ -47,15 +108,28 @@ class ChatBotAnalyzer:
         
         # Data Types Summary
         stats_summary += "## 🔧 Data Types Summary\n\n"
-        dtype_counts = self.df.dtypes.value_counts()
-        for dtype, count in dtype_counts.items():
-            stats_summary += f"- **{dtype}**: {count} columns\n"
+        
+        # Count by category instead of iterating through individual dtypes
+        numerical_count = len(self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns)
+        categorical_count = len(self.df.select_dtypes(include=['object', 'category', 'string']).columns)
+        boolean_count = len(self.df.select_dtypes(include='bool').columns)
+        datetime_count = len(self.df.select_dtypes(include=['datetime64', 'timedelta64']).columns)
+        
+        if numerical_count > 0:
+            stats_summary += f"- **Numerical**: {numerical_count} columns\n"
+        if categorical_count > 0:
+            stats_summary += f"- **Categorical**: {categorical_count} columns\n"
+        if boolean_count > 0:
+            stats_summary += f"- **True/False**: {boolean_count} columns\n"
+        if datetime_count > 0:
+            stats_summary += f"- **Date/Time**: {datetime_count} columns\n"
+        
         stats_summary += "\n"
         
         # Numerical columns
         numerical_cols = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
         if len(numerical_cols) > 0:
-            stats_summary += "## 🔢 Numerical Variables\n\n"
+            stats_summary += "## 🔢 Numerical Columns\n\n"
             for col in numerical_cols:
                 stats_summary += f"### 📈 {col}\n\n"
                 stats_summary += f"- **Mean**: {self.df[col].mean():.2f}\n"
@@ -70,7 +144,7 @@ class ChatBotAnalyzer:
         # Categorical columns
         categorical_cols = self.df.select_dtypes(include=['object', 'category', 'string']).columns
         if len(categorical_cols) > 0:
-            stats_summary += "## 📝 Categorical Variables\n\n"
+            stats_summary += "## 📝 Categorical Columns\n\n"
             for col in categorical_cols:
                 stats_summary += f"### 🏷️ {col}\n\n"
                 stats_summary += f"- **Unique Values**: {self.df[col].nunique()}\n"
@@ -84,7 +158,7 @@ class ChatBotAnalyzer:
         # Boolean columns
         boolean_cols = self.df.select_dtypes(include='bool').columns
         if len(boolean_cols) > 0:
-            stats_summary += "## ✅ Boolean Variables\n\n"
+            stats_summary += "## ✅ True/False Columns\n\n"
             for col in boolean_cols:
                 stats_summary += f"### 🔘 {col}\n\n"
                 value_counts = self.df[col].value_counts()
@@ -212,57 +286,7 @@ class ChatBotAnalyzer:
             visualizations['correlation_heatmap'] = fig_corr
         
         return visualizations
-    
-    def get_data_quality_metrics(self) -> Dict[str, float]:
-        """Calculate comprehensive data quality metrics"""
-        if self.df is None:
-            return {}
-        
-        total_cells = self.df.size
-        missing_cells = self.df.isnull().sum().sum()
-        duplicate_rows = self.df.duplicated().sum()
-        
-        return {
-            'completeness': ((total_cells - missing_cells) / total_cells) * 100,
-            'uniqueness': (1 - (duplicate_rows / len(self.df))) * 100,
-            'missing_percentage': (missing_cells / total_cells) * 100,
-            'duplicate_percentage': (duplicate_rows / len(self.df)) * 100
-        }
-    
-    def get_column_insights(self) -> Dict[str, List[Dict]]:
-        """Generate insights for each column"""
-        if self.df is None:
-            return {}
-        
-        insights = {'numerical': [], 'categorical': [], 'boolean': []}
-        
-        # Numerical columns insights
-        numerical_cols = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        for col in numerical_cols:
-            insights['numerical'].append({
-                'name': col,
-                'mean': self.df[col].mean(),
-                'std': self.df[col].std(),
-                'min': self.df[col].min(),
-                'max': self.df[col].max(),
-                'missing': self.df[col].isnull().sum(),
-                'zeros': (self.df[col] == 0).sum() if self.df[col].dtype != 'object' else 0
-            })
-        
-        # Categorical columns insights
-        categorical_cols = self.df.select_dtypes(include=['object', 'category', 'string']).columns
-        for col in categorical_cols:
-            value_counts = self.df[col].value_counts()
-            insights['categorical'].append({
-                'name': col,
-                'unique_count': self.df[col].nunique(),
-                'most_common': value_counts.index[0] if len(value_counts) > 0 else None,
-                'most_common_count': value_counts.iloc[0] if len(value_counts) > 0 else 0,
-                'missing': self.df[col].isnull().sum()
-            })
-        
-        return insights
-           
+         
     def call_open_router_api(self, prompt: str) -> Optional[str]:
         """Make API call to Open Router"""
         payload = {
@@ -313,10 +337,6 @@ class ChatBotAnalyzer:
         print("🎨 Creating visualizations...")
         visualizations = self.generate_visualizations()
         
-        # Generate data quality metrics
-        quality_metrics = self.get_data_quality_metrics()
-        column_insights = self.get_column_insights()
-        
         # Create analysis prompt
         prompt = self.create_analysis_prompt(stats_summary)
         
@@ -329,9 +349,7 @@ class ChatBotAnalyzer:
                 'dataframe': df,
                 'statistics': stats_summary,
                 'ai_analysis': analysis_result,
-                'visualizations': visualizations,
-                'quality_metrics': quality_metrics,
-                'column_insights': column_insights
+                'visualizations': visualizations
             }
             
             # Save results if requested
@@ -362,7 +380,7 @@ class ChatBotAnalyzer:
             f.write(results['ai_analysis'])
         
         # Save combined report as markdown
-        combined_report = f"""# 📊 Comprehensive Data Analysis Report
+        combined_report = f"""# 📊 Data Analysis Report
 
 ## Dataset: {base_name}
 
@@ -370,7 +388,7 @@ class ChatBotAnalyzer:
 
 {results['statistics']}
 
-## AI-Powered Analysis
+## Analysis
 
 {results['ai_analysis']}
 

@@ -11,11 +11,10 @@ import numpy as np
 
 # Import from our modules
 from en_01_analyzer import ChatBotAnalyzer
-from en_02_api_key_reader import read_api_key_from_content
 
 # Set page configuration
 st.set_page_config(
-    page_title="Data Analyzer Pro",
+    page_title="Data Analyzer",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -179,7 +178,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def create_stat_card(value, label, icon="📊", color="#667eea"):
-    """Create a beautiful statistic card"""
     def darken_color(hex_color, factor=0.8):
         """Darken a hex color"""
         import colorsys
@@ -200,7 +198,6 @@ def create_stat_card(value, label, icon="📊", color="#667eea"):
     """
 
 def display_enhanced_statistics(results):
-    """Display statistics in a highly visual and organized way"""
     st.markdown('<div class="section-header">📊 Enhanced Statistics Dashboard</div>', unsafe_allow_html=True)
     
     # Parse the statistics text
@@ -644,43 +641,46 @@ def main():
     # Header with modern design
     st.markdown('<h1 class="main-header">🚀 AI Data Analyzer Pro</h1>', unsafe_allow_html=True)
     
-    # Sidebar configuration (keep your existing sidebar code)
+    # Sidebar configuration - Simplified without API key input
     with st.sidebar:
         st.markdown("### ⚙️ Configuration")
-        
-        # API Key Section
-        st.markdown("#### 🔑 API Setup")
-        api_method = st.radio(
-            "Authentication Method:",
-            ["Upload Key File", "Enter Key Directly"],
-            horizontal=True
-        )
-        
-        api_key = None
-        
-        if api_method == "Upload Key File":
-            api_file = st.file_uploader("Upload API Key File", type=['txt'], help="TXT file with 'open_router:your_key' format")
-            if api_file:
-                content = api_file.read().decode('utf-8')
-                api_key = read_api_key_from_content(content)
-                if api_key:
-                    st.success("✅ API Key Verified")
-        
-        else:
-            api_key = st.text_input("Enter OpenRouter API Key:", type="password", 
-                                  help="Your OpenRouter API key starting with 'sk-or-v1-'")
-            if api_key:
-                st.success("✅ API Key Entered")
-        
-        st.markdown("---")
         
         # File Upload Section
         st.markdown("#### 📁 Data Source")
         uploaded_file = st.file_uploader("Upload CSV File", type=['csv'], 
                                        help="Upload your dataset for analysis")
+        
+        st.markdown("---")
+        
+        # Analysis Options
+        st.markdown("#### 🎯 Analysis Options")
+        analysis_mode = st.selectbox(
+            "Analysis Mode:",
+            ["Quick Overview", "Standard Analysis", "Comprehensive Report"]
+        )
+        
+        st.markdown("---")
+        
+        # Features List
+        st.markdown("#### ✨ Features")
+        features = [
+            "📊 Smart Data Profiling",
+            "🔍 Pattern Detection", 
+            "📈 Statistical Analysis",
+            "🤖 AI-Powered Insights",
+            "🎨 Interactive Visualizations",
+            "💡 Actionable Recommendations"
+        ]
+        
+        for feature in features:
+            st.markdown(f"• {feature}")
+        
+        st.markdown("---")
+        st.markdown("#### 🔑 API Setup")
+        st.info("API key is automatically loaded from 'api_key.txt' file in the same folder.")
     
     # Main content area
-    if uploaded_file is not None and api_key:
+    if uploaded_file is not None:
         try:
             # Perform analysis when button is clicked
             if st.button("🚀 Launch Comprehensive Analysis", type="primary", use_container_width=True):
@@ -691,8 +691,8 @@ def main():
                         temp_path = tmp_file.name
                     
                     try:
-                        # Perform full analysis
-                        analyzer = ChatBotAnalyzer(api_key)
+                        # Perform full analysis - API key is automatically loaded
+                        analyzer = ChatBotAnalyzer()  # No API key needed - loaded automatically
                         results = analyzer.analyze_csv(temp_path, save_output=False)
                         
                         if results:
@@ -740,8 +740,16 @@ def main():
                                 )
                         
                         else:
-                            st.error("❌ Analysis failed. Please check your API key.")
+                            st.error("❌ Analysis failed. Please check your API key file 'api_key.txt'.")
                     
+                    except ValueError as e:
+                        st.error(f"❌ API Key Error: {e}")
+                        st.info("""
+                        **To fix this:**
+                        1. Create a file named `api_key.txt` in the same folder as this application
+                        2. Add your OpenRouter API key to the file
+                        3. Format: `open_router:your_key_here` or just `your_key_here`
+                        """)
                     except Exception as e:
                         st.error(f"❌ Analysis error: {str(e)}")
                     
@@ -754,13 +762,23 @@ def main():
                 # Show preview before analysis
                 st.info("👆 Click the button above to start the AI analysis and see enhanced visual results!")
                 
+                # Show basic file info
+                try:
+                    df_preview = pd.read_csv(uploaded_file)
+                    st.success(f"✅ File ready for analysis: {df_preview.shape[0]} rows, {df_preview.shape[1]} columns")
+                    
+                    # Quick file preview
+                    with st.expander("📋 Preview Data"):
+                        st.dataframe(df_preview.head())
+                        
+                except Exception as e:
+                    st.error(f"❌ Error previewing file: {str(e)}")
+                
         except Exception as e:
             st.error(f"❌ Error reading file: {str(e)}")
     
-    elif not uploaded_file:
+    else:
         display_welcome_screen()
-    elif not api_key:
-        st.warning("⚠️ Please configure your API key to enable AI analysis.")
 
 def display_welcome_screen():
     """Display welcome screen"""
@@ -793,6 +811,24 @@ def display_welcome_screen():
                 </div>
             </div>
             """, unsafe_allow_html=True)
+    
+    # API setup instructions
+    st.markdown("### 🔑 Setup Instructions")
+    st.info("""
+    **To use this application:**
+    1. Create a file named `api_key.txt` in the same folder as this application
+    2. Add your OpenRouter API key to the file (format: `open_router:your_key_here` or just `your_key_here`)
+    3. Upload your CSV file and click the analysis button
+    
+    **File Structure:**
+    ```
+    your_project_folder/
+    ├── en_01_analyzer.py
+    ├── en_03_interface.py  
+    ├── en_04_main_tkinter.py
+    └── api_key.txt         ← Create this file with your API key
+    ```
+    """)
 
 if __name__ == "__main__":
     main()
