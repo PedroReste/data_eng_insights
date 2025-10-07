@@ -9,16 +9,24 @@ from plotly.subplots import make_subplots
 import numpy as np
 from typing import Dict, Any, Optional, List
 
+# Import streamlit at the top level, but handle the case when it's not available
+try:
+    import streamlit as st
+    STREAMLIT_AVAILABLE = True
+except ImportError:
+    STREAMLIT_AVAILABLE = False
+
 class ChatBotAnalyzer:
     def __init__(self, api_key: str = None):
-        # If no API key provided, try to read from file
+        # Priority: provided key > Streamlit secrets > env var > file
         if api_key is None:
-            api_key = self.read_api_key_from_file()
+            self.api_key = self.get_api_key_secure()
+        else:
+            self.api_key = api_key
         
-        if not api_key:
-            raise ValueError("API key not found. Please create an 'api_key.txt' file in the same folder.")
+        if not self.api_key:
+            raise ValueError("API key not found. Please set OPENROUTER_API_KEY environment variable or create 'api_key.txt' file.")
         
-        self.api_key = api_key.strip()
         self.base_url = "https://openrouter.ai/api/v1/chat/completions"
         self.headers = {
             "Content-Type": "application/json",
@@ -28,13 +36,43 @@ class ChatBotAnalyzer:
         }
         self.df = None
 
+    def get_api_key_secure(self) -> Optional[str]:
+        """
+        Get API key securely with priority:
+        1. Streamlit Secrets (if in Streamlit environment)
+        2. Environment Variable
+        3. Local file (for development only)
+        """
+        # 1. Try Streamlit Secrets
+        if STREAMLIT_AVAILABLE:
+            try:
+                if hasattr(st, 'secrets') and 'OPENROUTER_API_KEY' in st.secrets:
+                    api_key = st.secrets['OPENROUTER_API_KEY']
+                    if api_key and api_key.strip():
+                        print("✅ API key loaded from Streamlit Secrets")
+                        return api_key.strip()
+            except Exception as e:
+                print(f"⚠️ Streamlit secrets not accessible: {e}")
+        
+        # 2. Try Environment Variable
+        env_key = os.getenv('OPENROUTER_API_KEY')
+        if env_key and env_key.strip():
+            print("✅ API key loaded from environment variable")
+            return env_key.strip()
+        
+        # 3. Try local file (for development only)
+        file_key = self.read_api_key_from_file()
+        if file_key:
+            print("✅ API key loaded from local file")
+            return file_key
+        
+        return None
+
     def read_api_key_from_file(self, file_path: str = None) -> Optional[str]:
         """
-        Read API key from text file in the same folder
-        Supports formats: 'open_router:your_key' or just 'your_key'
+        Read API key from local file (for development only)
         """
         try:
-            # Use relative path to current script directory
             if file_path is None:
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 file_path = os.path.join(current_dir, "api_key.txt")
@@ -45,9 +83,9 @@ class ChatBotAnalyzer:
                 print(f"❌ API key file not found: {file_path}")
                 # Try alternative locations
                 alternative_paths = [
-                    "api_key.txt",  # Current working directory
-                    "./api_key.txt",  # Current working directory
-                    "../api_key.txt",  # Parent directory
+                    "api_key.txt",
+                    "./api_key.txt", 
+                    "../api_key.txt",
                 ]
                 
                 for alt_path in alternative_paths:
@@ -72,7 +110,7 @@ class ChatBotAnalyzer:
                     key = content.strip()
                 
                 if key:
-                    print(f"✅ API key loaded successfully (first 05 chars): {key[:5]}...")
+                    print(f"✅ API key loaded successfully (first 5 chars): {key[:5]}...")
                     return key
                 else:
                     print("❌ No API key found in file")

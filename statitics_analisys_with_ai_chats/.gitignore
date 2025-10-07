@@ -1,4 +1,5 @@
-#api_key.txt
+api_key.txt
+.streamlit
 ideais.txt
 *.csv
 __pycache__
