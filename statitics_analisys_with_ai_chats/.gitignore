@@ -6,6 +6,7 @@ api_key.txt
 .env
 ideais.txt
 *.csv
+*.ipynb
 
 # Python
 __pycache__/

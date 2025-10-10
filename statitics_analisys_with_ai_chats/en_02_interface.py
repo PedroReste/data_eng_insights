@@ -293,6 +293,18 @@ def display_enhanced_statistics(results):
         if 'numerical_distributions' in results['visualizations']:
             st.plotly_chart(results['visualizations']['numerical_distributions'], use_container_width=True)
         
+        # Categorical distributions
+        if 'categorical_distributions' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['categorical_distributions'], use_container_width=True)
+        
+        # Boolean distributions
+        if 'boolean_distributions' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['boolean_distributions'], use_container_width=True)
+
+        # Date/time distributions
+        if 'datetime_distributions' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['datetime_distributions'], use_container_width=True)
+        
         # Correlation heatmap
         if 'correlation_heatmap' in results['visualizations']:
             st.plotly_chart(results['visualizations']['correlation_heatmap'], use_container_width=True)
@@ -336,7 +348,7 @@ def display_dataset_overview(stats_text):
         st.markdown(create_stat_card(
             total_cols, 
             "Total Columns", 
-            "🔧", 
+            "📊", 
             "#3498db"
         ), unsafe_allow_html=True)
     
