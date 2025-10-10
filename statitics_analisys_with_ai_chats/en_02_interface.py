@@ -327,11 +327,11 @@ def create_correlation_heatmap(df):
         font=dict(color='white')
     )
     
-    # Update colorbar
+    # Update colorbar - CORREÇÃO: usar 'side' em vez de 'titleside'
     fig.update_coloraxes(
         colorbar=dict(
             title="Correlation",
-            titleside="right",
+            side="right",
             tickvals=[-1, -0.5, 0, 0.5, 1],
             ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
         )
@@ -460,12 +460,25 @@ def display_numerical_tab(results):
             # Visualizations - Line chart instead of histogram
             viz_col1, viz_col2 = st.columns(2)
             with viz_col1:
-                # Line chart (distribution)
-                hist_data = df[col].dropna()
-                if len(hist_data) > 0:
-                    fig_line = px.histogram(hist_data, nbins=50, title=f"Distribution - {col}")
-                    fig_line.update_traces(marker_color='#3498db', opacity=0.7)
-                    fig_line.update_layout(
+                # Gráfico de área
+                chart_data = df[col].dropna()
+                if len(chart_data) > 0:
+                    hist_values, bin_edges = np.histogram(chart_data, bins=50)
+                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                    
+                    fig_area = px.area(
+                        x=bin_centers, 
+                        y=hist_values, 
+                        title=f"Distribution - {col}",
+                        labels={'x': col, 'y': 'Frequency'}
+                    )
+                    
+                    fig_area.update_traces(
+                        line=dict(color='#3498db', width=2),
+                        fillcolor='rgba(52, 152, 219, 0.5)'
+                    )
+                    
+                    fig_area.update_layout(
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
                         font=dict(color='white'),
@@ -473,7 +486,8 @@ def display_numerical_tab(results):
                         xaxis_title=col,
                         yaxis_title="Frequency"
                     )
-                    st.plotly_chart(fig_line, use_container_width=True)
+                    
+                    st.plotly_chart(fig_area, use_container_width=True)
             
             with viz_col2:
                 # Box plot
@@ -595,7 +609,7 @@ def display_boolean_tab(results):
                 fig_donut.update_traces(
                     textposition='inside', 
                     textinfo='percent+label',
-                    marker=dict(line=dict(color='#000000', width=2))
+                    marker=dict(line=dict(color="#797979", width=2))
                 )
                 fig_donut.update_layout(
                     height=400,  # Larger chart
