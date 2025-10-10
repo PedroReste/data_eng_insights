@@ -149,10 +149,10 @@ class ChatBotAnalyzer:
         
         # Dataset Overview
         stats_summary += "## 📋 Dataset Overview\n\n"
-        stats_summary += f"- **Total Rows**: {self.df.shape[0]:,}\n"
-        stats_summary += f"- **Total Columns**: {self.df.shape[1]}\n"
-        stats_summary += f"- **Missing Values**: {self.df.isnull().sum().sum()}\n"
-        stats_summary += f"- **Duplicate Rows**: {self.df.duplicated().sum()}\n\n"
+        stats_summary += f"- **Total Rows** {self.df.shape[0]:,}\n"
+        stats_summary += f"- **Total Columns** {self.df.shape[1]}\n"
+        stats_summary += f"- **Missing Values** {self.df.isnull().sum().sum()}\n"
+        stats_summary += f"- **Duplicate Rows** {self.df.duplicated().sum()}\n\n"
         
         # Data Types Summary
         stats_summary += "## 🔧 Data Types Summary\n\n"

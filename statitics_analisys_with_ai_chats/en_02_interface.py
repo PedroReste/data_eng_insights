@@ -198,7 +198,8 @@ def create_stat_card(value, label, icon="📊", color="#667eea"):
     """
 
 def display_enhanced_statistics(results):
-    st.markdown('<div class="section-header">📊 Enhanced Statistics Dashboard</div>', unsafe_allow_html=True)
+    # View a Dataset overview, data types, variablles analysis etc.
+    st.markdown('<div class="section-header">📊 Dataset Overview</div>', unsafe_allow_html=True)
     
     # Parse the statistics text
     stats_text = results['statistics']
@@ -213,7 +214,7 @@ def display_enhanced_statistics(results):
     display_variables_analysis(stats_text)
 
 def display_dataset_overview(stats_text):
-    """Display dataset overview with beautiful metrics"""
+    # Dataset Overview: rows, columns, missing values, etc.
     st.markdown("### 📋 Dataset Overview")
     
     # Extract overview metrics
@@ -234,7 +235,7 @@ def display_dataset_overview(stats_text):
             metrics.get('total_rows', 'N/A'), 
             "Total Rows", 
             "📈", 
-            "#e74c3c"
+            "#2ecc71"
         ), unsafe_allow_html=True)
     
     with col2:
@@ -258,20 +259,20 @@ def display_dataset_overview(stats_text):
             metrics.get('duplicate_rows', 'N/A'), 
             "Duplicate Rows", 
             "🔍", 
-            "#2ecc71"
+            "#e74c3c" 
         ), unsafe_allow_html=True)
 
 def display_data_types_summary(stats_text):
-    """Display data types summary with visual tags"""
+    # Display data types summary with visual tags
     st.markdown("### 🔧 Data Types Distribution")
     
     # Extract data types
-    dtype_section = stats_text.split('## 🔧 Data Types Summary')[1].split('## 🔢 Numerical Variables')[0].strip()
+    dtype_section = stats_text.split('## 🔧 Data Types Summary')[1].split('## 🔢 Numerical Columns')[0].strip()
     dtype_lines = [line for line in dtype_section.split('\n') if '**' in line]
     
-    # Create a beautiful data types display
+    # Create data types display
     cols = st.columns(len(dtype_lines))
-    colors = ["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
+    colors = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
     
     for i, line in enumerate(dtype_lines):
         if '**' in line:
