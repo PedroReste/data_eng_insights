@@ -130,6 +130,57 @@ class ChatBotAnalyzer:
             print(f"❌ Error reading API key file: {e}")
             return None
 
+    def get_simple_column_types(self) -> Dict[str, List[str]]:
+        """Get simplified column types grouped by category"""
+        if self.df is None:
+            return {}
+        
+        numerical_cols = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
+        categorical_cols = self.df.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
+        boolean_cols = self.df.select_dtypes(include='bool').columns.tolist()
+        datetime_cols = self.df.select_dtypes(include=['datetime64', 'timedelta64']).columns.tolist()
+        
+        return {
+            'Numerical': numerical_cols,
+            'Categorical': categorical_cols,
+            'True/False': boolean_cols,
+            'Date/Time': datetime_cols
+        }
+
+    def get_detailed_column_info(self) -> pd.DataFrame:
+        """Get detailed information about each column"""
+        if self.df is None:
+            return pd.DataFrame()
+        
+        column_info = []
+        
+        for col in self.df.columns:
+            col_type = self._get_simple_dtype(self.df[col].dtype)
+            non_null_count = self.df[col].count()
+            null_count = self.df[col].isnull().sum()
+            null_percentage = (null_count / len(self.df)) * 100
+            
+            column_info.append({
+                'Column Name': col,
+                'Type': col_type,
+                'Non-Null Count': non_null_count,
+                'Null Count': null_count,
+                'Null Percentage': f"{null_percentage:.2f}%"
+            })
+        
+        return pd.DataFrame(column_info)
+
+    def _get_simple_dtype(self, dtype):
+        """Convert detailed dtype to simplified category"""
+        if np.issubdtype(dtype, np.number):
+            return "Numerical"
+        elif np.issubdtype(dtype, np.bool_):
+            return "True/False"
+        elif np.issubdtype(dtype, np.datetime64):
+            return "Date/Time"
+        else:
+            return "Categorical"
+
     def load_and_preview_data(self, file_path: str) -> pd.DataFrame:
         """Load CSV file and return basic information"""
         try:
@@ -252,9 +303,6 @@ class ChatBotAnalyzer:
 
         ## Recommendations
         Suggested next steps and improvements.
-
-        ## Visualization Suggestions
-        Recommended charts and analysis approaches.
 
         Use proper markdown formatting with headers, bullet points, and emphasis. Be professional and insightful.
         """

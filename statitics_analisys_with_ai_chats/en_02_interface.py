@@ -3,7 +3,8 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import os
-import re
+import base64
+from io import StringIO
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -20,29 +21,34 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS
+# Dark theme CSS
 st.markdown("""
 <style>
+    .stApp {
+        background-color: #0e1117;
+        color: #fafafa;
+    }
     .main-header {
-        font-size: 3rem;
+        font-size: 3.5rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
         margin-bottom: 2rem;
         font-weight: 800;
+        padding: 1rem;
     }
     .section-header {
-        font-size: 1.8rem;
-        color: #2c3e50;
+        font-size: 2rem;
+        color: #ffffff;
         border-bottom: 3px solid #3498db;
         padding-bottom: 0.5rem;
         margin: 2rem 0 1rem 0;
         font-weight: 700;
     }
     .subsection-header {
-        font-size: 1.4rem;
-        color: #34495e;
+        font-size: 1.5rem;
+        color: #ffffff;
         margin: 1.5rem 0 1rem 0;
         font-weight: 600;
         background: linear-gradient(90deg, #3498db, transparent);
@@ -50,12 +56,13 @@ st.markdown("""
         border-radius: 5px;
     }
     .card {
-        background: white;
+        background: #1e2130;
         border-radius: 15px;
         padding: 1.5rem;
         margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         border-left: 5px solid #3498db;
+        color: #ffffff;
     }
     .stat-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -63,32 +70,8 @@ st.markdown("""
         padding: 1.5rem;
         color: white;
         text-align: center;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
         margin: 0.5rem;
-    }
-    .variable-card {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-left: 4px solid #e74c3c;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .categorical-card {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-left: 4px solid #3498db;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .boolean-card {
-        background: #f8f9fa;
-        border-radius: 12px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-left: 4px solid #2ecc71;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     .metric-value {
         font-size: 2.2rem;
@@ -100,619 +83,474 @@ st.markdown("""
         opacity: 0.9;
         font-weight: 500;
     }
-    .stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1rem;
-        margin: 1rem 0;
-    }
-    .stat-item {
-        background: white;
-        padding: 1rem;
-        border-radius: 10px;
-        text-align: center;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border: 1px solid #e0e0e0;
-    }
-    .progress-bar {
-        background: linear-gradient(90deg, #2ecc71, #27ae60);
-        height: 8px;
-        border-radius: 4px;
-        margin: 0.5rem 0;
-    }
-    .distribution-bar {
-        background: linear-gradient(90deg, #3498db, #2980b9);
-        height: 20px;
-        border-radius: 10px;
-        margin: 0.25rem 0;
-        color: white;
-        padding: 0 1rem;
-        font-size: 0.8rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    .ai-insight-card {
-        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .recommendation-card {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    .highlight-number {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: #e74c3c;
-        background: #f8f9fa;
-        padding: 0.2rem 0.5rem;
-        border-radius: 5px;
-        margin: 0 0.2rem;
-    }
-    .data-type-tag {
-        display: inline-block;
-        background: #3498db;
-        color: white;
-        padding: 0.3rem 0.8rem;
+    .welcome-card {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
         border-radius: 20px;
-        font-size: 0.8rem;
-        margin: 0.2rem;
-        font-weight: 500;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        border: 1px solid #3498db;
     }
-    .value-tag {
-        display: inline-block;
-        background: #2ecc71;
-        color: white;
-        padding: 0.2rem 0.6rem;
-        border-radius: 15px;
-        font-size: 0.7rem;
-        margin: 0.1rem;
-    }
-    .preview-card {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    .feature-card {
+        background: #1e2130;
         border-radius: 15px;
         padding: 1.5rem;
         margin: 1rem 0;
+        border-left: 4px solid #2ecc71;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .upload-card {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 2rem 0;
+        border: 2px dashed #3498db;
+        text-align: center;
+    }
+    .tab-content {
+        background: #1e2130;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    .download-btn {
+        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
         color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0.5rem;
+    }
+    .analysis-card {
+        background: #1e2130;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 4px solid #e74c3c;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+    .insight-section {
+        background: #2d3256;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 4px solid #f39c12;
     }
 </style>
 """, unsafe_allow_html=True)
 
 def create_stat_card(value, label, icon="📊", color="#667eea"):
-    def darken_color(hex_color, factor=0.8):
-        """Darken a hex color"""
-        import colorsys
-        hex_color = hex_color.lstrip('#')
-        rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        hls = colorsys.rgb_to_hls(*[x/255.0 for x in rgb])
-        darker = colorsys.hls_to_rgb(hls[0], max(0, hls[1] * factor), hls[2])
-        return '#{:02x}{:02x}{:02x}'.format(*(int(x * 255) for x in darker))
-    
-    darkened_color = darken_color(color)
-    
     return f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, {darkened_color} 100%);">
+    <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, #764ba2 100%);">
         <div style="font-size: 2rem; margin-bottom: 0.5rem;">{icon}</div>
         <div class="metric-value">{value}</div>
         <div class="metric-label">{label}</div>
     </div>
     """
 
+def get_download_link(content, filename, text):
+    """Generate a download link for text content"""
+    b64 = base64.b64encode(content.encode()).decode()
+    return f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="download-btn">{text}</a>'
+
+def display_welcome_screen():
+    """Display welcome screen with app information"""
+    st.markdown('<h1 class="main-header">📊 Data Analyzer</h1>', unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="welcome-card">
+        <h2 style="color: #3498db; text-align: center; margin-bottom: 2rem;">🎯 Welcome to Data Analyzer!</h2>
+        <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
+        Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Features
+    st.markdown("### ✨ Application Features")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("""
+        <div class="feature-card">
+            <h4>📊 Descriptive Analysis</h4>
+            <p>Comprehensive statistical reports and data profiling</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown("""
+        <div class="feature-card">
+            <h4>📈 Data Visualization</h4>
+            <p>Interactive charts and graphs for all variable types</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div class="feature-card">
+            <h4>🤖 AI Insights</h4>
+            <p>LLM-powered analysis to uncover hidden patterns</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # How to use
+    st.markdown("### 📋 How to Use")
+    st.markdown("""
+    <div class="card">
+        <ol style="font-size: 1.1rem;">
+            <li><strong>Upload your CSV file</strong> using the sidebar uploader</li>
+            <li><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
+            <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+            <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+            <li><strong>Download reports</strong> for offline use</li>
+        </ol>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Tips
+    st.markdown("### 💡 Tips for Best Results")
+    st.markdown("""
+    <div class="card">
+        <ul style="font-size: 1.1rem;">
+            <li>Ensure your file is properly structured as CSV</li>
+            <li>Clean unnecessary columns before uploading</li>
+            <li>Handle missing values when possible</li>
+            <li>Use descriptive column names</li>
+            <li>Files should be under 200MB for optimal performance</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
 def display_data_preview(uploaded_file, tmp_file_path):
-    """Display data preview in the main area"""
+    """Display data preview before analysis"""
     st.markdown('<div class="section-header">👀 Data Preview</div>', unsafe_allow_html=True)
     
-    def categorize_dtype(dtype):
-        """Categorize pandas dtypes into broader categories"""
-        try:
-            if pd.api.types.is_numeric_dtype(dtype):
-                return "Numerical"
-            elif pd.api.types.is_bool_dtype(dtype):
-                return "True/False"
-            elif pd.api.types.is_datetime64_any_dtype(dtype):
-                return "Date/Time"
-            elif pd.api.types.is_categorical_dtype(dtype):
-                return "Categorical"
-            else:
-                return "Categorical"  # Default for object/string types
-        except:
-            return "Unknown"
-    
     try:
-        # Read CSV with error handling for different encodings
-        try:
-            df_preview = pd.read_csv(tmp_file_path)
-        except UnicodeDecodeError:
-            # Try with different encoding if UTF-8 fails
-            df_preview = pd.read_csv(tmp_file_path, encoding='latin-1')
+        df_preview = pd.read_csv(tmp_file_path)
         
-        # File info card
-        col1, col2, col3, col4 = st.columns(4)
+        # File info cards
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.markdown(create_stat_card(
-                f"{df_preview.shape[0]:,}", 
-                "Total Rows", 
-                "📈", 
-                "#2ecc71"
-            ), unsafe_allow_html=True)
+            st.markdown(create_stat_card(f"{df_preview.shape[0]:,}", "Total Rows", "📈", "#2ecc71"), unsafe_allow_html=True)
         with col2:
-            st.markdown(create_stat_card(
-                f"{df_preview.shape[1]}", 
-                "Total Columns", 
-                "📊", 
-                "#3498db"
-            ), unsafe_allow_html=True)
+            st.markdown(create_stat_card(f"{df_preview.shape[1]}", "Total Columns", "📊", "#3498db"), unsafe_allow_html=True)
         with col3:
-            st.markdown(create_stat_card(
-                f"{df_preview.isnull().sum().sum():,}", 
-                "Missing Values", 
-                "⚠️", 
-                "#f39c12"
-            ), unsafe_allow_html=True)
+            st.markdown(create_stat_card(f"{df_preview.isnull().sum().sum():,}", "Missing Values", "⚠️", "#f39c12"), unsafe_allow_html=True)
         with col4:
-            st.markdown(create_stat_card(
-                f"{df_preview.duplicated().sum():,}",
-                "Duplicated Rows",
-                "🔍",  # Fixed emoji
-                "#e74c3c"  # Better color for duplicates
-            ), unsafe_allow_html=True)
+            st.markdown(create_stat_card(f"{df_preview.duplicated().sum():,}", "Duplicated Rows", "🔍", "#e74c3c"), unsafe_allow_html=True)
+        with col5:
+            total_cells = df_preview.shape[0] * df_preview.shape[1]
+            st.markdown(create_stat_card(f"{total_cells:,}", "Total Cells", "🔢", "#9b59b6"), unsafe_allow_html=True)
         
-        # Data preview with expandable sections
-        tab1, tab2, tab3 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats"])
+        # Data preview tabs
+        tab1, tab2 = st.tabs(["📋 Data Sample", "🔍 Column Info"])
         
         with tab1:
-            st.markdown(f"**First 10 rows of `{uploaded_file.name}`:**")
-            st.dataframe(df_preview.head(10), use_container_width=True)
-            
-            # Show basic info below the dataframe
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Memory Usage", f"{df_preview.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
-            with col2:
-                st.metric("Total Cells", f"{df_preview.shape[0] * df_preview.shape[1]:,}")
+            st.markdown("**First 10 rows:**")
+            st.dataframe(df_preview.head(10), use_container_width=True, height=400)
         
         with tab2:
+            # Get simplified column types
+            analyzer = ChatBotAnalyzer()
+            analyzer.df = df_preview
+            column_info = analyzer.get_detailed_column_info()
             st.markdown("**Column Information:**")
-            col_info = pd.DataFrame({
-                'Column': df_preview.columns,
-                'Category': df_preview.dtypes.apply(categorize_dtype),
-                'Non-Null Count': df_preview.count().values,
-                'Null Count': df_preview.isnull().sum().values,
-                'Null Percentage': (df_preview.isnull().sum().values / len(df_preview) * 100).round(2)
-            })
-            st.dataframe(col_info, use_container_width=True)
+            st.dataframe(column_info, use_container_width=True, height=400)
             
-            # Summary of data types
-            st.markdown("**Data Type Summary:**")
-            dtype_summary = col_info['Category'].value_counts()
-            for dtype, count in dtype_summary.items():
-                st.write(f"- **{dtype}**: {count} columns")
-            
+            # Data types distribution
             st.markdown("**Data Types Distribution:**")
-            # Create a visualization of data types
-            dtype_counts = df_preview.dtypes.apply(categorize_dtype).value_counts()
-                
-            if len(dtype_counts) > 0:
-                fig = px.pie(
-                    values=dtype_counts.values,
-                    names=dtype_counts.index,
-                    title="Data Types Distribution",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig.update_traces(textposition='inside', textinfo='percent+label')
-                fig.update_layout(height=400, showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No data available for visualization")
-        
-        with tab3:
-            st.markdown("**Quick Statistics:**")
-            numerical_cols = df_preview.select_dtypes(include=['number']).columns
-            if len(numerical_cols) > 0:
-                st.dataframe(df_preview[numerical_cols].describe(), use_container_width=True)
-            else:
-                st.info("No numerical columns for statistical summary")
-            
-            # Show categorical stats if available
-            categorical_cols = df_preview.select_dtypes(include=['object', 'category']).columns
-            if len(categorical_cols) > 0:
-                st.markdown("**Categorical Columns Summary:**")
-                for col in categorical_cols[:5]:  # Limit to first 5 categorical columns
-                    unique_count = df_preview[col].nunique()
-                    st.write(f"- **{col}**: {unique_count} unique values")
+            type_counts = column_info['Type'].value_counts()
+            fig = px.pie(
+                values=type_counts.values,
+                names=type_counts.index,
+                title="Data Types Distribution",
+                color_discrete_sequence=px.colors.qualitative.Set3
+            )
+            fig.update_traces(textposition='inside', textinfo='percent+label')
+            fig.update_layout(height=400, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig, use_container_width=True)
         
         return df_preview
         
     except Exception as e:
         st.error(f"Error previewing data: {str(e)}")
-        st.info("""
-        **Common issues:**
-        - File is not a valid CSV
-        - File uses a different encoding (try saving as UTF-8)
-        - File is too large for preview
-        - File contains special characters
-        """)
         return None
 
-def display_enhanced_statistics(results):
-    """Display enhanced statistics with visualizations"""
-    st.markdown('<div class="section-header">📊 Dataset Overview & Statistics</div>', unsafe_allow_html=True)
+def display_exploratory_analysis(results):
+    """Display exploratory data analysis with tabs"""
+    st.markdown('<div class="section-header">📊 Exploratory Data Analysis</div>', unsafe_allow_html=True)
     
-    # Display visualizations first
-    if 'visualizations' in results and results['visualizations']:
-        st.markdown("### 📈 Interactive Visualizations")
-        
-        # Data types distribution
-        if 'data_types' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['data_types'], use_container_width=True)
-        
-        # Missing data
-        if 'missing_data' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['missing_data'], use_container_width=True)
-        
-        # Numerical distributions
-        if 'numerical_distributions' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['numerical_distributions'], use_container_width=True)
-        
-        # Categorical distributions
-        if 'categorical_distributions' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['categorical_distributions'], use_container_width=True)
-        
-        # Boolean distributions
-        if 'boolean_distributions' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['boolean_distributions'], use_container_width=True)
+    # Download button
+    if 'ai_analysis' in results and 'statistics' in results:
+        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
+    
+    # Overview cards
+    df = results['dataframe']
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.markdown(create_stat_card(f"{df.shape[0]:,}", "Total Rows", "📈", "#2ecc71"), unsafe_allow_html=True)
+    with col2:
+        st.markdown(create_stat_card(f"{df.shape[1]}", "Total Columns", "📊", "#3498db"), unsafe_allow_html=True)
+    with col3:
+        st.markdown(create_stat_card(f"{df.isnull().sum().sum():,}", "Missing Values", "⚠️", "#f39c12"), unsafe_allow_html=True)
+    with col4:
+        st.markdown(create_stat_card(f"{df.duplicated().sum():,}", "Duplicated Rows", "🔍", "#e74c3c"), unsafe_allow_html=True)
+    with col5:
+        total_cells = df.shape[0] * df.shape[1]
+        st.markdown(create_stat_card(f"{total_cells:,}", "Total Cells", "🔢", "#9b59b6"), unsafe_allow_html=True)
+    
+    # Donut chart for column types
+    analyzer = ChatBotAnalyzer()
+    analyzer.df = df
+    type_counts = analyzer.get_detailed_column_info()['Type'].value_counts()
+    fig_donut = px.pie(
+        values=type_counts.values,
+        names=type_counts.index,
+        title="Column Types Distribution",
+        hole=0.4,
+        color_discrete_sequence=px.colors.qualitative.Set3
+    )
+    fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+    fig_donut.update_layout(height=400, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig_donut, use_container_width=True)
+    
+    # Create tabs for different data types
+    tab_names = ["Overview"]
+    simple_types = analyzer.get_simple_column_types()
+    
+    if simple_types['Numerical']:
+        tab_names.append("Numerical Columns")
+    if simple_types['Categorical']:
+        tab_names.append("Categorical Columns")
+    if simple_types['True/False']:
+        tab_names.append("True/False Columns")
+    if simple_types['Date/Time']:
+        tab_names.append("Date/Time Columns")
+    
+    tabs = st.tabs(tab_names)
+    
+    # Overview Tab
+    with tabs[0]:
+        display_overview_tab(results)
+    
+    # Numerical Columns Tab
+    if simple_types['Numerical']:
+        tab_index = tab_names.index("Numerical Columns")
+        with tabs[tab_index]:
+            display_numerical_tab(results)
+    
+    # Categorical Columns Tab
+    if simple_types['Categorical']:
+        tab_index = tab_names.index("Categorical Columns")
+        with tabs[tab_index]:
+            display_categorical_tab(results)
+    
+    # True/False Columns Tab
+    if simple_types['True/False']:
+        tab_index = tab_names.index("True/False Columns")
+        with tabs[tab_index]:
+            display_boolean_tab(results)
+    
+    # Date/Time Columns Tab
+    if simple_types['Date/Time']:
+        tab_index = tab_names.index("Date/Time Columns")
+        with tabs[tab_index]:
+            display_datetime_tab(results)
 
-        # Date/time distributions
-        if 'datetime_distributions' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['datetime_distributions'], use_container_width=True)
-        
-        # Correlation heatmap
-        if 'correlation_heatmap' in results['visualizations']:
-            st.plotly_chart(results['visualizations']['correlation_heatmap'], use_container_width=True)
+def display_overview_tab(results):
+    """Display overview tab content"""
+    df = results['dataframe']
+    analyzer = ChatBotAnalyzer()
+    analyzer.df = df
     
-    # Parse the statistics text
-    stats_text = results['statistics']
-    
-    # Display dataset overview in a beautiful grid
-    display_dataset_overview(stats_text)
-    
-    # Display data types summary
-    display_data_types_summary(stats_text)
-    
-    # Display variables in organized tabs
-    display_variables_analysis(stats_text)
-
-def display_dataset_overview(stats_text):
-    """Display dataset overview metrics"""
-    st.markdown("### 📋 Dataset Overview")
-    
-    # Extract overview metrics using regex for better parsing
-    total_rows_match = re.search(r"- \*\*Total Rows\*\*:?\s*([\d,]+)", stats_text)
-    total_cols_match = re.search(r"- \*\*Total Columns\*\*:?\s*(\d+)", stats_text)
-    missing_vals_match = re.search(r"- \*\*Missing Values\*\*:?\s*([\d,]+)", stats_text)
-    duplicate_rows_match = re.search(r"- \*\*Duplicate Rows\*\*:?\s*([\d,]+)", stats_text)
-    
-    # Create metric cards
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2 = st.columns(2)
     
     with col1:
-        total_rows = total_rows_match.group(1) if total_rows_match else "N/A"
-        st.markdown(create_stat_card(
-            total_rows, 
-            "Total Rows", 
-            "📈", 
-            "#2ecc71"
-        ), unsafe_allow_html=True)
+        st.markdown("#### First 10 Rows")
+        st.dataframe(df.head(10), use_container_width=True, height=400)
     
     with col2:
-        total_cols = total_cols_match.group(1) if total_cols_match else "N/A"
-        st.markdown(create_stat_card(
-            total_cols, 
-            "Total Columns", 
-            "📊", 
-            "#3498db"
-        ), unsafe_allow_html=True)
-    
-    with col3:
-        missing_vals = missing_vals_match.group(1) if missing_vals_match else "N/A"
-        st.markdown(create_stat_card(
-            missing_vals, 
-            "Missing Values", 
-            "⚠️", 
-            "#f39c12"
-        ), unsafe_allow_html=True)
-    
-    with col4:
-        duplicate_rows = duplicate_rows_match.group(1) if duplicate_rows_match else "N/A"
-        st.markdown(create_stat_card(
-            duplicate_rows, 
-            "Duplicate Rows", 
-            "🔍", 
-            "#e74c3c" 
-        ), unsafe_allow_html=True)
+        st.markdown("#### Column Information")
+        column_info = analyzer.get_detailed_column_info()
+        st.dataframe(column_info, use_container_width=True, height=400)
 
-def display_data_types_summary(stats_text):
-    """Display data types summary"""
-    st.markdown("### 🔧 Data Types Distribution")
+def display_numerical_tab(results):
+    """Display numerical columns analysis"""
+    df = results['dataframe']
+    numerical_cols = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
     
-    # Extract data types using regex
-    numerical_match = re.search(r"- \*\*Numerical\*\*:?\s*(\d+)", stats_text)
-    categorical_match = re.search(r"- \*\*Categorical\*\*:?\s*(\d+)", stats_text)
-    boolean_match = re.search(r"- \*\*True/False\*\*:?\s*(\d+)", stats_text)
-    datetime_match = re.search(r"- \*\*Date/Time\*\*:?\s*(\d+)", stats_text)
-    
-    data_types = []
-    if numerical_match:
-        data_types.append(("Numerical", numerical_match.group(1)))
-    if categorical_match:
-        data_types.append(("Categorical", categorical_match.group(1)))
-    if boolean_match:
-        data_types.append(("True/False", boolean_match.group(1)))
-    if datetime_match:
-        data_types.append(("Date/Time", datetime_match.group(1)))
-    
-    # Create data types display
-    if data_types:
-        cols = st.columns(len(data_types))
-        colors = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
-        
-        for i, (dtype, count) in enumerate(data_types):
-            with cols[i % len(cols)]:
-                st.markdown(f"""
-                <div style="text-align: center; padding: 1rem; background: {colors[i % len(colors)]}; 
-                         color: white; border-radius: 10px; margin: 0.5rem;">
-                    <div style="font-size: 1.2rem; font-weight: bold;">{count}</div>
-                    <div style="font-size: 0.9rem;">{dtype}</div>
-                </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.info("No data type information available.")
-
-def display_variables_analysis(stats_text):
-    """Display variables analysis in organized tabs"""
-    st.markdown("### 📈 Variables Analysis")
-    
-    # Check which types of variables exist
-    has_numerical = "## 🔢 Numerical Columns" in stats_text
-    has_categorical = "## 📝 Categorical Columns" in stats_text
-    has_boolean = "## ✅ True/False Columns" in stats_text
-    
-    tabs = []
-    if has_numerical:
-        tabs.append("🔢 Numerical Variables")
-    if has_categorical:
-        tabs.append("📝 Categorical Variables")
-    if has_boolean:
-        tabs.append("✅ True/False Variables")
-    
-    if tabs:
-        created_tabs = st.tabs(tabs)
-        
-        tab_index = 0
-        if has_numerical:
-            with created_tabs[tab_index]:
-                display_numerical_variables(stats_text)
-            tab_index += 1
-        
-        if has_categorical:
-            with created_tabs[tab_index]:
-                display_categorical_variables(stats_text)
-            tab_index += 1
-        
-        if has_boolean:
-            with created_tabs[tab_index]:
-                display_boolean_variables(stats_text)
-    else:
-        st.info("No variable analysis available.")
-
-def display_numerical_variables(stats_text):
-    """Display numerical variables with enhanced visualization"""
-    if '## 🔢 Numerical Columns' not in stats_text:
-        st.info("No numerical variables found in the dataset.")
-        return
-    
-    # Extract numerical section
-    numerical_section = stats_text.split('## 🔢 Numerical Columns')[1]
-    if '## 📝 Categorical Columns' in numerical_section:
-        numerical_section = numerical_section.split('## 📝 Categorical Columns')[0]
-    elif '## ✅ True/False Columns' in numerical_section:
-        numerical_section = numerical_section.split('## ✅ True/False Columns')[0]
-    
-    # Extract individual variables
-    variables = re.split(r'### 📈 ', numerical_section)[1:]
-    
-    for var_content in variables:
-        if var_content.strip():
-            lines = var_content.split('\n')
-            var_name = lines[0].strip()
+    for col in numerical_cols:
+        with st.container():
+            st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
+            st.markdown(f"#### 📈 {col}")
             
-            # Extract statistics using regex
-            stats = {}
-            stats_patterns = {
-                'Mean': r"- \*\*Mean\*\*:?\s*([\d.-]+)",
-                'Median': r"- \*\*Median\*\*:?\s*([\d.-]+)", 
-                'Variance': r"- \*\*Variance\*\*:?\s*([\d.-]+)",
-                'Standard Deviation': r"- \*\*Standard Deviation\*\*:?\s*([\d.-]+)",
-                'Minimum': r"- \*\*Minimum\*\*:?\s*([\d.-]+)",
-                'Maximum': r"- \*\*Maximum\*\*:?\s*([\d.-]+)",
-                'Range': r"- \*\*Range\*\*:?\s*([\d.-]+)",
-                'Missing Values': r"- \*\*Missing Values\*\*:?\s*(\d+)"
-            }
-            
-            for stat_name, pattern in stats_patterns.items():
-                match = re.search(pattern, var_content)
-                if match:
-                    stats[stat_name] = match.group(1)
-            
-            st.markdown(f'<div class="variable-card">', unsafe_allow_html=True)
-            
-            # Variable header
-            st.markdown(f"#### 📈 {var_name}")
-            
-            # Create a grid for statistics
+            # Statistics
             col1, col2 = st.columns(2)
-            
             with col1:
-                # Central tendency metrics
-                if 'Mean' in stats:
-                    st.metric("Mean", f"{float(stats['Mean']):.2f}")
-                if 'Median' in stats:
-                    st.metric("Median", f"{float(stats['Median']):.2f}")
-                if 'Standard Deviation' in stats:
-                    st.metric("Std Dev", f"{float(stats['Standard Deviation']):.2f}")
-            
+                st.metric("Mean", f"{df[col].mean():.2f}")
+                st.metric("Median", f"{df[col].median():.2f}")
+                st.metric("Variance", f"{df[col].var():.2f}")
             with col2:
-                # Range metrics
-                if 'Minimum' in stats:
-                    st.metric("Minimum", f"{float(stats['Minimum']):.2f}")
-                if 'Maximum' in stats:
-                    st.metric("Maximum", f"{float(stats['Maximum']):.2f}")
-                if 'Range' in stats:
-                    st.metric("Range", f"{float(stats['Range']):.2f}")
+                st.metric("Standard Deviation", f"{df[col].std():.2f}")
+                st.metric("Minimum", f"{df[col].min():.2f}")
+                st.metric("Maximum", f"{df[col].max():.2f}")
             
-            # Additional info
-            if 'Missing Values' in stats:
-                st.info(f"Missing Values: {stats['Missing Values']}")
+            st.metric("Missing Values", f"{df[col].isnull().sum()}")
+            
+            # Visualizations
+            viz_col1, viz_col2 = st.columns(2)
+            with viz_col1:
+                # Histogram
+                fig_hist = px.histogram(df, x=col, title=f"Histogram - {col}")
+                fig_hist.update_layout(paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_hist, use_container_width=True)
+            
+            with viz_col2:
+                # Box plot
+                fig_box = px.box(df, y=col, title=f"Box Plot - {col}")
+                fig_box.update_layout(paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_box, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_categorical_variables(stats_text):
-    """Display categorical variables with enhanced visualization"""
-    if '## 📝 Categorical Columns' not in stats_text:
-        st.info("No categorical variables found in the dataset.")
-        return
+def display_categorical_tab(results):
+    """Display categorical columns analysis"""
+    df = results['dataframe']
+    categorical_cols = df.select_dtypes(include=['object', 'category', 'string']).columns
     
-    # Extract categorical section
-    categorical_section = stats_text.split('## 📝 Categorical Columns')[1]
-    if '## ✅ True/False Columns' in categorical_section:
-        categorical_section = categorical_section.split('## ✅ True/False Columns')[0]
-    
-    # Extract individual variables
-    variables = re.split(r'### 🏷️ ', categorical_section)[1:]
-    
-    for var_content in variables:
-        if var_content.strip():
-            lines = var_content.split('\n')
-            var_name = lines[0].strip()
+    for col in categorical_cols:
+        with st.container():
+            st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
+            st.markdown(f"#### 🏷️ {col}")
             
-            # Extract statistics
-            unique_values = re.search(r"- \*\*Unique Values\*\*:?\s*(\d+)", var_content)
-            missing_values = re.search(r"- \*\*Missing Values\*\*:?\s*(\d+)", var_content)
+            # Statistics
+            unique_count = df[col].nunique()
+            missing_count = df[col].isnull().sum()
+            top_values = df[col].value_counts().head(3)
             
-            # Extract top values
-            top_values = []
-            top_values_section = var_content.split("- **Top 3 Values**:")[1] if "- **Top 3 Values**:" in var_content else ""
-            if top_values_section:
-                top_matches = re.findall(r"- `([^`]+)`: (\d+) occurrences", top_values_section)
-                top_values = [(val, int(count)) for val, count in top_matches]
-            
-            st.markdown(f'<div class="categorical-card">', unsafe_allow_html=True)
-            
-            # Variable header
-            st.markdown(f"#### 🏷️ {var_name}")
-            
-            # Basic info
             col1, col2 = st.columns(2)
             with col1:
-                if unique_values:
-                    st.metric("Unique Values", unique_values.group(1))
-            with col2:
-                if missing_values:
-                    st.metric("Missing Values", missing_values.group(1))
+                st.metric("Unique Categories", unique_count)
+                st.metric("Missing Values", missing_count)
             
-            # Top values visualization
-            if top_values:
-                st.markdown("**Top Values Distribution:**")
-                
-                # Create a bar chart for top values
-                values, counts = zip(*top_values)
-                
-                fig = px.bar(
-                    x=counts,
-                    y=values,
-                    orientation='h',
-                    title=f"Top Values for {var_name}",
-                    color=counts,
-                    color_continuous_scale='Viridis'
-                )
-                fig.update_layout(
-                    height=200,
-                    showlegend=False,
-                    xaxis_title="Count",
-                    yaxis_title="Values"
-                )
-                st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                st.markdown("**Top 3 Categories:**")
+                for value, count in top_values.items():
+                    st.write(f"- `{value}`: {count} occurrences")
+            
+            # Bar chart
+            value_counts = df[col].value_counts().head(10)  # Top 10 only
+            fig_bar = px.bar(
+                x=value_counts.values,
+                y=value_counts.index,
+                orientation='h',
+                title=f"Top Categories - {col}",
+                color=value_counts.values,
+                color_continuous_scale='Viridis'
+            )
+            fig_bar.update_layout(
+                xaxis_title="Count",
+                yaxis_title="Categories",
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            st.plotly_chart(fig_bar, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_boolean_variables(stats_text):
-    """Display True/False variables with enhanced visualization"""
-    if '## ✅ True/False Columns' not in stats_text:
-        st.info("No True/False variables found in the dataset.")
-        return
+def display_boolean_tab(results):
+    """Display boolean columns analysis"""
+    df = results['dataframe']
+    boolean_cols = df.select_dtypes(include='bool').columns
     
-    # Extract boolean section
-    boolean_section = stats_text.split('## ✅ True/False Columns')[1]
-    
-    # Extract individual variables
-    variables = re.split(r'### 🔘 ', boolean_section)[1:]
-    
-    for var_content in variables:
-        if var_content.strip():
-            lines = var_content.split('\n')
-            var_name = lines[0].strip()
+    for col in boolean_cols:
+        with st.container():
+            st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
+            st.markdown(f"#### ✅ {col}")
             
-            # Extract distribution information
-            distribution_matches = re.findall(r"- `(True|False)`: (\d+) \(([\d.]+)%\)", var_content)
+            value_counts = df[col].value_counts()
+            percentages = df[col].value_counts(normalize=True) * 100
             
-            st.markdown(f'<div class="boolean-card">', unsafe_allow_html=True)
+            col1, col2 = st.columns(2)
             
-            # Variable header
-            st.markdown(f"#### 🔘 {var_name}")
-            
-            if distribution_matches:
-                # Create distribution visualization
-                total_count = sum(int(count) for _, count, _ in distribution_matches)
-                
-                col1, col2 = st.columns([2, 1])
-                
-                with col1:
-                    # Create a pie chart
-                    labels = [val for val, _, _ in distribution_matches]
-                    values = [int(count) for _, count, _ in distribution_matches]
-                    percentages = [float(pct) for _, _, pct in distribution_matches]
-                    
-                    fig = px.pie(
-                        values=values,
-                        names=labels,
-                        title=f"Distribution of {var_name}",
-                        color_discrete_sequence=['#2ecc71', '#e74c3c']
+            with col1:
+                # Metrics
+                for val, count in value_counts.items():
+                    percentage = percentages[val]
+                    st.metric(
+                        f"{val} Count", 
+                        f"{count} ({percentage:.1f}%)"
                     )
-                    fig.update_traces(textposition='inside', textinfo='percent+label')
-                    fig.update_layout(height=300, showlegend=False)
-                    st.plotly_chart(fig, use_container_width=True)
-                
-                with col2:
-                    # Display metrics
-                    for i, (val, count, pct) in enumerate(distribution_matches):
-                        st.metric(
-                            f"{val} Count", 
-                            f"{count} ({pct}%)",
-                            delta=None
-                        )
+            
+            with col2:
+                # Donut chart
+                fig_donut = px.pie(
+                    values=value_counts.values,
+                    names=[str(label) for label in value_counts.index],
+                    title=f"Distribution - {col}",
+                    hole=0.6
+                )
+                fig_donut.update_traces(textposition='inside', textinfo='percent+label')
+                fig_donut.update_layout(height=300, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
+                st.plotly_chart(fig_donut, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_ai_analysis(results):
-    """Display AI analysis with enhanced formatting"""
-    st.markdown('<div class="section-header">🤖 AI Analysis & Insights</div>', unsafe_allow_html=True)
+def display_datetime_tab(results):
+    """Display datetime columns analysis"""
+    df = results['dataframe']
+    datetime_cols = df.select_dtypes(include=['datetime64']).columns
+    
+    for col in datetime_cols:
+        with st.container():
+            st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
+            st.markdown(f"#### 📅 {col}")
+            
+            # Statistics
+            min_date = df[col].min()
+            max_date = df[col].max()
+            date_range = max_date - min_date
+            
+            # Most frequent date
+            date_counts = df[col].value_counts()
+            most_frequent_date = date_counts.index[0] if len(date_counts) > 0 else None
+            most_frequent_count = date_counts.iloc[0] if len(date_counts) > 0 else 0
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Earliest Date", min_date.strftime('%Y-%m-%d'))
+                st.metric("Latest Date", max_date.strftime('%Y-%m-%d'))
+                st.metric("Date Range", f"{date_range.days} days")
+            
+            with col2:
+                if most_frequent_date:
+                    st.metric("Most Frequent Date", most_frequent_date.strftime('%Y-%m-%d'))
+                    st.metric("Frequency", most_frequent_count)
+            
+            # Timeline chart
+            timeline_data = df[col].value_counts().sort_index()
+            fig_timeline = px.line(
+                x=timeline_data.index,
+                y=timeline_data.values,
+                title=f"Timeline - {col}",
+                labels={'x': 'Date', 'y': 'Record Count'}
+            )
+            fig_timeline.update_layout(paper_bgcolor='rgba(0,0,0,0)')
+            st.plotly_chart(fig_timeline, use_container_width=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+
+def display_llm_insights(results):
+    """Display LLM analysis with structured sections"""
+    st.markdown('<div class="section-header">🤖 Insights Generated</div>', unsafe_allow_html=True)
+    
+    # Download button
+    if 'ai_analysis' in results and 'statistics' in results:
+        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
     
     if 'ai_analysis' not in results or not results['ai_analysis']:
         st.error("No AI analysis available. Please run the analysis first.")
@@ -720,41 +558,52 @@ def display_ai_analysis(results):
     
     analysis_text = results['ai_analysis']
     
-    # Split analysis into sections based on markdown headers
-    sections = re.split(r'(?=^#+\s)', analysis_text, flags=re.MULTILINE)
+    # Extract sections based on the prompt structure
+    sections = {
+        'Executive Summary': '',
+        'Detailed Statistical Analysis': '',
+        'Pattern Identification': '',
+        'Business/Research Implications': '',
+        'Recommendations': ''
+    }
     
-    for section in sections:
-        if not section.strip():
+    current_section = None
+    lines = analysis_text.split('\n')
+    
+    for line in lines:
+        line_stripped = line.strip()
+        
+        # Check if this line starts a new section
+        if line_stripped.lower().startswith('# executive summary'):
+            current_section = 'Executive Summary'
             continue
-            
-        # Check section type for special styling
-        section_lower = section.lower()
+        elif line_stripped.lower().startswith('## detailed statistical analysis') or line_stripped.lower().startswith('# detailed statistical analysis'):
+            current_section = 'Detailed Statistical Analysis'
+            continue
+        elif line_stripped.lower().startswith('## pattern identification') or line_stripped.lower().startswith('# pattern identification'):
+            current_section = 'Pattern Identification'
+            continue
+        elif line_stripped.lower().startswith('## business/research implications') or line_stripped.lower().startswith('# business/research implications'):
+            current_section = 'Business/Research Implications'
+            continue
+        elif line_stripped.lower().startswith('## recommendations') or line_stripped.lower().startswith('# recommendations'):
+            current_section = 'Recommendations'
+            continue
         
-        if any(keyword in section_lower for keyword in ['executive summary', 'summary']):
-            st.markdown('<div class="ai-insight-card">', unsafe_allow_html=True)
-            st.markdown(section)
+        # Add content to current section
+        if current_section and line_stripped:
+            sections[current_section] += line + '\n'
+    
+    # Display each section
+    for section_name, section_content in sections.items():
+        if section_content.strip():
+            st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
+            st.markdown(f"### {section_name}")
+            st.markdown(section_content)
             st.markdown('</div>', unsafe_allow_html=True)
-        
-        elif any(keyword in section_lower for keyword in ['recommendation', 'suggestion', 'next steps']):
-            st.markdown('<div class="recommendation-card">', unsafe_allow_html=True)
-            st.markdown(section)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        elif any(keyword in section_lower for keyword in ['pattern', 'trend', 'insight', 'finding']):
-            st.markdown('<div class="card">', unsafe_allow_html=True)
-            st.markdown(section)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        else:
-            # Default styling for other sections
-            st.markdown(section)
 
 def main():
     """Main Streamlit application"""
-    
-    # Header
-    st.markdown('<h1 class="main-header">📊 📁 Data Analyzer</h1>', unsafe_allow_html=True)
-    st.markdown("---")
     
     # Initialize session state
     if 'analysis_results' not in st.session_state:
@@ -762,12 +611,12 @@ def main():
     if 'analyzer' not in st.session_state:
         try:
             st.session_state.analyzer = ChatBotAnalyzer()
-            st.success("✅ Analyzer initialized successfully!")
         except Exception as e:
             st.error(f"❌ Failed to initialize analyzer: {e}")
+            st.info("Please make sure your OpenRouter API key is properly configured.")
             return
     
-    # Sidebar for file upload (simplified)
+    # Sidebar for file upload
     with st.sidebar:
         st.markdown("## 📁 Upload Dataset")
         uploaded_file = st.file_uploader(
@@ -777,33 +626,33 @@ def main():
         )
         
         if uploaded_file is not None:
-            # Save uploaded file to temporary location
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
-                tmp_file.write(uploaded_file.getvalue())
-                tmp_file_path = tmp_file.name
-            
             st.success(f"✅ File uploaded: {uploaded_file.name}")
             
-            # Analysis button in sidebar
+            # Analysis button
             st.markdown("## 🚀 Start Analysis")
             if st.button("Analyze Dataset", type="primary", use_container_width=True):
-                with st.spinner("Analyzing dataset..."):
+                with st.spinner("🔄 Processing dataset... This may take a few moments."):
                     try:
+                        # Save uploaded file to temporary location
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
+                            tmp_file.write(uploaded_file.getvalue())
+                            tmp_file_path = tmp_file.name
+                        
+                        # Run analysis
                         results = st.session_state.analyzer.analyze_csv(tmp_file_path)
+                        
                         if results:
                             st.session_state.analysis_results = results
                             st.session_state.uploaded_file_name = uploaded_file.name
                             st.success("✅ Analysis completed successfully!")
                         else:
-                            st.error("❌ Analysis failed. Please check the console for details.")
+                            st.error("❌ Analysis failed. Please check your API key and try again.")
+                        
+                        # Clean up
+                        os.unlink(tmp_file_path)
+                        
                     except Exception as e:
                         st.error(f"❌ Analysis error: {e}")
-            
-            # Clean up temporary file
-            try:
-                os.unlink(tmp_file_path)
-            except:
-                pass
     
     # Main content area
     if uploaded_file is not None and st.session_state.analysis_results is None:
@@ -815,70 +664,30 @@ def main():
         display_data_preview(uploaded_file, tmp_file_path)
         
         # Clean up
-        try:
-            os.unlink(tmp_file_path)
-        except:
-            pass
+        os.unlink(tmp_file_path)
         
         # Analysis prompt
         st.markdown("---")
         st.markdown("""
-        <div class="preview-card">
+        <div class="upload-card">
             <h3>🚀 Ready for Deep Analysis?</h3>
-            <p>Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights, 
-            statistical analysis, and interactive visualizations for your data.</p>
+            <p>Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights.</p>
         </div>
         """, unsafe_allow_html=True)
     
     elif st.session_state.analysis_results:
-        # Show analysis results
-        # Create tabs for different sections
-        tab1, tab2 = st.tabs(["📊 Statistics & Visualizations", "🤖 AI Analysis"])
+        # Show analysis results in tabs
+        tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 Insights Generated"])
         
         with tab1:
-            display_enhanced_statistics(st.session_state.analysis_results)
+            display_exploratory_analysis(st.session_state.analysis_results)
         
         with tab2:
-            display_ai_analysis(st.session_state.analysis_results)
+            display_llm_insights(st.session_state.analysis_results)
     
     else:
-        st.markdown("""
-            <div class="card">
-                <h2>🎯 Welcome to Data Analyzer!</h2>
-                <p>This application uses advanced AI to provide comprehensive analysis of your datasets.</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-        # Use Streamlit's native components for lists and structure
-        st.markdown("### 📋 How to use:")
-        st.markdown("""
-        1. **Upload a CSV file** using the sidebar
-        2. **Click "Analyze Dataset"** in the sidebar to generate insights
-        3. **Explore the results** in the Statistics and AI Analysis tabs
-        """)
-
-        st.markdown("### ✨ Features:")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.markdown("""
-            - 📊 Comprehensive descriptive statistics
-            - 🎨 Interactive visualizations
-            - 🤖 AI-powered insights
-            """)
-        with col2:
-            st.markdown("""
-            - 📈 Pattern identification
-            - 🔍 Data quality assessment
-            - 💡 Actionable recommendations
-            """)
-
-        # Pro tip in a styled card
-        st.markdown("""
-        <div class="recommendation-card">
-            <h4>💡 Pro Tip:</h4>
-            <p>For best results, ensure your dataset is clean and well-structured. Remove any unnecessary columns and handle missing values before uploading.</p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Welcome screen
+        display_welcome_screen()
 
 if __name__ == "__main__":
     main()
