@@ -4,7 +4,6 @@ import pandas as pd
 import tempfile
 import os
 import base64
-from io import StringIO
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -155,18 +154,29 @@ def get_download_link(content, filename, text):
     b64 = base64.b64encode(content.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="download-btn">{text}</a>'
 
-def display_welcome_screen():
+def display_welcome_screen(uploaded_file=None):
     """Display welcome screen with app information"""
     st.markdown('<h1 class="main-header">📊 Data Analyzer</h1>', unsafe_allow_html=True)
     
-    st.markdown("""
-    <div class="welcome-card">
-        <h2 style="color: #3498db; text-align: center; margin-bottom: 2rem;">🎯 Welcome to Data Analyzer!</h2>
-        <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
-        Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    if uploaded_file:
+        st.markdown(f"""
+        <div class="welcome-card">
+            <h2 style="color: #2ecc71; text-align: center; margin-bottom: 2rem;">✅ File Uploaded Successfully!</h2>
+            <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
+            <strong>File:</strong> {uploaded_file.name}<br>
+            Ready for analysis. Click the <strong>"Analyze Dataset"</strong> button in the sidebar to start.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="welcome-card">
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 2rem;">🎯 Welcome to Data Analyzer!</h2>
+            <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
+            Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Features
     st.markdown("### ✨ Application Features")
@@ -198,17 +208,30 @@ def display_welcome_screen():
     
     # How to use
     st.markdown("### 📋 How to Use")
-    st.markdown("""
-    <div class="card">
-        <ol style="font-size: 1.1rem;">
-            <li><strong>Upload your CSV file</strong> using the sidebar uploader</li>
-            <li><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
-            <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-            <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-            <li><strong>Download reports</strong> for offline use</li>
-        </ol>
-    </div>
-    """, unsafe_allow_html=True)
+    if uploaded_file:
+        st.markdown(f"""
+        <div class="card">
+            <ol style="font-size: 1.1rem;">
+                <li><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
+                <li><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
+                <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+                <li><strong>Download reports</strong> for offline use</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="card">
+            <ol style="font-size: 1.1rem;">
+                <li><strong>Upload your CSV file</strong> using the sidebar uploader</li>
+                <li><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
+                <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+                <li><strong>Download reports</strong> for offline use</li>
+            </ol>
+        </div>
+        """, unsafe_allow_html=True)
     
     # Tips
     st.markdown("### 💡 Tips for Best Results")
@@ -223,61 +246,6 @@ def display_welcome_screen():
         </ul>
     </div>
     """, unsafe_allow_html=True)
-
-def display_data_preview(uploaded_file, tmp_file_path):
-    """Display data preview before analysis"""
-    st.markdown('<div class="section-header">👀 Data Preview</div>', unsafe_allow_html=True)
-    
-    try:
-        df_preview = pd.read_csv(tmp_file_path)
-        
-        # File info cards
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.markdown(create_stat_card(f"{df_preview.shape[0]:,}", "Total Rows", "📈", "#2ecc71"), unsafe_allow_html=True)
-        with col2:
-            st.markdown(create_stat_card(f"{df_preview.shape[1]}", "Total Columns", "📊", "#3498db"), unsafe_allow_html=True)
-        with col3:
-            st.markdown(create_stat_card(f"{df_preview.isnull().sum().sum():,}", "Missing Values", "⚠️", "#f39c12"), unsafe_allow_html=True)
-        with col4:
-            st.markdown(create_stat_card(f"{df_preview.duplicated().sum():,}", "Duplicated Rows", "🔍", "#e74c3c"), unsafe_allow_html=True)
-        with col5:
-            total_cells = df_preview.shape[0] * df_preview.shape[1]
-            st.markdown(create_stat_card(f"{total_cells:,}", "Total Cells", "🔢", "#9b59b6"), unsafe_allow_html=True)
-        
-        # Data preview tabs
-        tab1, tab2 = st.tabs(["📋 Data Sample", "🔍 Column Info"])
-        
-        with tab1:
-            st.markdown("**First 10 rows:**")
-            st.dataframe(df_preview.head(10), use_container_width=True, height=400)
-        
-        with tab2:
-            # Get simplified column types
-            analyzer = ChatBotAnalyzer()
-            analyzer.df = df_preview
-            column_info = analyzer.get_detailed_column_info()
-            st.markdown("**Column Information:**")
-            st.dataframe(column_info, use_container_width=True, height=400)
-            
-            # Data types distribution
-            st.markdown("**Data Types Distribution:**")
-            type_counts = column_info['Type'].value_counts()
-            fig = px.pie(
-                values=type_counts.values,
-                names=type_counts.index,
-                title="Data Types Distribution",
-                color_discrete_sequence=px.colors.qualitative.Set3
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            fig.update_layout(height=400, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
-            st.plotly_chart(fig, use_container_width=True)
-        
-        return df_preview
-        
-    except Exception as e:
-        st.error(f"Error previewing data: {str(e)}")
-        return None
 
 def display_exploratory_analysis(results):
     """Display exploratory data analysis with tabs"""
@@ -304,8 +272,7 @@ def display_exploratory_analysis(results):
         st.markdown(create_stat_card(f"{total_cells:,}", "Total Cells", "🔢", "#9b59b6"), unsafe_allow_html=True)
     
     # Donut chart for column types
-    analyzer = ChatBotAnalyzer()
-    analyzer.df = df
+    analyzer = st.session_state.analyzer
     type_counts = analyzer.get_detailed_column_info()['Type'].value_counts()
     fig_donut = px.pie(
         values=type_counts.values,
@@ -364,8 +331,7 @@ def display_exploratory_analysis(results):
 def display_overview_tab(results):
     """Display overview tab content"""
     df = results['dataframe']
-    analyzer = ChatBotAnalyzer()
-    analyzer.df = df
+    analyzer = st.session_state.analyzer
     
     col1, col2 = st.columns(2)
     
@@ -656,15 +622,8 @@ def main():
     
     # Main content area
     if uploaded_file is not None and st.session_state.analysis_results is None:
-        # Show data preview before analysis
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
-            tmp_file.write(uploaded_file.getvalue())
-            tmp_file_path = tmp_file.name
-        
-        display_data_preview(uploaded_file, tmp_file_path)
-        
-        # Clean up
-        os.unlink(tmp_file_path)
+        # Show welcome screen with file uploaded message
+        display_welcome_screen(uploaded_file)
         
         # Analysis prompt
         st.markdown("---")
