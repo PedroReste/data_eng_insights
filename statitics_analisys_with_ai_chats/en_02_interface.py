@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Enhanced CSS with beautiful styling for results
+# CSS
 st.markdown("""
 <style>
     .main-header {
@@ -174,6 +174,14 @@ st.markdown("""
         font-size: 0.7rem;
         margin: 0.1rem;
     }
+    .preview-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -196,6 +204,74 @@ def create_stat_card(value, label, icon="📊", color="#667eea"):
         <div class="metric-label">{label}</div>
     </div>
     """
+
+def display_data_preview(uploaded_file, tmp_file_path):
+    """Display data preview in the main area"""
+    st.markdown('<div class="section-header">👀 Data Preview</div>', unsafe_allow_html=True)
+    
+    try:
+        df_preview = pd.read_csv(tmp_file_path)
+        
+        # File info card
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(create_stat_card(
+                f"{df_preview.shape[0]:,}", 
+                "Total Rows", 
+                "📈", 
+                "#2ecc71"
+            ), unsafe_allow_html=True)
+        with col2:
+            st.markdown(create_stat_card(
+                f"{df_preview.shape[1]}", 
+                "Total Columns", 
+                "📊", 
+                "#3498db"
+            ), unsafe_allow_html=True)
+        with col3:
+            st.markdown(create_stat_card(
+                f"{df_preview.isnull().sum().sum():,}", 
+                "Missing Values", 
+                "⚠️", 
+                "#f39c12"
+            ), unsafe_allow_html=True)
+        with col4:
+            st.markdown(create_stat_card(
+                f"{df_preview.duplicated().sum():,}",
+                "Duplicated Rows",
+                "🔎",
+                "#f31212"
+            ), unsafe_allow_html=True)
+        
+        # Data preview with expandable sections
+        tab1, tab2, tab3 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats"])
+        
+        with tab1:
+            st.markdown(f"**First 10 rows of {uploaded_file.name}:**")
+            st.dataframe(df_preview.head(10), use_container_width=True)
+        
+        with tab2:
+            st.markdown("**Column Information:**")
+            col_info = pd.DataFrame({
+                'Column': df_preview.columns,
+                'Data Type': df_preview.dtypes.values,
+                'Non-Null Count': df_preview.count().values,
+                'Null Count': df_preview.isnull().sum().values
+            })
+            st.dataframe(col_info, use_container_width=True)
+        
+        with tab3:
+            st.markdown("**Quick Statistics:**")
+            if len(df_preview.select_dtypes(include=['number']).columns) > 0:
+                st.dataframe(df_preview.describe(), use_container_width=True)
+            else:
+                st.info("No numerical columns for statistical summary")
+        
+        return df_preview
+        
+    except Exception as e:
+        st.error(f"Error previewing data: {e}")
+        return None
 
 def display_enhanced_statistics(results):
     """Display enhanced statistics with visualizations"""
@@ -298,7 +374,7 @@ def display_data_types_summary(stats_text):
     if categorical_match:
         data_types.append(("Categorical", categorical_match.group(1)))
     if boolean_match:
-        data_types.append(("Boolean", boolean_match.group(1)))
+        data_types.append(("True/False", boolean_match.group(1)))
     if datetime_match:
         data_types.append(("Date/Time", datetime_match.group(1)))
     
@@ -326,7 +402,7 @@ def display_variables_analysis(stats_text):
     # Check which types of variables exist
     has_numerical = "## 🔢 Numerical Columns" in stats_text
     has_categorical = "## 📝 Categorical Columns" in stats_text
-    has_boolean = "## ✅ Boolean Columns" in stats_text
+    has_boolean = "## ✅ True/False Columns" in stats_text
     
     tabs = []
     if has_numerical:
@@ -334,7 +410,7 @@ def display_variables_analysis(stats_text):
     if has_categorical:
         tabs.append("📝 Categorical Variables")
     if has_boolean:
-        tabs.append("✅ Boolean Variables")
+        tabs.append("✅ True/False Variables")
     
     if tabs:
         created_tabs = st.tabs(tabs)
@@ -497,13 +573,13 @@ def display_categorical_variables(stats_text):
             st.markdown('</div>', unsafe_allow_html=True)
 
 def display_boolean_variables(stats_text):
-    """Display boolean variables with enhanced visualization"""
+    """Display True/False variables with enhanced visualization"""
     if '## ✅ Boolean Columns' not in stats_text:
-        st.info("No boolean variables found in the dataset.")
+        st.info("No True/False variables found in the dataset.")
         return
     
     # Extract boolean section
-    boolean_section = stats_text.split('## ✅ Boolean Columns')[1]
+    boolean_section = stats_text.split('## ✅ True/False Columns')[1]
     
     # Extract individual variables
     variables = re.split(r'### 🔘 ', boolean_section)[1:]
@@ -611,7 +687,7 @@ def main():
             st.error(f"❌ Failed to initialize analyzer: {e}")
             return
     
-    # Sidebar for file upload
+    # Sidebar for file upload (simplified)
     with st.sidebar:
         st.markdown("## 📁 Upload Dataset")
         uploaded_file = st.file_uploader(
@@ -628,16 +704,7 @@ def main():
             
             st.success(f"✅ File uploaded: {uploaded_file.name}")
             
-            # Preview data
-            st.markdown("## 👀 Data Preview")
-            try:
-                df_preview = pd.read_csv(tmp_file_path)
-                st.dataframe(df_preview.head(10), use_container_width=True)
-                st.info(f"Shape: {df_preview.shape[0]} rows × {df_preview.shape[1]} columns")
-            except Exception as e:
-                st.error(f"Error previewing data: {e}")
-            
-            # Analysis button
+            # Analysis button in sidebar
             st.markdown("## 🚀 Start Analysis")
             if st.button("Analyze Dataset", type="primary", use_container_width=True):
                 with st.spinner("🤖 Analyzing dataset with AI..."):
@@ -645,6 +712,7 @@ def main():
                         results = st.session_state.analyzer.analyze_csv(tmp_file_path)
                         if results:
                             st.session_state.analysis_results = results
+                            st.session_state.uploaded_file_name = uploaded_file.name
                             st.success("✅ Analysis completed successfully!")
                         else:
                             st.error("❌ Analysis failed. Please check the console for details.")
@@ -658,7 +726,32 @@ def main():
                 pass
     
     # Main content area
-    if st.session_state.analysis_results:
+    if uploaded_file is not None and st.session_state.analysis_results is None:
+        # Show data preview before analysis
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
+            tmp_file.write(uploaded_file.getvalue())
+            tmp_file_path = tmp_file.name
+        
+        display_data_preview(uploaded_file, tmp_file_path)
+        
+        # Clean up
+        try:
+            os.unlink(tmp_file_path)
+        except:
+            pass
+        
+        # Analysis prompt
+        st.markdown("---")
+        st.markdown("""
+        <div class="preview-card">
+            <h3>🚀 Ready for Deep Analysis?</h3>
+            <p>Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights, 
+            statistical analysis, and interactive visualizations for your data.</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    elif st.session_state.analysis_results:
+        # Show analysis results
         # Create tabs for different sections
         tab1, tab2 = st.tabs(["📊 Statistics & Visualizations", "🤖 AI Analysis"])
         
@@ -678,8 +771,8 @@ def main():
             <h3>📋 How to use:</h3>
             <ol>
                 <li><strong>Upload a CSV file</strong> using the sidebar</li>
-                <li><strong>Preview your data</strong> to ensure it loaded correctly</li>
-                <li><strong>Click "Analyze Dataset"</strong> to generate insights</li>
+                <li><strong>Preview your data</strong> in the main area</li>
+                <li><strong>Click "Analyze Dataset"</strong> in the sidebar to generate insights</li>
                 <li><strong>Explore the results</strong> in the Statistics and AI Analysis tabs</li>
             </ol>
             

@@ -206,7 +206,7 @@ class ChatBotAnalyzer:
         # Boolean columns
         boolean_cols = self.df.select_dtypes(include='bool').columns
         if len(boolean_cols) > 0:
-            stats_summary += "## ✅ Boolean Columns\n\n"
+            stats_summary += "## ✅ True/False Columns\n\n"
             for col in boolean_cols:
                 stats_summary += f"### 🔘 {col}\n\n"
                 value_counts = self.df[col].value_counts()
