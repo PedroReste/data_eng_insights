@@ -215,7 +215,7 @@ def display_data_preview(uploaded_file, tmp_file_path):
             if pd.api.types.is_numeric_dtype(dtype):
                 return "Numerical"
             elif pd.api.types.is_bool_dtype(dtype):
-                return "Boolean"
+                return "True/False"
             elif pd.api.types.is_datetime64_any_dtype(dtype):
                 return "Date/Time"
             elif pd.api.types.is_categorical_dtype(dtype):
@@ -265,7 +265,7 @@ def display_data_preview(uploaded_file, tmp_file_path):
             ), unsafe_allow_html=True)
         
         # Data preview with expandable sections
-        tab1, tab2, tab3, tab4 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats", "📈 Data Types"])
+        tab1, tab2, tab3 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats"])
         
         with tab1:
             st.markdown(f"**First 10 rows of `{uploaded_file.name}`:**")
@@ -282,7 +282,6 @@ def display_data_preview(uploaded_file, tmp_file_path):
             st.markdown("**Column Information:**")
             col_info = pd.DataFrame({
                 'Column': df_preview.columns,
-                'Data Type': df_preview.dtypes.astype(str),
                 'Category': df_preview.dtypes.apply(categorize_dtype),
                 'Non-Null Count': df_preview.count().values,
                 'Null Count': df_preview.isnull().sum().values,
@@ -295,6 +294,23 @@ def display_data_preview(uploaded_file, tmp_file_path):
             dtype_summary = col_info['Category'].value_counts()
             for dtype, count in dtype_summary.items():
                 st.write(f"- **{dtype}**: {count} columns")
+            
+            st.markdown("**Data Types Distribution:**")
+            # Create a visualization of data types
+            dtype_counts = df_preview.dtypes.apply(categorize_dtype).value_counts()
+                
+            if len(dtype_counts) > 0:
+                fig = px.pie(
+                    values=dtype_counts.values,
+                    names=dtype_counts.index,
+                    title="Data Types Distribution",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No data available for visualization")
         
         with tab3:
             st.markdown("**Quick Statistics:**")
@@ -311,24 +327,6 @@ def display_data_preview(uploaded_file, tmp_file_path):
                 for col in categorical_cols[:5]:  # Limit to first 5 categorical columns
                     unique_count = df_preview[col].nunique()
                     st.write(f"- **{col}**: {unique_count} unique values")
-        
-        with tab4:
-            st.markdown("**Data Types Distribution:**")
-            # Create a visualization of data types
-            dtype_counts = df_preview.dtypes.apply(categorize_dtype).value_counts()
-            
-            if len(dtype_counts) > 0:
-                fig = px.pie(
-                    values=dtype_counts.values,
-                    names=dtype_counts.index,
-                    title="Data Types Distribution",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig.update_traces(textposition='inside', textinfo='percent+label')
-                fig.update_layout(height=400, showlegend=False)
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No data available for visualization")
         
         return df_preview
         
