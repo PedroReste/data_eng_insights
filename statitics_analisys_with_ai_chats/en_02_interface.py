@@ -28,113 +28,130 @@ st.markdown("""
         color: #fafafa;
     }
     .main-header {
-        font-size: 3.5rem;
+        font-size: 2.5rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem;
         font-weight: 800;
-        padding: 1rem;
+        padding: 0.5rem;
     }
     .section-header {
-        font-size: 2rem;
+        font-size: 1.5rem;
         color: #ffffff;
-        border-bottom: 3px solid #3498db;
-        padding-bottom: 0.5rem;
-        margin: 2rem 0 1rem 0;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 0.3rem;
+        margin: 1.5rem 0 0.8rem 0;
         font-weight: 700;
     }
     .subsection-header {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         color: #ffffff;
-        margin: 1.5rem 0 1rem 0;
+        margin: 1rem 0 0.8rem 0;
         font-weight: 600;
         background: linear-gradient(90deg, #3498db, transparent);
-        padding: 0.5rem 1rem;
+        padding: 0.3rem 0.8rem;
         border-radius: 5px;
     }
     .card {
         background: #1e2130;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 0.8rem 0;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        border-left: 5px solid #3498db;
+        border-left: 4px solid #3498db;
         color: #ffffff;
     }
     .stat-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 12px;
-        padding: 1.5rem;
+        border-radius: 10px;
+        padding: 1rem;
         color: white;
         text-align: center;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-        margin: 0.5rem;
+        margin: 0.3rem;
+    }
+    .type-card {
+        background: linear-gradient(135deg, #2d3256 0%, #1e2130 100%);
+        border-radius: 10px;
+        padding: 1.2rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        margin: 0.3rem;
+        border: 1px solid #3498db;
     }
     .metric-value {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 800;
-        margin: 0.5rem 0;
+        margin: 0.3rem 0;
     }
     .metric-label {
-        font-size: 1rem;
+        font-size: 0.9rem;
         opacity: 0.9;
         font-weight: 500;
     }
     .welcome-card {
         background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 2rem 0;
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         border: 1px solid #3498db;
     }
     .feature-card {
         background: #1e2130;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
-        border-left: 4px solid #2ecc71;
+        border-radius: 12px;
+        padding: 1rem;
+        margin: 0.8rem 0;
+        border-left: 3px solid #2ecc71;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     .upload-card {
         background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
-        border-radius: 15px;
-        padding: 2rem;
-        margin: 2rem 0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
         border: 2px dashed #3498db;
         text-align: center;
     }
     .tab-content {
         background: #1e2130;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin: 1rem 0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.8rem 0;
     }
     .download-btn {
-        background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
         color: white;
         border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: 8px;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
         font-weight: 600;
         cursor: pointer;
-        margin: 0.5rem;
+        margin: 0.3rem;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .download-btn:hover {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        text-decoration: none;
     }
     .analysis-card {
         background: #1e2130;
-        border-radius: 15px;
-        padding: 1.5rem;
-        margin: 1rem 0;
+        border-radius: 12px;
+        padding: 1.2rem;
+        margin: 0.8rem 0;
         border-left: 4px solid #e74c3c;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     }
     .insight-section {
         background: #2d3256;
-        border-radius: 10px;
-        padding: 1.5rem;
-        margin: 1rem 0;
+        border-radius: 8px;
+        padding: 1.2rem;
+        margin: 0.8rem 0;
         border-left: 4px solid #f39c12;
     }
 </style>
@@ -143,7 +160,15 @@ st.markdown("""
 def create_stat_card(value, label, icon="📊", color="#667eea"):
     return f"""
     <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, #764ba2 100%);">
-        <div style="font-size: 2rem; margin-bottom: 0.5rem;">{icon}</div>
+        <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">{icon}</div>
+        <div class="metric-value">{value}</div>
+        <div class="metric-label">{label}</div>
+    </div>
+    """
+
+def create_type_card(value, label, color="#3498db"):
+    return f"""
+    <div class="type-card" style="border-color: {color};">
         <div class="metric-value">{value}</div>
         <div class="metric-label">{label}</div>
     </div>
@@ -161,8 +186,8 @@ def display_welcome_screen(uploaded_file=None):
     if uploaded_file:
         st.markdown(f"""
         <div class="welcome-card">
-            <h2 style="color: #2ecc71; text-align: center; margin-bottom: 2rem;">✅ File Uploaded Successfully!</h2>
-            <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
+            <h2 style="color: #2ecc71; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">✅ File Uploaded Successfully!</h2>
+            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
             <strong>File:</strong> {uploaded_file.name}<br>
             Ready for analysis. Click the <strong>"Analyze Dataset"</strong> button in the sidebar to start.
             </p>
@@ -171,51 +196,50 @@ def display_welcome_screen(uploaded_file=None):
     else:
         st.markdown("""
         <div class="welcome-card">
-            <h2 style="color: #3498db; text-align: center; margin-bottom: 2rem;">🎯 Welcome to Data Analyzer!</h2>
-            <p style="font-size: 1.2rem; text-align: center; margin-bottom: 2rem;">
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Welcome to Data Analyzer!</h2>
+            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
             Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
             </p>
         </div>
         """, unsafe_allow_html=True)
     
-    # Features
+    # Features - More compact layout
     st.markdown("### ✨ Application Features")
-    col1, col2, col3 = st.columns(3)
+    features_col1, features_col2 = st.columns(2)
     
-    with col1:
+    with features_col1:
         st.markdown("""
         <div class="feature-card">
-            <h4>📊 Descriptive Analysis</h4>
-            <p>Comprehensive statistical reports and data profiling</p>
+            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📊 Descriptive Analysis</h4>
+            <p style="font-size: 0.9rem; margin: 0;">Comprehensive statistical reports and data profiling</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="feature-card">
+            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📈 Data Visualization</h4>
+            <p style="font-size: 0.9rem; margin: 0;">Interactive charts and graphs for all variable types</p>
         </div>
         """, unsafe_allow_html=True)
     
-    with col2:
+    with features_col2:
         st.markdown("""
         <div class="feature-card">
-            <h4>📈 Data Visualization</h4>
-            <p>Interactive charts and graphs for all variable types</p>
+            <h4 style="margin: 0.5rem 0; font-size: 1rem;">🤖 AI Insights</h4>
+            <p style="font-size: 0.9rem; margin: 0;">LLM-powered analysis to uncover hidden patterns</p>
         </div>
         """, unsafe_allow_html=True)
     
-    with col3:
-        st.markdown("""
-        <div class="feature-card">
-            <h4>🤖 AI Insights</h4>
-            <p>LLM-powered analysis to uncover hidden patterns</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # How to use
+    # How to use - More compact
     st.markdown("### 📋 How to Use")
     if uploaded_file:
         st.markdown(f"""
         <div class="card">
-            <ol style="font-size: 1.1rem;">
-                <li><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
-                <li><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
-                <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-                <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+            <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+                <li style="margin-bottom: 0.5rem;"><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
                 <li><strong>Download reports</strong> for offline use</li>
             </ol>
         </div>
@@ -223,29 +247,97 @@ def display_welcome_screen(uploaded_file=None):
     else:
         st.markdown("""
         <div class="card">
-            <ol style="font-size: 1.1rem;">
-                <li><strong>Upload your CSV file</strong> using the sidebar uploader</li>
-                <li><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
-                <li><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-                <li><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+            <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+                <li style="margin-bottom: 0.5rem;"><strong>Upload your CSV file</strong> using the sidebar uploader</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
                 <li><strong>Download reports</strong> for offline use</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
     
-    # Tips
+    # Tips - More compact
     st.markdown("### 💡 Tips for Best Results")
     st.markdown("""
     <div class="card">
-        <ul style="font-size: 1.1rem;">
-            <li>Ensure your file is properly structured as CSV</li>
-            <li>Clean unnecessary columns before uploading</li>
-            <li>Handle missing values when possible</li>
-            <li>Use descriptive column names</li>
+        <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+            <li style="margin-bottom: 0.3rem;">Ensure your file is properly structured as CSV</li>
+            <li style="margin-bottom: 0.3rem;">Clean unnecessary columns before uploading</li>
+            <li style="margin-bottom: 0.3rem;">Handle missing values when possible</li>
+            <li style="margin-bottom: 0.3rem;">Use descriptive column names</li>
             <li>Files should be under 200MB for optimal performance</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
+
+def display_column_types_cards(analyzer):
+    """Display column types as cards instead of donut chart"""
+    simple_types = analyzer.get_simple_column_types()
+    
+    # Get counts for each type, ensuring zero counts are included
+    numerical_count = len(simple_types.get('Numerical', []))
+    categorical_count = len(simple_types.get('Categorical', []))
+    boolean_count = len(simple_types.get('True/False', []))
+    datetime_count = len(simple_types.get('Date/Time', []))
+    
+    # Display as cards
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown(create_type_card(numerical_count, "Numerical Columns", "#3498db"), unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown(create_type_card(categorical_count, "Categorical Columns", "#e74c3c"), unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown(create_type_card(boolean_count, "True/False Columns", "#2ecc71"), unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown(create_type_card(datetime_count, "Date/Time Columns", "#f39c12"), unsafe_allow_html=True)
+
+def create_correlation_heatmap(df):
+    """Create correlation heatmap for all variables"""
+    # Create a copy of the dataframe for encoding
+    df_encoded = df.copy()
+    
+    # Encode categorical variables
+    for col in df_encoded.select_dtypes(include=['object', 'category']).columns:
+        df_encoded[col] = pd.factorize(df_encoded[col])[0]
+    
+    # Encode boolean variables
+    for col in df_encoded.select_dtypes(include='bool').columns:
+        df_encoded[col] = df_encoded[col].astype(int)
+    
+    # Calculate correlation matrix
+    corr_matrix = df_encoded.corr()
+    
+    # Create heatmap
+    fig = px.imshow(
+        corr_matrix,
+        title="Correlation Matrix (All Variables)",
+        color_continuous_scale='RdBu_r',
+        aspect="auto",
+        range_color=[-1, 1]
+    )
+    
+    fig.update_layout(
+        height=600,
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='white')
+    )
+    
+    # Update colorbar
+    fig.update_coloraxes(
+        colorbar=dict(
+            title="Correlation",
+            titleside="right",
+            tickvals=[-1, -0.5, 0, 0.5, 1],
+            ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+        )
+    )
+    
+    return fig
 
 def display_exploratory_analysis(results):
     """Display exploratory data analysis with tabs"""
@@ -271,19 +363,17 @@ def display_exploratory_analysis(results):
         total_cells = df.shape[0] * df.shape[1]
         st.markdown(create_stat_card(f"{total_cells:,}", "Total Cells", "🔢", "#9b59b6"), unsafe_allow_html=True)
     
-    # Donut chart for column types
+    # Column types as cards
     analyzer = st.session_state.analyzer
-    type_counts = analyzer.get_detailed_column_info()['Type'].value_counts()
-    fig_donut = px.pie(
-        values=type_counts.values,
-        names=type_counts.index,
-        title="Column Types Distribution",
-        hole=0.4,
-        color_discrete_sequence=px.colors.qualitative.Set3
-    )
-    fig_donut.update_traces(textposition='inside', textinfo='percent+label')
-    fig_donut.update_layout(height=400, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
-    st.plotly_chart(fig_donut, use_container_width=True)
+    display_column_types_cards(analyzer)
+    
+    # Correlation heatmap
+    st.markdown("### 🔗 Correlation Matrix")
+    try:
+        corr_fig = create_correlation_heatmap(df)
+        st.plotly_chart(corr_fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Could not generate correlation matrix: {str(e)}")
     
     # Create tabs for different data types
     tab_names = ["Overview"]
@@ -337,12 +427,12 @@ def display_overview_tab(results):
     
     with col1:
         st.markdown("#### First 10 Rows")
-        st.dataframe(df.head(10), use_container_width=True, height=400)
+        st.dataframe(df.head(10), use_container_width=True, height=350)
     
     with col2:
         st.markdown("#### Column Information")
         column_info = analyzer.get_detailed_column_info()
-        st.dataframe(column_info, use_container_width=True, height=400)
+        st.dataframe(column_info, use_container_width=True, height=350)
 
 def display_numerical_tab(results):
     """Display numerical columns analysis"""
@@ -367,18 +457,34 @@ def display_numerical_tab(results):
             
             st.metric("Missing Values", f"{df[col].isnull().sum()}")
             
-            # Visualizations
+            # Visualizations - Line chart instead of histogram
             viz_col1, viz_col2 = st.columns(2)
             with viz_col1:
-                # Histogram
-                fig_hist = px.histogram(df, x=col, title=f"Histogram - {col}")
-                fig_hist.update_layout(paper_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_hist, use_container_width=True)
+                # Line chart (distribution)
+                hist_data = df[col].dropna()
+                if len(hist_data) > 0:
+                    fig_line = px.histogram(hist_data, nbins=50, title=f"Distribution - {col}")
+                    fig_line.update_traces(marker_color='#3498db', opacity=0.7)
+                    fig_line.update_layout(
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='white'),
+                        showlegend=False,
+                        xaxis_title=col,
+                        yaxis_title="Frequency"
+                    )
+                    st.plotly_chart(fig_line, use_container_width=True)
             
             with viz_col2:
                 # Box plot
                 fig_box = px.box(df, y=col, title=f"Box Plot - {col}")
-                fig_box.update_layout(paper_bgcolor='rgba(0,0,0,0)')
+                fig_box.update_traces(marker_color='#e74c3c')
+                fig_box.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    showlegend=False
+                )
                 st.plotly_chart(fig_box, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -408,21 +514,44 @@ def display_categorical_tab(results):
                 for value, count in top_values.items():
                     st.write(f"- `{value}`: {count} occurrences")
             
-            # Bar chart
+            # Bar chart with conditional orientation
             value_counts = df[col].value_counts().head(10)  # Top 10 only
-            fig_bar = px.bar(
-                x=value_counts.values,
-                y=value_counts.index,
-                orientation='h',
-                title=f"Top Categories - {col}",
-                color=value_counts.values,
-                color_continuous_scale='Viridis'
-            )
-            fig_bar.update_layout(
-                xaxis_title="Count",
-                yaxis_title="Categories",
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
+            
+            if len(value_counts) <= 5:
+                # Horizontal bar chart for 5 or fewer categories
+                fig_bar = px.bar(
+                    x=value_counts.values,
+                    y=value_counts.index,
+                    orientation='h',
+                    title=f"Top Categories - {col}",
+                    color_discrete_sequence=['#3498db']  # Single color
+                )
+                fig_bar.update_layout(
+                    xaxis_title="Count",
+                    yaxis_title="Categories",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    showlegend=False
+                )
+            else:
+                # Vertical bar chart for more than 5 categories
+                fig_bar = px.bar(
+                    x=value_counts.index,
+                    y=value_counts.values,
+                    title=f"Top Categories - {col}",
+                    color_discrete_sequence=['#3498db']  # Single color
+                )
+                fig_bar.update_layout(
+                    xaxis_title="Categories",
+                    yaxis_title="Count",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    showlegend=False
+                )
+                fig_bar.update_xaxes(tickangle=45)
+            
             st.plotly_chart(fig_bar, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -440,7 +569,7 @@ def display_boolean_tab(results):
             value_counts = df[col].value_counts()
             percentages = df[col].value_counts(normalize=True) * 100
             
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1, 2])  # More space for the chart
             
             with col1:
                 # Metrics
@@ -452,15 +581,35 @@ def display_boolean_tab(results):
                     )
             
             with col2:
-                # Donut chart
+                # Larger donut chart with specific colors
+                colors = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
+                color_sequence = [colors.get(str(label), '#3498db') for label in value_counts.index]
+                
                 fig_donut = px.pie(
                     values=value_counts.values,
                     names=[str(label) for label in value_counts.index],
                     title=f"Distribution - {col}",
-                    hole=0.6
+                    hole=0.5,
+                    color_discrete_sequence=color_sequence
                 )
-                fig_donut.update_traces(textposition='inside', textinfo='percent+label')
-                fig_donut.update_layout(height=300, showlegend=False, paper_bgcolor='rgba(0,0,0,0)')
+                fig_donut.update_traces(
+                    textposition='inside', 
+                    textinfo='percent+label',
+                    marker=dict(line=dict(color='#000000', width=2))
+                )
+                fig_donut.update_layout(
+                    height=400,  # Larger chart
+                    showlegend=True,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    legend=dict(
+                        orientation="h",
+                        yanchor="bottom",
+                        y=-0.2,
+                        xanchor="center",
+                        x=0.5
+                    )
+                )
                 st.plotly_chart(fig_donut, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -504,7 +653,13 @@ def display_datetime_tab(results):
                 title=f"Timeline - {col}",
                 labels={'x': 'Date', 'y': 'Record Count'}
             )
-            fig_timeline.update_layout(paper_bgcolor='rgba(0,0,0,0)')
+            fig_timeline.update_traces(line=dict(color='#3498db', width=3))
+            fig_timeline.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                showlegend=False
+            )
             st.plotly_chart(fig_timeline, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
@@ -524,7 +679,7 @@ def display_llm_insights(results):
     
     analysis_text = results['ai_analysis']
     
-    # Extract sections based on the prompt structure
+    # Improved section extraction
     sections = {
         'Executive Summary': '',
         'Detailed Statistical Analysis': '',
@@ -539,34 +694,50 @@ def display_llm_insights(results):
     for line in lines:
         line_stripped = line.strip()
         
-        # Check if this line starts a new section
-        if line_stripped.lower().startswith('# executive summary'):
+        # Check if this line starts a new section (more flexible matching)
+        if any(header in line_stripped.lower() for header in ['executive summary', 'summary']):
             current_section = 'Executive Summary'
             continue
-        elif line_stripped.lower().startswith('## detailed statistical analysis') or line_stripped.lower().startswith('# detailed statistical analysis'):
+        elif any(header in line_stripped.lower() for header in ['detailed statistical analysis', 'statistical analysis']):
             current_section = 'Detailed Statistical Analysis'
             continue
-        elif line_stripped.lower().startswith('## pattern identification') or line_stripped.lower().startswith('# pattern identification'):
+        elif any(header in line_stripped.lower() for header in ['pattern identification', 'pattern analysis', 'patterns']):
             current_section = 'Pattern Identification'
             continue
-        elif line_stripped.lower().startswith('## business/research implications') or line_stripped.lower().startswith('# business/research implications'):
+        elif any(header in line_stripped.lower() for header in ['business/research implications', 'implications', 'business implications', 'research implications']):
             current_section = 'Business/Research Implications'
             continue
-        elif line_stripped.lower().startswith('## recommendations') or line_stripped.lower().startswith('# recommendations'):
+        elif any(header in line_stripped.lower() for header in ['recommendations', 'suggestions', 'next steps']):
             current_section = 'Recommendations'
             continue
         
+        # Skip empty lines at the beginning of sections
+        if current_section and not line_stripped and not sections[current_section]:
+            continue
+            
         # Add content to current section
         if current_section and line_stripped:
             sections[current_section] += line + '\n'
     
     # Display each section
+    section_displayed = False
     for section_name, section_content in sections.items():
         if section_content.strip():
+            section_displayed = True
             st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
             st.markdown(f"### {section_name}")
             st.markdown(section_content)
             st.markdown('</div>', unsafe_allow_html=True)
+    
+    # If no sections were properly extracted, show the raw analysis
+    if not section_displayed:
+        st.markdown("""
+        <div class="insight-section">
+            <h3>Complete Analysis</h3>
+            <p>The AI analysis couldn't be parsed into specific sections. Here's the complete analysis:</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="card">{analysis_text}</div>', unsafe_allow_html=True)
 
 def main():
     """Main Streamlit application"""
@@ -629,8 +800,8 @@ def main():
         st.markdown("---")
         st.markdown("""
         <div class="upload-card">
-            <h3>🚀 Ready for Deep Analysis?</h3>
-            <p>Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights.</p>
+            <h3 style="font-size: 1.2rem;">🚀 Ready for Deep Analysis?</h3>
+            <p style="font-size: 0.9rem;">Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights.</p>
         </div>
         """, unsafe_allow_html=True)
     
