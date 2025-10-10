@@ -209,8 +209,29 @@ def display_data_preview(uploaded_file, tmp_file_path):
     """Display data preview in the main area"""
     st.markdown('<div class="section-header">👀 Data Preview</div>', unsafe_allow_html=True)
     
+    def categorize_dtype(dtype):
+        """Categorize pandas dtypes into broader categories"""
+        try:
+            if pd.api.types.is_numeric_dtype(dtype):
+                return "Numerical"
+            elif pd.api.types.is_bool_dtype(dtype):
+                return "Boolean"
+            elif pd.api.types.is_datetime64_any_dtype(dtype):
+                return "Date/Time"
+            elif pd.api.types.is_categorical_dtype(dtype):
+                return "Categorical"
+            else:
+                return "Categorical"  # Default for object/string types
+        except:
+            return "Unknown"
+    
     try:
-        df_preview = pd.read_csv(tmp_file_path)
+        # Read CSV with error handling for different encodings
+        try:
+            df_preview = pd.read_csv(tmp_file_path)
+        except UnicodeDecodeError:
+            # Try with different encoding if UTF-8 fails
+            df_preview = pd.read_csv(tmp_file_path, encoding='latin-1')
         
         # File info card
         col1, col2, col3, col4 = st.columns(4)
@@ -239,38 +260,87 @@ def display_data_preview(uploaded_file, tmp_file_path):
             st.markdown(create_stat_card(
                 f"{df_preview.duplicated().sum():,}",
                 "Duplicated Rows",
-                "🔎",
-                "#f31212"
+                "🔍",  # Fixed emoji
+                "#e74c3c"  # Better color for duplicates
             ), unsafe_allow_html=True)
         
         # Data preview with expandable sections
-        tab1, tab2, tab3 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📋 Data Sample", "🔍 Column Info", "📊 Quick Stats", "📈 Data Types"])
         
         with tab1:
-            st.markdown(f"**First 10 rows of {uploaded_file.name}:**")
+            st.markdown(f"**First 10 rows of `{uploaded_file.name}`:**")
             st.dataframe(df_preview.head(10), use_container_width=True)
+            
+            # Show basic info below the dataframe
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Memory Usage", f"{df_preview.memory_usage(deep=True).sum() / 1024**2:.2f} MB")
+            with col2:
+                st.metric("Total Cells", f"{df_preview.shape[0] * df_preview.shape[1]:,}")
         
         with tab2:
             st.markdown("**Column Information:**")
             col_info = pd.DataFrame({
                 'Column': df_preview.columns,
-                'Data Type': df_preview.dtypes.values,
+                'Data Type': df_preview.dtypes.astype(str),
+                'Category': df_preview.dtypes.apply(categorize_dtype),
                 'Non-Null Count': df_preview.count().values,
-                'Null Count': df_preview.isnull().sum().values
+                'Null Count': df_preview.isnull().sum().values,
+                'Null Percentage': (df_preview.isnull().sum().values / len(df_preview) * 100).round(2)
             })
             st.dataframe(col_info, use_container_width=True)
+            
+            # Summary of data types
+            st.markdown("**Data Type Summary:**")
+            dtype_summary = col_info['Category'].value_counts()
+            for dtype, count in dtype_summary.items():
+                st.write(f"- **{dtype}**: {count} columns")
         
         with tab3:
             st.markdown("**Quick Statistics:**")
-            if len(df_preview.select_dtypes(include=['number']).columns) > 0:
-                st.dataframe(df_preview.describe(), use_container_width=True)
+            numerical_cols = df_preview.select_dtypes(include=['number']).columns
+            if len(numerical_cols) > 0:
+                st.dataframe(df_preview[numerical_cols].describe(), use_container_width=True)
             else:
                 st.info("No numerical columns for statistical summary")
+            
+            # Show categorical stats if available
+            categorical_cols = df_preview.select_dtypes(include=['object', 'category']).columns
+            if len(categorical_cols) > 0:
+                st.markdown("**Categorical Columns Summary:**")
+                for col in categorical_cols[:5]:  # Limit to first 5 categorical columns
+                    unique_count = df_preview[col].nunique()
+                    st.write(f"- **{col}**: {unique_count} unique values")
+        
+        with tab4:
+            st.markdown("**Data Types Distribution:**")
+            # Create a visualization of data types
+            dtype_counts = df_preview.dtypes.apply(categorize_dtype).value_counts()
+            
+            if len(dtype_counts) > 0:
+                fig = px.pie(
+                    values=dtype_counts.values,
+                    names=dtype_counts.index,
+                    title="Data Types Distribution",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                fig.update_traces(textposition='inside', textinfo='percent+label')
+                fig.update_layout(height=400, showlegend=False)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No data available for visualization")
         
         return df_preview
         
     except Exception as e:
-        st.error(f"Error previewing data: {e}")
+        st.error(f"Error previewing data: {str(e)}")
+        st.info("""
+        **Common issues:**
+        - File is not a valid CSV
+        - File uses a different encoding (try saving as UTF-8)
+        - File is too large for preview
+        - File contains special characters
+        """)
         return None
 
 def display_enhanced_statistics(results):
@@ -454,8 +524,8 @@ def display_numerical_variables(stats_text):
     numerical_section = stats_text.split('## 🔢 Numerical Columns')[1]
     if '## 📝 Categorical Columns' in numerical_section:
         numerical_section = numerical_section.split('## 📝 Categorical Columns')[0]
-    elif '## ✅ Boolean Columns' in numerical_section:
-        numerical_section = numerical_section.split('## ✅ Boolean Columns')[0]
+    elif '## ✅ True/False Columns' in numerical_section:
+        numerical_section = numerical_section.split('## ✅ True/False Columns')[0]
     
     # Extract individual variables
     variables = re.split(r'### 📈 ', numerical_section)[1:]
@@ -523,8 +593,8 @@ def display_categorical_variables(stats_text):
     
     # Extract categorical section
     categorical_section = stats_text.split('## 📝 Categorical Columns')[1]
-    if '## ✅ Boolean Columns' in categorical_section:
-        categorical_section = categorical_section.split('## ✅ Boolean Columns')[0]
+    if '## ✅ True/False Columns' in categorical_section:
+        categorical_section = categorical_section.split('## ✅ True/False Columns')[0]
     
     # Extract individual variables
     variables = re.split(r'### 🏷️ ', categorical_section)[1:]
@@ -586,7 +656,7 @@ def display_categorical_variables(stats_text):
 
 def display_boolean_variables(stats_text):
     """Display True/False variables with enhanced visualization"""
-    if '## ✅ Boolean Columns' not in stats_text:
+    if '## ✅ True/False Columns' not in stats_text:
         st.info("No True/False variables found in the dataset.")
         return
     
@@ -796,11 +866,11 @@ def main():
                 <li>📈 Pattern identification and trend analysis</li>
                 <li>🔍 Data quality assessment</li>
             </ul>
-            
-            <div class="recommendation-card">
-                <h4>💡 Pro Tip:</h4>
-                <p>For best results, ensure your dataset is clean and well-structured. Remove any unnecessary columns and handle missing values before uploading.</p>
-            </div>
+        </div>
+
+        <div class="recommendation-card">
+            <h4>💡 Pro Tip:</h4>
+            <p>For best results, ensure your dataset is clean and well-structured. Remove any unnecessary columns and handle missing values before uploading.</p>
         </div>
         """, unsafe_allow_html=True)
 

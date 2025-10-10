@@ -133,7 +133,7 @@ class ChatBotAnalyzer:
     def load_and_preview_data(self, file_path: str) -> pd.DataFrame:
         """Load CSV file and return basic information"""
         try:
-            self.df = pd.read_csv(file_path, sep=",")
+            self.df = pd.read_csv(file_path)
             print(f"✅ Dataset loaded successfully: {self.df.shape[0]} rows, {self.df.shape[1]} columns")
             return self.df
         except Exception as e:
