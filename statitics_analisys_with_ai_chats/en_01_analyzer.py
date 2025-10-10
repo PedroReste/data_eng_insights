@@ -149,10 +149,10 @@ class ChatBotAnalyzer:
         
         # Dataset Overview
         stats_summary += "## 📋 Dataset Overview\n\n"
-        stats_summary += f"- **Total Rows** {self.df.shape[0]:,}\n"
-        stats_summary += f"- **Total Columns** {self.df.shape[1]}\n"
-        stats_summary += f"- **Missing Values** {self.df.isnull().sum().sum()}\n"
-        stats_summary += f"- **Duplicate Rows** {self.df.duplicated().sum()}\n\n"
+        stats_summary += f"- **Total Rows**: {self.df.shape[0]:,}\n"
+        stats_summary += f"- **Total Columns**: {self.df.shape[1]}\n"
+        stats_summary += f"- **Missing Values**: {self.df.isnull().sum().sum()}\n"
+        stats_summary += f"- **Duplicate Rows**: {self.df.duplicated().sum()}\n\n"
         
         # Data Types Summary
         stats_summary += "## 🔧 Data Types Summary\n\n"
@@ -206,7 +206,7 @@ class ChatBotAnalyzer:
         # Boolean columns
         boolean_cols = self.df.select_dtypes(include='bool').columns
         if len(boolean_cols) > 0:
-            stats_summary += "## ✅ True/False Columns\n\n"
+            stats_summary += "## ✅ Boolean Columns\n\n"
             for col in boolean_cols:
                 stats_summary += f"### 🔘 {col}\n\n"
                 value_counts = self.df[col].value_counts()
@@ -410,7 +410,7 @@ class ChatBotAnalyzer:
             return None
     
     def save_results(self, results: Dict[str, Any], original_file_path: str, output_dir: str = None):
-        """Save analysis results to markdown files"""
+        """Save analysis results to TXT files"""
         base_name = os.path.splitext(os.path.basename(original_file_path))[0]
         
         if output_dir:
@@ -420,11 +420,11 @@ class ChatBotAnalyzer:
             base_path = base_name
         
         # Save statistics as markdown
-        with open(f"{base_path}_statistics.md", "w", encoding="utf-8") as f:
+        with open(f"{base_path}_statistics.txt", "w", encoding="utf-8") as f:
             f.write(results['statistics'])
         
         # Save AI analysis as markdown
-        with open(f"{base_path}_ai_analysis.md", "w", encoding="utf-8") as f:
+        with open(f"{base_path}_ai_analysis.txt", "w", encoding="utf-8") as f:
             f.write(results['ai_analysis'])
         
         # Save combined report as markdown
@@ -443,10 +443,10 @@ class ChatBotAnalyzer:
 ---
 *Report generated automatically with AI Data Analyzer*
 """
-        with open(f"{base_path}_complete_report.md", "w", encoding="utf-8") as f:
+        with open(f"{base_path}_complete_report.txt", "w", encoding="utf-8") as f:
             f.write(combined_report)
         
         print(f"💾 Results saved as Markdown files:")
-        print(f"   - {base_path}_statistics.md")
-        print(f"   - {base_path}_ai_analysis.md")
-        print(f"   - {base_path}_complete_report.md")
+        print(f"   - {base_path}_statistics.txt")
+        print(f"   - {base_path}_ai_analysis.txt")
+        print(f"   - {base_path}_complete_report.txt")

@@ -1,4 +1,4 @@
-# en_03_interface.py
+# en_02_interface.py
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -198,8 +198,28 @@ def create_stat_card(value, label, icon="📊", color="#667eea"):
     """
 
 def display_enhanced_statistics(results):
-    # View a Dataset overview, data types, variablles analysis etc.
-    st.markdown('<div class="section-header">📊 Dataset Overview</div>', unsafe_allow_html=True)
+    """Display enhanced statistics with visualizations"""
+    st.markdown('<div class="section-header">📊 Dataset Overview & Statistics</div>', unsafe_allow_html=True)
+    
+    # Display visualizations first
+    if 'visualizations' in results and results['visualizations']:
+        st.markdown("### 📈 Interactive Visualizations")
+        
+        # Data types distribution
+        if 'data_types' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['data_types'], use_container_width=True)
+        
+        # Missing data
+        if 'missing_data' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['missing_data'], use_container_width=True)
+        
+        # Numerical distributions
+        if 'numerical_distributions' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['numerical_distributions'], use_container_width=True)
+        
+        # Correlation heatmap
+        if 'correlation_heatmap' in results['visualizations']:
+            st.plotly_chart(results['visualizations']['correlation_heatmap'], use_container_width=True)
     
     # Parse the statistics text
     stats_text = results['statistics']
@@ -214,70 +234,80 @@ def display_enhanced_statistics(results):
     display_variables_analysis(stats_text)
 
 def display_dataset_overview(stats_text):
-    # Dataset Overview: rows, columns, missing values, etc.
+    """Display dataset overview metrics"""
     st.markdown("### 📋 Dataset Overview")
     
-    # Extract overview metrics
-    overview_lines = stats_text.split('## 📋 Dataset Overview')[1].split('## 🔧 Data Types Summary')[0].strip().split('\n')
-    metrics = {}
-    
-    for line in overview_lines:
-        if '**' in line:
-            key = line.split('**')[1]
-            value = line.split('**')[-2] if '**' in line.split('**')[-2] else line.split('**')[-1]
-            metrics[key.lower().replace(' ', '_')] = value
+    # Extract overview metrics using regex for better parsing
+    total_rows_match = re.search(r"- \*\*Total Rows\*\*:?\s*([\d,]+)", stats_text)
+    total_cols_match = re.search(r"- \*\*Total Columns\*\*:?\s*(\d+)", stats_text)
+    missing_vals_match = re.search(r"- \*\*Missing Values\*\*:?\s*([\d,]+)", stats_text)
+    duplicate_rows_match = re.search(r"- \*\*Duplicate Rows\*\*:?\s*([\d,]+)", stats_text)
     
     # Create metric cards
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
+        total_rows = total_rows_match.group(1) if total_rows_match else "N/A"
         st.markdown(create_stat_card(
-            metrics.get('total_rows', 'N/A'), 
+            total_rows, 
             "Total Rows", 
             "📈", 
             "#2ecc71"
         ), unsafe_allow_html=True)
     
     with col2:
+        total_cols = total_cols_match.group(1) if total_cols_match else "N/A"
         st.markdown(create_stat_card(
-            metrics.get('total_columns', 'N/A'), 
+            total_cols, 
             "Total Columns", 
             "🔧", 
             "#3498db"
         ), unsafe_allow_html=True)
     
     with col3:
+        missing_vals = missing_vals_match.group(1) if missing_vals_match else "N/A"
         st.markdown(create_stat_card(
-            metrics.get('missing_values', 'N/A'), 
+            missing_vals, 
             "Missing Values", 
             "⚠️", 
             "#f39c12"
         ), unsafe_allow_html=True)
     
     with col4:
+        duplicate_rows = duplicate_rows_match.group(1) if duplicate_rows_match else "N/A"
         st.markdown(create_stat_card(
-            metrics.get('duplicate_rows', 'N/A'), 
+            duplicate_rows, 
             "Duplicate Rows", 
             "🔍", 
             "#e74c3c" 
         ), unsafe_allow_html=True)
 
 def display_data_types_summary(stats_text):
-    # Display data types summary with visual tags
+    """Display data types summary"""
     st.markdown("### 🔧 Data Types Distribution")
     
-    # Extract data types
-    dtype_section = stats_text.split('## 🔧 Data Types Summary')[1].split('## 🔢 Numerical Columns')[0].strip()
-    dtype_lines = [line for line in dtype_section.split('\n') if '**' in line]
+    # Extract data types using regex
+    numerical_match = re.search(r"- \*\*Numerical\*\*:?\s*(\d+)", stats_text)
+    categorical_match = re.search(r"- \*\*Categorical\*\*:?\s*(\d+)", stats_text)
+    boolean_match = re.search(r"- \*\*True/False\*\*:?\s*(\d+)", stats_text)
+    datetime_match = re.search(r"- \*\*Date/Time\*\*:?\s*(\d+)", stats_text)
+    
+    data_types = []
+    if numerical_match:
+        data_types.append(("Numerical", numerical_match.group(1)))
+    if categorical_match:
+        data_types.append(("Categorical", categorical_match.group(1)))
+    if boolean_match:
+        data_types.append(("Boolean", boolean_match.group(1)))
+    if datetime_match:
+        data_types.append(("Date/Time", datetime_match.group(1)))
     
     # Create data types display
-    cols = st.columns(len(dtype_lines))
-    colors = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
-    
-    for i, line in enumerate(dtype_lines):
-        if '**' in line:
-            dtype = line.split('**')[1]
-            count = line.split('**')[-2] if '**' in line.split('**')[-2] else line.split('**')[-1]
+    if data_types:
+        cols = st.columns(len(data_types))
+        colors = ["#3498db", "#e74c3c", "#2ecc71", "#f39c12", "#9b59b6", "#1abc9c"]
+        
+        for i, (dtype, count) in enumerate(data_types):
             with cols[i % len(cols)]:
                 st.markdown(f"""
                 <div style="text-align: center; padding: 1rem; background: {colors[i % len(colors)]}; 
@@ -286,46 +316,84 @@ def display_data_types_summary(stats_text):
                     <div style="font-size: 0.9rem;">{dtype}</div>
                 </div>
                 """, unsafe_allow_html=True)
+    else:
+        st.info("No data type information available.")
 
 def display_variables_analysis(stats_text):
     """Display variables analysis in organized tabs"""
     st.markdown("### 📈 Variables Analysis")
     
-    tab1, tab2, tab3 = st.tabs(["🔢 Numerical Variables", "📝 Categorical Variables", "✅ Boolean Variables"])
+    # Check which types of variables exist
+    has_numerical = "## 🔢 Numerical Columns" in stats_text
+    has_categorical = "## 📝 Categorical Columns" in stats_text
+    has_boolean = "## ✅ Boolean Columns" in stats_text
     
-    with tab1:
-        display_numerical_variables(stats_text)
+    tabs = []
+    if has_numerical:
+        tabs.append("🔢 Numerical Variables")
+    if has_categorical:
+        tabs.append("📝 Categorical Variables")
+    if has_boolean:
+        tabs.append("✅ Boolean Variables")
     
-    with tab2:
-        display_categorical_variables(stats_text)
-    
-    with tab3:
-        display_boolean_variables(stats_text)
+    if tabs:
+        created_tabs = st.tabs(tabs)
+        
+        tab_index = 0
+        if has_numerical:
+            with created_tabs[tab_index]:
+                display_numerical_variables(stats_text)
+            tab_index += 1
+        
+        if has_categorical:
+            with created_tabs[tab_index]:
+                display_categorical_variables(stats_text)
+            tab_index += 1
+        
+        if has_boolean:
+            with created_tabs[tab_index]:
+                display_boolean_variables(stats_text)
+    else:
+        st.info("No variable analysis available.")
 
 def display_numerical_variables(stats_text):
     """Display numerical variables with enhanced visualization"""
-    if '## 🔢 Numerical Variables' not in stats_text:
+    if '## 🔢 Numerical Columns' not in stats_text:
         st.info("No numerical variables found in the dataset.")
         return
     
-    numerical_section = stats_text.split('## 🔢 Numerical Variables')[1]
-    if '## 📝 Categorical Variables' in numerical_section:
-        numerical_section = numerical_section.split('## 📝 Categorical Variables')[0]
+    # Extract numerical section
+    numerical_section = stats_text.split('## 🔢 Numerical Columns')[1]
+    if '## 📝 Categorical Columns' in numerical_section:
+        numerical_section = numerical_section.split('## 📝 Categorical Columns')[0]
+    elif '## ✅ Boolean Columns' in numerical_section:
+        numerical_section = numerical_section.split('## ✅ Boolean Columns')[0]
     
-    variables = numerical_section.split('### 📈 ')[1:]
+    # Extract individual variables
+    variables = re.split(r'### 📈 ', numerical_section)[1:]
     
     for var_content in variables:
         if var_content.strip():
             lines = var_content.split('\n')
             var_name = lines[0].strip()
             
-            # Extract statistics
+            # Extract statistics using regex
             stats = {}
-            for line in lines[1:]:
-                if ':**' in line:
-                    key = line.split(':**')[0].replace('- **', '').strip()
-                    value = line.split(':**')[1].strip()
-                    stats[key] = value
+            stats_patterns = {
+                'Mean': r"- \*\*Mean\*\*:?\s*([\d.-]+)",
+                'Median': r"- \*\*Median\*\*:?\s*([\d.-]+)", 
+                'Variance': r"- \*\*Variance\*\*:?\s*([\d.-]+)",
+                'Standard Deviation': r"- \*\*Standard Deviation\*\*:?\s*([\d.-]+)",
+                'Minimum': r"- \*\*Minimum\*\*:?\s*([\d.-]+)",
+                'Maximum': r"- \*\*Maximum\*\*:?\s*([\d.-]+)",
+                'Range': r"- \*\*Range\*\*:?\s*([\d.-]+)",
+                'Missing Values': r"- \*\*Missing Values\*\*:?\s*(\d+)"
+            }
+            
+            for stat_name, pattern in stats_patterns.items():
+                match = re.search(pattern, var_content)
+                if match:
+                    stats[stat_name] = match.group(1)
             
             st.markdown(f'<div class="variable-card">', unsafe_allow_html=True)
             
@@ -338,67 +406,56 @@ def display_numerical_variables(stats_text):
             with col1:
                 # Central tendency metrics
                 if 'Mean' in stats:
-                    st.metric("📊 Mean", stats['Mean'])
+                    st.metric("Mean", f"{float(stats['Mean']):.2f}")
                 if 'Median' in stats:
-                    st.metric("🎯 Median", stats['Median'])
+                    st.metric("Median", f"{float(stats['Median']):.2f}")
                 if 'Standard Deviation' in stats:
-                    st.metric("📐 Std Dev", stats['Standard Deviation'])
+                    st.metric("Std Dev", f"{float(stats['Standard Deviation']):.2f}")
             
             with col2:
                 # Range metrics
                 if 'Minimum' in stats:
-                    st.metric("📉 Minimum", stats['Minimum'])
+                    st.metric("Minimum", f"{float(stats['Minimum']):.2f}")
                 if 'Maximum' in stats:
-                    st.metric("📈 Maximum", stats['Maximum'])
+                    st.metric("Maximum", f"{float(stats['Maximum']):.2f}")
                 if 'Range' in stats:
-                    st.metric("📏 Range", stats['Range'])
+                    st.metric("Range", f"{float(stats['Range']):.2f}")
             
-            # Additional metrics in expander
-            with st.expander("View Detailed Metrics"):
-                col3, col4 = st.columns(2)
-                with col3:
-                    if 'Variance' in stats:
-                        st.metric("📊 Variance", stats['Variance'])
-                with col4:
-                    if 'Missing Values' in stats:
-                        st.metric("⚠️ Missing", stats['Missing Values'])
+            # Additional info
+            if 'Missing Values' in stats:
+                st.info(f"Missing Values: {stats['Missing Values']}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
 def display_categorical_variables(stats_text):
     """Display categorical variables with enhanced visualization"""
-    if '## 📝 Categorical Variables' not in stats_text:
+    if '## 📝 Categorical Columns' not in stats_text:
         st.info("No categorical variables found in the dataset.")
         return
     
-    categorical_section = stats_text.split('## 📝 Categorical Variables')[1]
-    if '## ✅ Boolean Variables' in categorical_section:
-        categorical_section = categorical_section.split('## ✅ Boolean Variables')[0]
+    # Extract categorical section
+    categorical_section = stats_text.split('## 📝 Categorical Columns')[1]
+    if '## ✅ Boolean Columns' in categorical_section:
+        categorical_section = categorical_section.split('## ✅ Boolean Columns')[0]
     
-    variables = categorical_section.split('### 🏷️ ')[1:]
+    # Extract individual variables
+    variables = re.split(r'### 🏷️ ', categorical_section)[1:]
     
     for var_content in variables:
         if var_content.strip():
             lines = var_content.split('\n')
             var_name = lines[0].strip()
             
-            # Extract information
-            info = {}
-            top_values = []
-            current_section = None
+            # Extract statistics
+            unique_values = re.search(r"- \*\*Unique Values\*\*:?\s*(\d+)", var_content)
+            missing_values = re.search(r"- \*\*Missing Values\*\*:?\s*(\d+)", var_content)
             
-            for line in lines[1:]:
-                if '**Unique Values**' in line:
-                    info['unique'] = line.split('**')[-2]
-                elif '**Missing Values**' in line:
-                    info['missing'] = line.split('**')[-2]
-                elif 'Top 3 Values' in line:
-                    current_section = 'top_values'
-                elif current_section == 'top_values' and '`' in line:
-                    value_part = line.split('`')[1]
-                    value = value_part.split(':')[0]
-                    count = value_part.split(':')[1].split(' occurrences')[0].strip()
-                    top_values.append((value, count))
+            # Extract top values
+            top_values = []
+            top_values_section = var_content.split("- **Top 3 Values**:")[1] if "- **Top 3 Values**:" in var_content else ""
+            if top_values_section:
+                top_matches = re.findall(r"- `([^`]+)`: (\d+) occurrences", top_values_section)
+                top_values = [(val, int(count)) for val, count in top_matches]
             
             st.markdown(f'<div class="categorical-card">', unsafe_allow_html=True)
             
@@ -408,442 +465,239 @@ def display_categorical_variables(stats_text):
             # Basic info
             col1, col2 = st.columns(2)
             with col1:
-                if 'unique' in info:
-                    st.metric("🎯 Unique Values", info['unique'])
+                if unique_values:
+                    st.metric("Unique Values", unique_values.group(1))
             with col2:
-                if 'missing' in info:
-                    st.metric("⚠️ Missing Values", info['missing'])
+                if missing_values:
+                    st.metric("Missing Values", missing_values.group(1))
             
             # Top values visualization
             if top_values:
-                st.markdown("##### 🏆 Top Values Distribution")
-                total_occurrences = sum(int(count.replace(',', '')) for _, count in top_values)
+                st.markdown("**Top Values Distribution:**")
                 
-                for value, count in top_values:
-                    count_num = int(count.replace(',', ''))
-                    percentage = (count_num / total_occurrences) * 100
-                    
-                    st.markdown(f"""
-                    <div style="margin: 0.5rem 0;">
-                        <div style="display: flex; justify-content: between; margin-bottom: 0.2rem;">
-                            <span style="font-weight: 600;">{value}</span>
-                            <span>{count} ({percentage:.1f}%)</span>
-                        </div>
-                        <div class="distribution-bar" style="width: {percentage}%">
-                            <span>{value}</span>
-                            <span>{percentage:.1f}%</span>
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Create a bar chart for top values
+                values, counts = zip(*top_values)
+                
+                fig = px.bar(
+                    x=counts,
+                    y=values,
+                    orientation='h',
+                    title=f"Top Values for {var_name}",
+                    color=counts,
+                    color_continuous_scale='Viridis'
+                )
+                fig.update_layout(
+                    height=200,
+                    showlegend=False,
+                    xaxis_title="Count",
+                    yaxis_title="Values"
+                )
+                st.plotly_chart(fig, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
 def display_boolean_variables(stats_text):
     """Display boolean variables with enhanced visualization"""
-    if '## ✅ Boolean Variables' not in stats_text:
+    if '## ✅ Boolean Columns' not in stats_text:
         st.info("No boolean variables found in the dataset.")
         return
     
-    boolean_section = stats_text.split('## ✅ Boolean Variables')[1]
-    variables = boolean_section.split('### 🔘 ')[1:]
+    # Extract boolean section
+    boolean_section = stats_text.split('## ✅ Boolean Columns')[1]
+    
+    # Extract individual variables
+    variables = re.split(r'### 🔘 ', boolean_section)[1:]
     
     for var_content in variables:
         if var_content.strip():
             lines = var_content.split('\n')
             var_name = lines[0].strip()
             
-            # Extract distribution
-            distribution = {}
-            current_section = None
-            
-            for line in lines[1:]:
-                if '**Distribution**' in line:
-                    current_section = 'distribution'
-                elif current_section == 'distribution' and '`' in line:
-                    value_part = line.split('`')[1]
-                    value = value_part.split(':')[0]
-                    count_percentage = value_part.split(':')[1].strip()
-                    count = count_percentage.split(' (')[0]
-                    percentage = count_percentage.split(' (')[1].replace('%)', '')
-                    distribution[value] = {'count': count, 'percentage': percentage}
+            # Extract distribution information
+            distribution_matches = re.findall(r"- `(True|False)`: (\d+) \(([\d.]+)%\)", var_content)
             
             st.markdown(f'<div class="boolean-card">', unsafe_allow_html=True)
             
             # Variable header
             st.markdown(f"#### 🔘 {var_name}")
             
-            # Distribution visualization
-            if distribution:
-                st.markdown("##### 📊 Value Distribution")
+            if distribution_matches:
+                # Create distribution visualization
+                total_count = sum(int(count) for _, count, _ in distribution_matches)
                 
-                for value, data in distribution.items():
-                    percentage = float(data['percentage'])
-                    color = "#2ecc71" if value == "True" else "#e74c3c"
+                col1, col2 = st.columns([2, 1])
+                
+                with col1:
+                    # Create a pie chart
+                    labels = [val for val, _, _ in distribution_matches]
+                    values = [int(count) for _, count, _ in distribution_matches]
+                    percentages = [float(pct) for _, _, pct in distribution_matches]
                     
-                    col1, col2 = st.columns([3, 1])
-                    with col1:
-                        st.markdown(f"""
-                        <div style="margin: 0.5rem 0;">
-                            <div style="display: flex; justify-content: between; margin-bottom: 0.2rem;">
-                                <span style="font-weight: 600; color: {color};">{value}</span>
-                            </div>
-                            <div class="progress-bar" style="width: {percentage}%; background: {color};"></div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    with col2:
-                        st.metric("", f"{percentage}%")
-            
-            # Additional metrics in expander
-            with st.expander("View Technical Metrics"):
-                col3, col4 = st.columns(2)
-                with col3:
-                    # Extract variance and std dev
-                    for line in lines:
-                        if '**Variance**' in line:
-                            variance = line.split('**')[-2]
-                            st.metric("📊 Variance", variance)
-                        elif '**Standard Deviation**' in line:
-                            std_dev = line.split('**')[-2]
-                            st.metric("📐 Std Dev", std_dev)
+                    fig = px.pie(
+                        values=values,
+                        names=labels,
+                        title=f"Distribution of {var_name}",
+                        color_discrete_sequence=['#2ecc71', '#e74c3c']
+                    )
+                    fig.update_traces(textposition='inside', textinfo='percent+label')
+                    fig.update_layout(height=300, showlegend=False)
+                    st.plotly_chart(fig, use_container_width=True)
                 
-                with col4:
-                    for line in lines:
-                        if '**Missing Values**' in line:
-                            missing = line.split('**')[-2]
-                            st.metric("⚠️ Missing", missing)
+                with col2:
+                    # Display metrics
+                    for i, (val, count, pct) in enumerate(distribution_matches):
+                        st.metric(
+                            f"{val} Count", 
+                            f"{count} ({pct}%)",
+                            delta=None
+                        )
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_enhanced_ai_analysis(results):
-    """Display AI analysis in a highly visual and organized way"""
-    st.markdown('<div class="section-header">🤖 AI-Powered Insights</div>', unsafe_allow_html=True)
+def display_ai_analysis(results):
+    """Display AI analysis with enhanced formatting"""
+    st.markdown('<div class="section-header">🤖 AI Analysis & Insights</div>', unsafe_allow_html=True)
+    
+    if 'ai_analysis' not in results or not results['ai_analysis']:
+        st.error("No AI analysis available. Please run the analysis first.")
+        return
     
     analysis_text = results['ai_analysis']
-    sections = parse_ai_analysis_enhanced(analysis_text)
     
-    # Display each section in an organized way
-    for section_title, section_content in sections.items():
-        if section_content.strip():
-            if section_title.lower() in ['executive summary', 'overview']:
-                display_executive_summary_section(section_title, section_content)
-            elif 'recommendation' in section_title.lower():
-                display_recommendation_section(section_title, section_content)
-            elif 'pattern' in section_title.lower() or 'insight' in section_title.lower():
-                display_insight_section(section_title, section_content)
-            else:
-                display_general_section(section_title, section_content)
-
-def parse_ai_analysis_enhanced(analysis_text):
-    """Enhanced parsing of AI analysis with better section detection"""
-    sections = {}
-    current_section = "Executive Summary"
-    current_content = []
+    # Split analysis into sections based on markdown headers
+    sections = re.split(r'(?=^#+\s)', analysis_text, flags=re.MULTILINE)
     
-    lines = analysis_text.split('\n')
-    
-    for line in lines:
-        line_stripped = line.strip()
+    for section in sections:
+        if not section.strip():
+            continue
+            
+        # Check section type for special styling
+        section_lower = section.lower()
         
-        # Detect section headers
-        if line_stripped.startswith('# ') and len(line_stripped) > 3:
-            if current_section:
-                sections[current_section] = '\n'.join(current_content).strip()
-            current_section = line_stripped[2:].strip()
-            current_content = []
-        elif line_stripped.startswith('## ') and len(line_stripped) > 3:
-            if current_section:
-                sections[current_section] = '\n'.join(current_content).strip()
-            current_section = line_stripped[3:].strip()
-            current_content = []
-        elif line_stripped and not line_stripped.startswith('---'):
-            current_content.append(line_stripped)
-    
-    # Add the last section
-    if current_section and current_content:
-        sections[current_section] = '\n'.join(current_content).strip()
-    
-    return sections
-
-def display_executive_summary_section(title, content):
-    """Display executive summary with highlight cards"""
-    st.markdown(f'<div class="ai-insight-card">', unsafe_allow_html=True)
-    st.markdown(f"### 📄 {title}")
-    
-    # Split content into key points
-    points = re.split(r'[•\-]\s+', content)
-    key_points = [p.strip() for p in points if len(p.strip()) > 20][:4]  # Top 4 key points
-    
-    for i, point in enumerate(key_points):
-        if point:
-            # Extract numbers for highlighting
-            highlighted_point = re.sub(r'(\d+\.?\d*)', r'<span class="highlight-number">\1</span>', point)
-            st.markdown(f"**{i+1}.** {highlighted_point}", unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def display_recommendation_section(title, content):
-    """Display recommendations with action cards"""
-    st.markdown(f'<div class="recommendation-card">', unsafe_allow_html=True)
-    st.markdown(f"### 💡 {title}")
-    
-    # Split into individual recommendations
-    recommendations = re.split(r'\d+\.|\n-|\n•', content)
-    recommendations = [r.strip() for r in recommendations if len(r.strip()) > 10]
-    
-    for i, rec in enumerate(recommendations[:6]):  # Show top 6 recommendations
-        if rec:
-            st.markdown(f"""
-            <div style="background: rgba(255,255,255,0.7); padding: 1rem; margin: 0.5rem 0; 
-                     border-radius: 8px; border-left: 4px solid #3498db;">
-                <div style="display: flex; align-items: start;">
-                    <div style="background: #3498db; color: white; border-radius: 50%; 
-                             width: 25px; height: 25px; display: flex; align-items: center; 
-                             justify-content: center; margin-right: 1rem; font-weight: bold;">
-                        {i+1}
-                    </div>
-                    <div style="flex: 1;">
-                        {rec}
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def display_insight_section(title, content):
-    """Display insights with visual emphasis"""
-    st.markdown(f'<div class="card">', unsafe_allow_html=True)
-    st.markdown(f"### 🔍 {title}")
-    
-    # Format insights with better readability
-    insights = re.split(r'[•\-]\s+', content)
-    
-    for insight in insights:
-        if len(insight.strip()) > 10:
-            # Highlight key phrases
-            insight_highlighted = re.sub(
-                r'(significantly|important|notable|key finding|major|critical)',
-                r'**\1**',
-                insight,
-                flags=re.IGNORECASE
-            )
-            st.markdown(f"• {insight_highlighted}")
-    
-    st.markdown('</div>', unsafe_allow_html=True)
-
-def display_general_section(title, content):
-    """Display general sections in a clean format"""
-    st.markdown(f'<div class="card">', unsafe_allow_html=True)
-    st.markdown(f"### 📋 {title}")
-    st.markdown(content)
-    st.markdown('</div>', unsafe_allow_html=True)
+        if any(keyword in section_lower for keyword in ['executive summary', 'summary']):
+            st.markdown('<div class="ai-insight-card">', unsafe_allow_html=True)
+            st.markdown(section)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        elif any(keyword in section_lower for keyword in ['recommendation', 'suggestion', 'next steps']):
+            st.markdown('<div class="recommendation-card">', unsafe_allow_html=True)
+            st.markdown(section)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        elif any(keyword in section_lower for keyword in ['pattern', 'trend', 'insight', 'finding']):
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown(section)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        else:
+            # Default styling for other sections
+            st.markdown(section)
 
 def main():
-    # Header with modern design
-    st.markdown('<h1 class="main-header">🚀 AI Data Analyzer Pro</h1>', unsafe_allow_html=True)
+    """Main Streamlit application"""
     
-    # Sidebar configuration - Simplified without API key input
+    # Header
+    st.markdown('<h1 class="main-header">📊 AI Data Analyzer</h1>', unsafe_allow_html=True)
+    st.markdown("---")
+    
+    # Initialize session state
+    if 'analysis_results' not in st.session_state:
+        st.session_state.analysis_results = None
+    if 'analyzer' not in st.session_state:
+        try:
+            st.session_state.analyzer = ChatBotAnalyzer()
+            st.success("✅ Analyzer initialized successfully!")
+        except Exception as e:
+            st.error(f"❌ Failed to initialize analyzer: {e}")
+            return
+    
+    # Sidebar for file upload
     with st.sidebar:
-        st.markdown("### ⚙️ Configuration")
-        
-        # File Upload Section
-        st.markdown("#### 📁 Data Source")
-        uploaded_file = st.file_uploader("Upload CSV File", type=['csv'], 
-                                       help="Upload your dataset for analysis")
-        
-        st.markdown("---")
-        
-        # Analysis Options
-        st.markdown("#### 🎯 Analysis Options")
-        analysis_mode = st.selectbox(
-            "Analysis Mode:",
-            ["Quick Overview", "Standard Analysis", "Comprehensive Report"]
+        st.markdown("## 📁 Upload Dataset")
+        uploaded_file = st.file_uploader(
+            "Choose a CSV file",
+            type=['csv'],
+            help="Upload your dataset in CSV format"
         )
         
-        st.markdown("---")
-        
-        # Features List
-        st.markdown("#### ✨ Features")
-        features = [
-            "📊 Smart Data Profiling",
-            "🔍 Pattern Detection", 
-            "📈 Statistical Analysis",
-            "🤖 AI-Powered Insights",
-            "🎨 Interactive Visualizations",
-            "💡 Actionable Recommendations"
-        ]
-        
-        for feature in features:
-            st.markdown(f"• {feature}")
-        
-        st.markdown("---")
-        st.markdown("#### 🔑 API Setup")
-        st.info("API key is automatically loaded from Streamlit Secrets or environment variables.")
+        if uploaded_file is not None:
+            # Save uploaded file to temporary location
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
+                tmp_file.write(uploaded_file.getvalue())
+                tmp_file_path = tmp_file.name
+            
+            st.success(f"✅ File uploaded: {uploaded_file.name}")
+            
+            # Preview data
+            st.markdown("## 👀 Data Preview")
+            try:
+                df_preview = pd.read_csv(tmp_file_path)
+                st.dataframe(df_preview.head(10), use_container_width=True)
+                st.info(f"Shape: {df_preview.shape[0]} rows × {df_preview.shape[1]} columns")
+            except Exception as e:
+                st.error(f"Error previewing data: {e}")
+            
+            # Analysis button
+            st.markdown("## 🚀 Start Analysis")
+            if st.button("Analyze Dataset", type="primary", use_container_width=True):
+                with st.spinner("🤖 Analyzing dataset with AI..."):
+                    try:
+                        results = st.session_state.analyzer.analyze_csv(tmp_file_path)
+                        if results:
+                            st.session_state.analysis_results = results
+                            st.success("✅ Analysis completed successfully!")
+                        else:
+                            st.error("❌ Analysis failed. Please check the console for details.")
+                    except Exception as e:
+                        st.error(f"❌ Analysis error: {e}")
+            
+            # Clean up temporary file
+            try:
+                os.unlink(tmp_file_path)
+            except:
+                pass
     
     # Main content area
-    if uploaded_file is not None:
-        try:
-            # Perform analysis when button is clicked
-            if st.button("🚀 Launch Comprehensive Analysis", type="primary", use_container_width=True):
-                with st.spinner("🤖 AI is analyzing your data... This may take a few moments."):
-                    # Save uploaded file to temporary location
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
-                        tmp_file.write(uploaded_file.getvalue())
-                        temp_path = tmp_file.name
-                    
-                    try:
-                        # Perform full analysis - API key is automatically loaded
-                        analyzer = ChatBotAnalyzer()  # No API key needed - loaded automatically
-                        results = analyzer.analyze_csv(temp_path, save_output=False)
-                        
-                        if results:
-                            st.balloons()
-                            st.success("🎉 Analysis Complete!")
-                            
-                            # Display enhanced statistics
-                            display_enhanced_statistics(results)
-                            
-                            # Display enhanced AI analysis
-                            display_enhanced_ai_analysis(results)
-                            
-                            # Download section
-                            st.markdown('<div class="section-header">💾 Export Results</div>', unsafe_allow_html=True)
-                            
-                            col1, col2, col3 = st.columns(3)
-                            base_name = os.path.splitext(uploaded_file.name)[0]
-                            
-                            with col1:
-                                st.download_button(
-                                    label="📊 Download Statistics",
-                                    data=results['statistics'],
-                                    file_name=f"{base_name}_statistics.md",
-                                    mime="text/markdown",
-                                    use_container_width=True
-                                )
-                            
-                            with col2:
-                                st.download_button(
-                                    label="🤖 Download AI Insights",
-                                    data=results['ai_analysis'],
-                                    file_name=f"{base_name}_ai_insights.md",
-                                    mime="text/markdown",
-                                    use_container_width=True
-                                )
-                            
-                            with col3:
-                                combined = f"# Comprehensive Analysis Report\n\n## Statistics\n\n{results['statistics']}\n\n## AI Insights\n\n{results['ai_analysis']}"
-                                st.download_button(
-                                    label="📄 Download Full Report",
-                                    data=combined,
-                                    file_name=f"{base_name}_full_report.md",
-                                    mime="text/markdown",
-                                    use_container_width=True
-                                )
-                        
-                        else:
-                            st.error("❌ Analysis failed. Please check your API key configuration.")
-                            st.info("""
-                            **Possible solutions:**
-                            - On Streamlit Cloud: Check your Secrets configuration
-                            - Verify your OpenRouter API key is valid  
-                            - Check the app logs for detailed error information
-                            """)
-                    
-                    except ValueError as e:
-                        st.error(f"❌ API Key Error: {e}")
-                        st.info("""
-                        **To fix this on Streamlit Cloud:**
-                        1. Go to your app settings → Secrets
-                        2. Add your OpenRouter API key like this:
-                        
-                        ```toml
-                        OPENROUTER_API_KEY = "your_actual_api_key_here"
-                        ```
-                        
-                        **For local development:**
-                        - Set OPENROUTER_API_KEY environment variable
-                        - OR create .streamlit/secrets.toml file
-                        - OR create api_key.txt file in the same folder
-                        """)
-                    except Exception as e:
-                        st.error(f"❌ Analysis error: {str(e)}")
-                    
-                    finally:
-                        try:
-                            os.unlink(temp_path)
-                        except:
-                            pass
-            else:
-                # Show preview before analysis
-                st.info("👆 Click the button above to start the AI analysis and see enhanced visual results!")
-                
-                # Show basic file info
-                try:
-                    df_preview = pd.read_csv(uploaded_file)
-                    st.success(f"✅ File ready for analysis: {df_preview.shape[0]} rows, {df_preview.shape[1]} columns")
-                    
-                    # Quick file preview
-                    with st.expander("📋 Preview Data"):
-                        st.dataframe(df_preview.head())
-                        
-                except Exception as e:
-                    st.error(f"❌ Error previewing file: {str(e)}")
-                
-        except Exception as e:
-            st.error(f"❌ Error reading file: {str(e)}")
+    if st.session_state.analysis_results:
+        # Create tabs for different sections
+        tab1, tab2 = st.tabs(["📊 Statistics & Visualizations", "🤖 AI Analysis"])
+        
+        with tab1:
+            display_enhanced_statistics(st.session_state.analysis_results)
+        
+        with tab2:
+            display_ai_analysis(st.session_state.analysis_results)
     
     else:
-        display_welcome_screen()
-
-def display_welcome_screen():
-    """Display welcome screen"""
-    st.markdown("""
-    <div style="text-align: center; padding: 4rem 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; color: white;">
-        <h1 style="font-size: 2.5rem; margin-bottom: 1rem;">🎯 Welcome to AI Data Analyzer Pro</h1>
-        <p style="font-size: 1.2rem; opacity: 0.9;">Upload your CSV file and unlock powerful insights with enhanced visualization</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Features with enhanced styling
-    st.markdown("### ✨ Enhanced Visualization Features")
-    
-    features = [
-        {"icon": "📊", "title": "Beautiful Statistics", "desc": "Color-coded metrics and interactive charts"},
-        {"icon": "🔍", "title": "Enhanced Insights", "desc": "AI-powered analysis with visual emphasis"},
-        {"icon": "🎨", "title": "Modern UI", "desc": "Clean, organized sections with progress bars"},
-        {"icon": "💡", "title": "Actionable Recommendations", "desc": "Priority-based suggestions with visual cues"}
-    ]
-    
-    cols = st.columns(2)
-    for i, feature in enumerate(features):
-        with cols[i % 2]:
-            st.markdown(f"""
-            <div class="card">
-                <div style="text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 1rem;">{feature['icon']}</div>
-                    <h4 style="color: #2c3e50; margin-bottom: 0.5rem;">{feature['title']}</h4>
-                    <p style="color: #7f8c8d; font-size: 0.9rem;">{feature['desc']}</p>
-                </div>
+        # Welcome message and instructions
+        st.markdown("""
+        <div class="card">
+            <h2>🎯 Welcome to AI Data Analyzer!</h2>
+            <p>This application uses advanced AI to provide comprehensive analysis of your datasets.</p>
+            
+            <h3>📋 How to use:</h3>
+            <ol>
+                <li><strong>Upload a CSV file</strong> using the sidebar</li>
+                <li><strong>Preview your data</strong> to ensure it loaded correctly</li>
+                <li><strong>Click "Analyze Dataset"</strong> to generate insights</li>
+                <li><strong>Explore the results</strong> in the Statistics and AI Analysis tabs</li>
+            </ol>
+            
+            <h3>✨ Features:</h3>
+            <ul>
+                <li>📊 Comprehensive descriptive statistics</li>
+                <li>🎨 Interactive visualizations</li>
+                <li>🤖 AI-powered insights and recommendations</li>
+                <li>📈 Pattern identification and trend analysis</li>
+                <li>🔍 Data quality assessment</li>
+            </ul>
+            
+            <div class="recommendation-card">
+                <h4>💡 Pro Tip:</h4>
+                <p>For best results, ensure your dataset is clean and well-structured. Remove any unnecessary columns and handle missing values before uploading.</p>
             </div>
-            """, unsafe_allow_html=True)
-    
-    # API setup instructions
-    st.markdown("### 🔑 Setup Instructions")
-    st.info("""
-    **To use this application:**
-    1. Create a file named `api_key.txt` in the same folder as this application
-    2. Add your OpenRouter API key to the file (format: `open_router:your_key_here` or just `your_key_here`)
-    3. Upload your CSV file and click the analysis button
-    
-    **File Structure:**
-    ```
-    your_project_folder/
-    ├── en_01_analyzer.py
-    ├── en_03_interface.py  
-    ├── en_04_main_tkinter.py
-    └── api_key.txt         ← Create this file with your API key
-    ```
-    """)
+        </div>
+        """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
