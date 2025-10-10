@@ -753,7 +753,7 @@ def main():
     """Main Streamlit application"""
     
     # Header
-    st.markdown('<h1 class="main-header">📊 AI Data Analyzer</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">📊 📁 Data Analyzer</h1>', unsafe_allow_html=True)
     st.markdown("---")
     
     # Initialize session state
@@ -787,7 +787,7 @@ def main():
             # Analysis button in sidebar
             st.markdown("## 🚀 Start Analysis")
             if st.button("Analyze Dataset", type="primary", use_container_width=True):
-                with st.spinner("🤖 Analyzing dataset with AI..."):
+                with st.spinner("Analyzing dataset..."):
                     try:
                         results = st.session_state.analyzer.analyze_csv(tmp_file_path)
                         if results:
@@ -842,30 +842,38 @@ def main():
             display_ai_analysis(st.session_state.analysis_results)
     
     else:
-        # Welcome message and instructions
         st.markdown("""
-        <div class="card">
-            <h2>🎯 Welcome to AI Data Analyzer!</h2>
-            <p>This application uses advanced AI to provide comprehensive analysis of your datasets.</p>
-            
-            <h3>📋 How to use:</h3>
-            <ol>
-                <li><strong>Upload a CSV file</strong> using the sidebar</li>
-                <li><strong>Preview your data</strong> in the main area</li>
-                <li><strong>Click "Analyze Dataset"</strong> in the sidebar to generate insights</li>
-                <li><strong>Explore the results</strong> in the Statistics and AI Analysis tabs</li>
-            </ol>
-            
-            <h3>✨ Features:</h3>
-            <ul>
-                <li>📊 Comprehensive descriptive statistics</li>
-                <li>🎨 Interactive visualizations</li>
-                <li>🤖 AI-powered insights and recommendations</li>
-                <li>📈 Pattern identification and trend analysis</li>
-                <li>🔍 Data quality assessment</li>
-            </ul>
-        </div>
+            <div class="card">
+                <h2>🎯 Welcome to Data Analyzer!</h2>
+                <p>This application uses advanced AI to provide comprehensive analysis of your datasets.</p>
+            </div>
+        """, unsafe_allow_html=True)
 
+        # Use Streamlit's native components for lists and structure
+        st.markdown("### 📋 How to use:")
+        st.markdown("""
+        1. **Upload a CSV file** using the sidebar
+        2. **Click "Analyze Dataset"** in the sidebar to generate insights
+        3. **Explore the results** in the Statistics and AI Analysis tabs
+        """)
+
+        st.markdown("### ✨ Features:")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            - 📊 Comprehensive descriptive statistics
+            - 🎨 Interactive visualizations
+            - 🤖 AI-powered insights
+            """)
+        with col2:
+            st.markdown("""
+            - 📈 Pattern identification
+            - 🔍 Data quality assessment
+            - 💡 Actionable recommendations
+            """)
+
+        # Pro tip in a styled card
+        st.markdown("""
         <div class="recommendation-card">
             <h4>💡 Pro Tip:</h4>
             <p>For best results, ensure your dataset is clean and well-structured. Remove any unnecessary columns and handle missing values before uploading.</p>
