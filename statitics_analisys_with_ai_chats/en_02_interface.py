@@ -220,12 +220,13 @@ def generate_complete_pdf_report(results, dataset_name):
     except Exception as e:
         st.error(f"PDF generation error: {str(e)}")
         
-        # Provide fallback options
+        # Provide more specific troubleshooting
         st.info("""
-        **Alternative options:**
-        - Download the text report below (always available)
-        - Use your browser's print function (Ctrl+P) to save as PDF
-        - The analysis results are fully available in the tabs above
+        **Troubleshooting tips:**
+        - The text report below is always available as a reliable fallback
+        - For complex datasets, try using your browser's print function (Ctrl+P → Save as PDF)
+        - The analysis results remain fully accessible in the tabs above
+        - Large datasets with many visualizations may be too complex for PDF generation
         """)
         
         return None

@@ -25,7 +25,7 @@ class PDFReportGenerator:
     def create_pdf_report(self, results, dataset_name):
         """Create a comprehensive PDF report using FPDF2"""
         try:
-            # Create PDF
+            # Create PDF with Unicode support
             pdf = FPDF()
             pdf.set_auto_page_break(auto=True, margin=15)
             
@@ -48,9 +48,6 @@ class PDFReportGenerator:
             if 'visualizations' in results and results['visualizations']:
                 self._add_visualizations(pdf, results)
             
-            # Add footer to all pages
-            pdf.alias_nb_pages()
-            
             # Get PDF bytes
             pdf_bytes = pdf.output(dest='S').encode('latin-1')
             return pdf_bytes
@@ -59,11 +56,24 @@ class PDFReportGenerator:
             print(f"Error creating PDF: {e}")
             raise Exception(f"PDF creation failed: {str(e)}")
     
+    def _clean_text(self, text):
+        """Remove emojis and unsupported characters from text"""
+        if not text:
+            return ""
+        
+        # Remove emojis and special characters, keep only basic ASCII and common symbols
+        import re
+        # Keep letters, numbers, basic punctuation, and spaces
+        cleaned = re.sub(r'[^\x00-\x7F]+', ' ', text)
+        # Replace multiple spaces with single space
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        return cleaned.strip()
+    
     def _add_cover_page(self, pdf, dataset_name, results):
         """Add cover page to PDF"""
         pdf.add_page()
         
-        # Title
+        # Title (without emojis)
         pdf.set_font('Arial', 'B', 24)
         pdf.cell(0, 40, 'Data Analysis Report', 0, 1, 'C')
         
@@ -74,10 +84,10 @@ class PDFReportGenerator:
         # Dataset info
         pdf.set_font('Arial', '', 12)
         pdf.ln(20)
-        pdf.cell(0, 10, f'Dataset: {dataset_name}', 0, 1, 'C')
+        pdf.cell(0, 10, f'Dataset: {self._clean_text(dataset_name)}', 0, 1, 'C')
         
         df = results['dataframe']
-        pdf.cell(0, 10, f'Shape: {df.shape[0]} rows × {df.shape[1]} columns', 0, 1, 'C')
+        pdf.cell(0, 10, f'Shape: {df.shape[0]} rows x {df.shape[1]} columns', 0, 1, 'C')
         pdf.cell(0, 10, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, 'C')
         
         # Add some spacing
@@ -132,7 +142,7 @@ class PDFReportGenerator:
         pdf.set_font('Arial', '', 10)
         
         info_lines = [
-            f"Dataset Shape: {df.shape[0]} rows × {df.shape[1]} columns",
+            f"Dataset Shape: {df.shape[0]} rows x {df.shape[1]} columns",
             f"Total Cells: {df.shape[0] * df.shape[1]:,}",
             f"Missing Values: {df.isnull().sum().sum():,}",
             f"Duplicate Rows: {df.duplicated().sum():,}",
@@ -173,7 +183,8 @@ class PDFReportGenerator:
         
         for i, col in enumerate(df.columns, 1):
             col_type = str(df[col].dtype)
-            pdf.cell(0, 5, f"{i}. {col} ({col_type})", 0, 1)
+            clean_col = self._clean_text(str(col))
+            pdf.cell(0, 5, f"{i}. {clean_col} ({col_type})", 0, 1)
     
     def _add_statistics(self, pdf, results):
         """Add descriptive statistics section"""
@@ -193,21 +204,40 @@ class PDFReportGenerator:
         
         # Split into lines and add to PDF
         lines = stats_text.split('\n')
-        for line in lines[:50]:  # Limit to first 50 lines to avoid overflow
+        line_count = 0
+        
+        for line in lines:
+            if line_count >= 100:  # Limit total lines to avoid overflow
+                pdf.cell(0, 6, "... (content truncated for PDF) ...", 0, 1)
+                break
+                
             if line.strip():
                 # Clean up line
-                clean_line = line.strip()
-                if clean_line.startswith('#'):
+                clean_line = self._clean_text(line.strip())
+                if not clean_line:
+                    continue
+                    
+                if clean_line.startswith('# '):
                     # Handle headers
                     pdf.set_font('Arial', 'B', 12)
-                    pdf.cell(0, 8, clean_line.lstrip('# '), 0, 1)
+                    pdf.cell(0, 8, clean_line[2:], 0, 1)
                     pdf.set_font('Arial', '', 10)
-                elif clean_line.startswith('-'):
+                    line_count += 1
+                elif clean_line.startswith('## '):
+                    # Handle subheaders
+                    pdf.set_font('Arial', 'B', 11)
+                    pdf.cell(0, 7, clean_line[3:], 0, 1)
+                    pdf.set_font('Arial', '', 10)
+                    line_count += 1
+                elif clean_line.startswith('- '):
                     # Handle bullet points
                     pdf.cell(10)  # Indent
-                    pdf.cell(0, 6, clean_line.lstrip('- '), 0, 1)
+                    pdf.cell(0, 6, clean_line[2:], 0, 1)
+                    line_count += 1
                 else:
-                    pdf.cell(0, 6, clean_line, 0, 1)
+                    # Handle long text with multi_cell
+                    pdf.multi_cell(0, 6, clean_line)
+                    line_count += 1
         
         pdf.ln(10)
     
@@ -224,7 +254,6 @@ class PDFReportGenerator:
             return
         
         insights_text = results['ai_analysis']
-        pdf.set_font('Arial', '', 10)
         
         # Split into sections
         sections = self._extract_sections(insights_text)
@@ -236,11 +265,15 @@ class PDFReportGenerator:
                 pdf.cell(0, 8, section_name, 0, 1)
                 pdf.set_font('Arial', '', 10)
                 
-                # Section content
-                lines = section_content.split('\n')
-                for line in lines[:30]:  # Limit lines per section
-                    if line.strip():
-                        pdf.multi_cell(0, 6, line.strip())
+                # Clean and add section content
+                clean_content = self._clean_text(section_content)
+                if clean_content:
+                    # Split into paragraphs and add
+                    paragraphs = clean_content.split('\n\n')
+                    for para in paragraphs[:10]:  # Limit paragraphs
+                        if para.strip():
+                            pdf.multi_cell(0, 6, para.strip())
+                            pdf.ln(2)
                 
                 pdf.ln(5)
     
@@ -297,7 +330,7 @@ class PDFReportGenerator:
         key_viz_names = ['data_types', 'correlation_heatmap', 'missing_data']
         
         for viz_name in key_viz_names:
-            if viz_name in visualizations and added_viz < 3:  # Limit to 3 visualizations
+            if viz_name in visualizations and added_viz < 2:  # Limit to 2 visualizations
                 fig = visualizations[viz_name]
                 image = self.convert_plotly_to_image(fig)
                 
@@ -314,16 +347,18 @@ class PDFReportGenerator:
                     
                     # Add image to PDF
                     pdf.set_font('Arial', 'B', 10)
-                    pdf.cell(0, 8, viz_name.replace('_', ' ').title(), 0, 1, 'C')
+                    title = viz_name.replace('_', ' ').title()
+                    pdf.cell(0, 8, title, 0, 1, 'C')
                     
-                    pdf.image(img_buffer, x=15, w=180)
-                    pdf.ln(5)
+                    # Add image centered
+                    pdf.image(img_buffer, x=None, y=None, w=180)
+                    pdf.ln(85)  # Space after image
                     
                     added_viz += 1
                     
-                    # Add page break if we've added multiple visualizations
-                    if added_viz % 2 == 0:
-                        pdf.add_page()
+                    # Add page break if we've added visualization
+                    if added_viz < 2:
+                        pdf.ln(10)
     
     def generate_pdf_report(self, results, dataset_name, include_visualizations=True):
         """Main method to generate PDF report"""
