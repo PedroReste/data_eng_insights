@@ -312,26 +312,22 @@ def create_correlation_heatmap(df):
     # Calculate correlation matrix
     corr_matrix = df_encoded.corr()
     
-    # Create heatmap
+    # Create heatmap - configuração mais simples
     fig = px.imshow(
         corr_matrix,
         title="Correlation Matrix (All Variables)",
         color_continuous_scale='RdBu_r',
         aspect="auto",
-        range_color=[-1, 1]
+        range_color=[-1, 1],
+        labels=dict(color="Correlation")
     )
     
     fig.update_layout(
         height=600,
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white')
-    )
-    
-    # Update colorbar - CORREÇÃO: usar 'side' em vez de 'titleside'
-    fig.update_coloraxes(
-        colorbar=dict(
+        font=dict(color='white'),
+        coloraxis_colorbar=dict(
             title="Correlation",
-            side="right",
             tickvals=[-1, -0.5, 0, 0.5, 1],
             ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
         )
@@ -598,7 +594,7 @@ def display_boolean_tab(results):
                 # Larger donut chart with specific colors
                 colors = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
                 color_sequence = [colors.get(str(label), '#3498db') for label in value_counts.index]
-                
+
                 fig_donut = px.pie(
                     values=value_counts.values,
                     names=[str(label) for label in value_counts.index],
@@ -609,7 +605,8 @@ def display_boolean_tab(results):
                 fig_donut.update_traces(
                     textposition='inside', 
                     textinfo='percent+label',
-                    marker=dict(line=dict(color="#797979", width=2))
+                    marker=dict(line=dict(color="#000000", width=2)),
+                    textfont=dict(color='white', size=14)
                 )
                 fig_donut.update_layout(
                     height=400,  # Larger chart
@@ -625,8 +622,6 @@ def display_boolean_tab(results):
                     )
                 )
                 st.plotly_chart(fig_donut, use_container_width=True)
-            
-            st.markdown('</div>', unsafe_allow_html=True)
 
 def display_datetime_tab(results):
     """Display datetime columns analysis"""
