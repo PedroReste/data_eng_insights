@@ -48,8 +48,8 @@ class PDFReportGenerator:
             if 'visualizations' in results and results['visualizations']:
                 self._add_visualizations(pdf, results)
             
-            # Get PDF bytes
-            pdf_bytes = pdf.output(dest='S').encode('latin-1')
+            # Get PDF bytes - FPDF2 already returns bytes
+            pdf_bytes = pdf.output(dest='S')  # Remove o .encode('latin-1')
             return pdf_bytes
             
         except Exception as e:
@@ -207,8 +207,8 @@ class PDFReportGenerator:
         line_count = 0
         
         for line in lines:
-            if line_count >= 100:  # Limit total lines to avoid overflow
-                pdf.cell(0, 6, "... (content truncated for PDF) ...", 0, 1)
+            if line_count >= 80:  # Limit total lines to avoid overflow
+                pdf.cell(0, 6, "... (content truncated for PDF - see full report in app) ...", 0, 1)
                 break
                 
             if line.strip():
@@ -236,8 +236,24 @@ class PDFReportGenerator:
                     line_count += 1
                 else:
                     # Handle long text with multi_cell
-                    pdf.multi_cell(0, 6, clean_line)
-                    line_count += 1
+                    if len(clean_line) > 120:
+                        # Split long lines
+                        words = clean_line.split(' ')
+                        current_line = ""
+                        for word in words:
+                            if len(current_line + ' ' + word) <= 120:
+                                current_line += ' ' + word
+                            else:
+                                if current_line:
+                                    pdf.cell(0, 6, current_line.strip(), 0, 1)
+                                    line_count += 1
+                                current_line = word
+                        if current_line:
+                            pdf.cell(0, 6, current_line.strip(), 0, 1)
+                            line_count += 1
+                    else:
+                        pdf.cell(0, 6, clean_line, 0, 1)
+                        line_count += 1
         
         pdf.ln(10)
     
@@ -258,8 +274,9 @@ class PDFReportGenerator:
         # Split into sections
         sections = self._extract_sections(insights_text)
         
+        section_count = 0
         for section_name, section_content in sections.items():
-            if section_content.strip():
+            if section_content.strip() and section_count < 4:  # Limit sections
                 # Section header
                 pdf.set_font('Arial', 'B', 12)
                 pdf.cell(0, 8, section_name, 0, 1)
@@ -270,12 +287,19 @@ class PDFReportGenerator:
                 if clean_content:
                     # Split into paragraphs and add
                     paragraphs = clean_content.split('\n\n')
-                    for para in paragraphs[:10]:  # Limit paragraphs
-                        if para.strip():
+                    para_count = 0
+                    for para in paragraphs:
+                        if para.strip() and para_count < 3:  # Limit paragraphs per section
+                            # Split long paragraphs
+                            if len(para) > 500:
+                                para = para[:500] + "... (content truncated) ..."
+                            
                             pdf.multi_cell(0, 6, para.strip())
                             pdf.ln(2)
+                            para_count += 1
                 
                 pdf.ln(5)
+                section_count += 1
     
     def _extract_sections(self, text):
         """Extract sections from AI analysis text"""
@@ -331,34 +355,38 @@ class PDFReportGenerator:
         
         for viz_name in key_viz_names:
             if viz_name in visualizations and added_viz < 2:  # Limit to 2 visualizations
-                fig = visualizations[viz_name]
-                image = self.convert_plotly_to_image(fig)
-                
-                if image:
-                    # Resize image to fit PDF
-                    max_width = 180
-                    max_height = 120
-                    image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                try:
+                    fig = visualizations[viz_name]
+                    image = self.convert_plotly_to_image(fig)
                     
-                    # Save image to bytes
-                    img_buffer = BytesIO()
-                    image.save(img_buffer, format='PNG')
-                    img_buffer.seek(0)
-                    
-                    # Add image to PDF
-                    pdf.set_font('Arial', 'B', 10)
-                    title = viz_name.replace('_', ' ').title()
-                    pdf.cell(0, 8, title, 0, 1, 'C')
-                    
-                    # Add image centered
-                    pdf.image(img_buffer, x=None, y=None, w=180)
-                    pdf.ln(85)  # Space after image
-                    
-                    added_viz += 1
-                    
-                    # Add page break if we've added visualization
-                    if added_viz < 2:
-                        pdf.ln(10)
+                    if image:
+                        # Resize image to fit PDF
+                        max_width = 160
+                        max_height = 100
+                        image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                        
+                        # Save image to bytes
+                        img_buffer = BytesIO()
+                        image.save(img_buffer, format='PNG')
+                        img_buffer.seek(0)
+                        
+                        # Add image to PDF
+                        pdf.set_font('Arial', 'B', 10)
+                        title = viz_name.replace('_', ' ').title()
+                        pdf.cell(0, 8, title, 0, 1, 'C')
+                        
+                        # Add image centered
+                        pdf.image(img_buffer, x=25, w=160)
+                        pdf.ln(70)  # Space after image
+                        
+                        added_viz += 1
+                        
+                        # Add space between visualizations
+                        if added_viz < 2:
+                            pdf.ln(10)
+                except Exception as e:
+                    print(f"Error adding visualization {viz_name}: {e}")
+                    continue
     
     def generate_pdf_report(self, results, dataset_name, include_visualizations=True):
         """Main method to generate PDF report"""
