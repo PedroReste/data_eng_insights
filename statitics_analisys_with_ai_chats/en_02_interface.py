@@ -211,23 +211,23 @@ def generate_complete_pdf_report(results, dataset_name):
         with st.spinner("📊 Generating comprehensive PDF report... This may take a moment."):
             pdf_bytes = pdf_generator.generate_pdf_report(results, dataset_name)
             
-            if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 1000:
+            if pdf_bytes and isinstance(pdf_bytes, (bytes, bytearray)) and len(pdf_bytes) > 500:
+                st.success(f"✅ PDF generated successfully! Size: {len(pdf_bytes)} bytes")
                 return pdf_bytes
             else:
-                st.error("Generated PDF is invalid or too small")
+                st.error(f"Generated PDF is too small: {len(pdf_bytes) if pdf_bytes else 0} bytes")
                 return None
                 
     except Exception as e:
         st.error(f"PDF generation error: {str(e)}")
         
-        # Provide more specific troubleshooting
-        st.info("""
-        **Troubleshooting tips:**
-        - The text report below is always available as a reliable fallback
-        - For complex datasets, try using your browser's print function (Ctrl+P → Save as PDF)
-        - The analysis results remain fully accessible in the tabs above
-        - Large datasets with many visualizations may be too complex for PDF generation
-        """)
+        # Show debug info
+        with st.expander("Debug Information"):
+            st.code(f"""
+            Error: {str(e)}
+            Dataset: {dataset_name}
+            Results keys: {list(results.keys()) if results else 'No results'}
+            """)
         
         return None
 

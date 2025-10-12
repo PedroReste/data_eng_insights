@@ -7,6 +7,7 @@ import plotly.io as pio
 import pandas as pd
 from datetime import datetime
 from PIL import Image
+import traceback
 
 class PDFReportGenerator:
     def __init__(self):
@@ -25,35 +26,47 @@ class PDFReportGenerator:
     def create_pdf_report(self, results, dataset_name):
         """Create a comprehensive PDF report using FPDF2"""
         try:
-            # Create PDF with Unicode support
+            print("Starting PDF creation...")
+            
+            # Create PDF
             pdf = FPDF()
             pdf.set_auto_page_break(auto=True, margin=15)
+            print("PDF object created")
             
             # Add cover page
             self._add_cover_page(pdf, dataset_name, results)
+            print("Cover page added")
             
             # Add table of contents
             self._add_table_of_contents(pdf)
+            print("Table of contents added")
             
             # Add dataset overview
             self._add_dataset_overview(pdf, results)
+            print("Dataset overview added")
             
             # Add statistics
             self._add_statistics(pdf, results)
+            print("Statistics added")
             
             # Add AI insights
             self._add_ai_insights(pdf, results)
+            print("AI insights added")
             
             # Add visualizations if available
             if 'visualizations' in results and results['visualizations']:
                 self._add_visualizations(pdf, results)
+                print("Visualizations added")
             
-            # Get PDF bytes - FPDF2 already returns bytes
-            pdf_bytes = pdf.output(dest='S')  # Remove o .encode('latin-1')
+            # Get PDF bytes
+            pdf_bytes = pdf.output(dest='S')
+            print(f"PDF generated successfully, size: {len(pdf_bytes)} bytes")
+            
             return pdf_bytes
             
         except Exception as e:
             print(f"Error creating PDF: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             raise Exception(f"PDF creation failed: {str(e)}")
     
     def _clean_text(self, text):
@@ -61,19 +74,23 @@ class PDFReportGenerator:
         if not text:
             return ""
         
-        # Remove emojis and special characters, keep only basic ASCII and common symbols
-        import re
-        # Keep letters, numbers, basic punctuation, and spaces
-        cleaned = re.sub(r'[^\x00-\x7F]+', ' ', text)
-        # Replace multiple spaces with single space
-        cleaned = re.sub(r'\s+', ' ', cleaned)
-        return cleaned.strip()
+        try:
+            # Remove emojis and special characters, keep only basic ASCII and common symbols
+            import re
+            # Keep letters, numbers, basic punctuation, and spaces
+            cleaned = re.sub(r'[^\x00-\x7F]+', ' ', str(text))
+            # Replace multiple spaces with single space
+            cleaned = re.sub(r'\s+', ' ', cleaned)
+            return cleaned.strip()
+        except Exception as e:
+            print(f"Error cleaning text: {e}")
+            return str(text)[:100]  # Return first 100 chars as fallback
     
     def _add_cover_page(self, pdf, dataset_name, results):
         """Add cover page to PDF"""
         pdf.add_page()
         
-        # Title (without emojis)
+        # Title
         pdf.set_font('Arial', 'B', 24)
         pdf.cell(0, 40, 'Data Analysis Report', 0, 1, 'C')
         
@@ -176,15 +193,18 @@ class PDFReportGenerator:
         
         pdf.ln(10)
         
-        # Column list
+        # Column list (show first 20 columns only)
         pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 8, 'Columns:', 0, 1)
+        pdf.cell(0, 8, 'Columns (first 20):', 0, 1)
         pdf.set_font('Arial', '', 8)
         
-        for i, col in enumerate(df.columns, 1):
+        for i, col in enumerate(df.columns[:20], 1):
             col_type = str(df[col].dtype)
             clean_col = self._clean_text(str(col))
             pdf.cell(0, 5, f"{i}. {clean_col} ({col_type})", 0, 1)
+        
+        if len(df.columns) > 20:
+            pdf.cell(0, 5, f"... and {len(df.columns) - 20} more columns", 0, 1)
     
     def _add_statistics(self, pdf, results):
         """Add descriptive statistics section"""
@@ -198,64 +218,41 @@ class PDFReportGenerator:
             pdf.cell(0, 10, 'No statistics available.', 0, 1)
             return
         
-        # Add statistics text (simplified)
-        stats_text = results['statistics']
+        # Add a simplified version of statistics
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 8, 'Key Statistics Summary:', 0, 1)
         pdf.set_font('Arial', '', 10)
         
-        # Split into lines and add to PDF
-        lines = stats_text.split('\n')
-        line_count = 0
+        df = results['dataframe']
         
-        for line in lines:
-            if line_count >= 80:  # Limit total lines to avoid overflow
-                pdf.cell(0, 6, "... (content truncated for PDF - see full report in app) ...", 0, 1)
-                break
-                
-            if line.strip():
-                # Clean up line
-                clean_line = self._clean_text(line.strip())
-                if not clean_line:
-                    continue
-                    
-                if clean_line.startswith('# '):
-                    # Handle headers
-                    pdf.set_font('Arial', 'B', 12)
-                    pdf.cell(0, 8, clean_line[2:], 0, 1)
-                    pdf.set_font('Arial', '', 10)
-                    line_count += 1
-                elif clean_line.startswith('## '):
-                    # Handle subheaders
-                    pdf.set_font('Arial', 'B', 11)
-                    pdf.cell(0, 7, clean_line[3:], 0, 1)
-                    pdf.set_font('Arial', '', 10)
-                    line_count += 1
-                elif clean_line.startswith('- '):
-                    # Handle bullet points
-                    pdf.cell(10)  # Indent
-                    pdf.cell(0, 6, clean_line[2:], 0, 1)
-                    line_count += 1
-                else:
-                    # Handle long text with multi_cell
-                    if len(clean_line) > 120:
-                        # Split long lines
-                        words = clean_line.split(' ')
-                        current_line = ""
-                        for word in words:
-                            if len(current_line + ' ' + word) <= 120:
-                                current_line += ' ' + word
-                            else:
-                                if current_line:
-                                    pdf.cell(0, 6, current_line.strip(), 0, 1)
-                                    line_count += 1
-                                current_line = word
-                        if current_line:
-                            pdf.cell(0, 6, current_line.strip(), 0, 1)
-                            line_count += 1
-                    else:
-                        pdf.cell(0, 6, clean_line, 0, 1)
-                        line_count += 1
+        # Add numerical columns summary
+        numerical_cols = df.select_dtypes(include=['number']).columns
+        if len(numerical_cols) > 0:
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, 'Numerical Columns:', 0, 1)
+            pdf.set_font('Arial', '', 9)
+            
+            for col in numerical_cols[:5]:  # Limit to first 5 numerical columns
+                pdf.cell(0, 5, f"- {self._clean_text(col)}: Mean={df[col].mean():.2f}, Std={df[col].std():.2f}", 0, 1)
+            
+            if len(numerical_cols) > 5:
+                pdf.cell(0, 5, f"... and {len(numerical_cols) - 5} more numerical columns", 0, 1)
         
-        pdf.ln(10)
+        pdf.ln(5)
+        
+        # Add categorical columns summary
+        categorical_cols = df.select_dtypes(include=['object', 'category']).columns
+        if len(categorical_cols) > 0:
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(0, 8, 'Categorical Columns:', 0, 1)
+            pdf.set_font('Arial', '', 9)
+            
+            for col in categorical_cols[:3]:  # Limit to first 3 categorical columns
+                unique_count = df[col].nunique()
+                pdf.cell(0, 5, f"- {self._clean_text(col)}: {unique_count} unique values", 0, 1)
+            
+            if len(categorical_cols) > 3:
+                pdf.cell(0, 5, f"... and {len(categorical_cols) - 3} more categorical columns", 0, 1)
     
     def _add_ai_insights(self, pdf, results):
         """Add AI insights section"""
@@ -271,35 +268,31 @@ class PDFReportGenerator:
         
         insights_text = results['ai_analysis']
         
-        # Split into sections
+        # Extract main sections
         sections = self._extract_sections(insights_text)
         
-        section_count = 0
-        for section_name, section_content in sections.items():
-            if section_content.strip() and section_count < 4:  # Limit sections
-                # Section header
-                pdf.set_font('Arial', 'B', 12)
-                pdf.cell(0, 8, section_name, 0, 1)
-                pdf.set_font('Arial', '', 10)
-                
-                # Clean and add section content
-                clean_content = self._clean_text(section_content)
-                if clean_content:
-                    # Split into paragraphs and add
-                    paragraphs = clean_content.split('\n\n')
-                    para_count = 0
-                    for para in paragraphs:
-                        if para.strip() and para_count < 3:  # Limit paragraphs per section
-                            # Split long paragraphs
-                            if len(para) > 500:
-                                para = para[:500] + "... (content truncated) ..."
-                            
-                            pdf.multi_cell(0, 6, para.strip())
-                            pdf.ln(2)
-                            para_count += 1
-                
-                pdf.ln(5)
-                section_count += 1
+        # Add executive summary if available
+        if sections['Executive Summary']:
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 8, 'Executive Summary:', 0, 1)
+            pdf.set_font('Arial', '', 10)
+            
+            summary = self._clean_text(sections['Executive Summary'])
+            if len(summary) > 500:
+                summary = summary[:500] + "..."
+            pdf.multi_cell(0, 6, summary)
+            pdf.ln(5)
+        
+        # Add recommendations if available
+        if sections['Recommendations']:
+            pdf.set_font('Arial', 'B', 12)
+            pdf.cell(0, 8, 'Key Recommendations:', 0, 1)
+            pdf.set_font('Arial', '', 10)
+            
+            recommendations = self._clean_text(sections['Recommendations'])
+            if len(recommendations) > 300:
+                recommendations = recommendations[:300] + "..."
+            pdf.multi_cell(0, 6, recommendations)
     
     def _extract_sections(self, text):
         """Extract sections from AI analysis text"""
@@ -350,49 +343,67 @@ class PDFReportGenerator:
         visualizations = results['visualizations']
         added_viz = 0
         
-        # Add key visualizations
-        key_viz_names = ['data_types', 'correlation_heatmap', 'missing_data']
-        
-        for viz_name in key_viz_names:
-            if viz_name in visualizations and added_viz < 2:  # Limit to 2 visualizations
-                try:
-                    fig = visualizations[viz_name]
-                    image = self.convert_plotly_to_image(fig)
+        # Try to add data types chart
+        if 'data_types' in visualizations:
+            try:
+                fig = visualizations['data_types']
+                image = self.convert_plotly_to_image(fig)
+                
+                if image:
+                    # Resize image
+                    image.thumbnail((150, 100), Image.Resampling.LANCZOS)
                     
-                    if image:
-                        # Resize image to fit PDF
-                        max_width = 160
-                        max_height = 100
-                        image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
-                        
-                        # Save image to bytes
-                        img_buffer = BytesIO()
-                        image.save(img_buffer, format='PNG')
-                        img_buffer.seek(0)
-                        
-                        # Add image to PDF
-                        pdf.set_font('Arial', 'B', 10)
-                        title = viz_name.replace('_', ' ').title()
-                        pdf.cell(0, 8, title, 0, 1, 'C')
-                        
-                        # Add image centered
-                        pdf.image(img_buffer, x=25, w=160)
-                        pdf.ln(70)  # Space after image
-                        
-                        added_viz += 1
-                        
-                        # Add space between visualizations
-                        if added_viz < 2:
-                            pdf.ln(10)
-                except Exception as e:
-                    print(f"Error adding visualization {viz_name}: {e}")
-                    continue
+                    # Save image to bytes
+                    img_buffer = BytesIO()
+                    image.save(img_buffer, format='PNG')
+                    img_buffer.seek(0)
+                    
+                    # Add to PDF
+                    pdf.set_font('Arial', 'B', 10)
+                    pdf.cell(0, 8, 'Data Types Distribution', 0, 1, 'C')
+                    pdf.image(img_buffer, x=30, w=150)
+                    pdf.ln(60)
+                    added_viz += 1
+            except Exception as e:
+                print(f"Error adding data types chart: {e}")
+        
+        # Try to add correlation heatmap
+        if 'correlation_heatmap' in visualizations and added_viz < 2:
+            try:
+                fig = visualizations['correlation_heatmap']
+                image = self.convert_plotly_to_image(fig)
+                
+                if image:
+                    # Resize image
+                    image.thumbnail((150, 100), Image.Resampling.LANCZOS)
+                    
+                    # Save image to bytes
+                    img_buffer = BytesIO()
+                    image.save(img_buffer, format='PNG')
+                    img_buffer.seek(0)
+                    
+                    # Add to PDF
+                    pdf.set_font('Arial', 'B', 10)
+                    pdf.cell(0, 8, 'Correlation Matrix', 0, 1, 'C')
+                    pdf.image(img_buffer, x=30, w=150)
+                    added_viz += 1
+            except Exception as e:
+                print(f"Error adding correlation heatmap: {e}")
     
     def generate_pdf_report(self, results, dataset_name, include_visualizations=True):
         """Main method to generate PDF report"""
         try:
+            print(f"Starting PDF generation for dataset: {dataset_name}")
             pdf_bytes = self.create_pdf_report(results, dataset_name)
-            return pdf_bytes
+            
+            if pdf_bytes and len(pdf_bytes) > 500:  # Reduced threshold
+                print(f"PDF generated successfully: {len(pdf_bytes)} bytes")
+                return pdf_bytes
+            else:
+                print(f"PDF too small or empty: {len(pdf_bytes) if pdf_bytes else 0} bytes")
+                return None
+                
         except Exception as e:
             print(f"Error in generate_pdf_report: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
             raise
