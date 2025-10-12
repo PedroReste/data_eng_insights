@@ -211,7 +211,7 @@ def generate_complete_pdf_report(results, dataset_name):
         with st.spinner("📊 Generating comprehensive PDF report... This may take a moment."):
             pdf_bytes = pdf_generator.generate_pdf_report(results, dataset_name)
             
-            if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 1000:  # Basic PDF validation
+            if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 1000:
                 return pdf_bytes
             else:
                 st.error("Generated PDF is invalid or too small")
@@ -220,13 +220,12 @@ def generate_complete_pdf_report(results, dataset_name):
     except Exception as e:
         st.error(f"PDF generation error: {str(e)}")
         
-        # Provide helpful instructions
+        # Provide fallback options
         st.info("""
-        **Troubleshooting tips:**
-        - Make sure all dependencies are installed (weasyprint, cairocffi)
-        - For Streamlit Cloud, ensure these are in requirements.txt
-        - Try generating a smaller report with fewer visualizations
-        - The text report is always available as a fallback
+        **Alternative options:**
+        - Download the text report below (always available)
+        - Use your browser's print function (Ctrl+P) to save as PDF
+        - The analysis results are fully available in the tabs above
         """)
         
         return None

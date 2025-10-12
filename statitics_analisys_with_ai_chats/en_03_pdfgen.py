@@ -1,468 +1,335 @@
-# en_03_pdf_generator.py
+# en_03_pdfgen.py
 import os
 import base64
-import tempfile
 from io import BytesIO
-from jinja2 import Template
+from fpdf import FPDF
 import plotly.io as pio
 import pandas as pd
 from datetime import datetime
-
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except ImportError:
-    WEASYPRINT_AVAILABLE = False
-    print("WeasyPrint not available - PDF generation disabled")
+from PIL import Image
 
 class PDFReportGenerator:
     def __init__(self):
-        self.html_template = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Data Analysis Report</title>
-            <style>
-                @page {
-                    size: A4;
-                    margin: 1.5cm;
-                    @bottom-center {
-                        content: "Page " counter(page) " of " counter(pages);
-                        font-size: 10px;
-                        color: #666;
-                    }
-                }
-                
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    line-height: 1.6;
-                    color: #333;
-                    margin: 0;
-                    padding: 0;
-                    background: white;
-                }
-                
-                .header {
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    text-align: center;
-                    margin-bottom: 30px;
-                }
-                
-                .section {
-                    background: white;
-                    padding: 20px;
-                    margin: 20px 0;
-                    border-radius: 8px;
-                    border-left: 5px solid #3498db;
-                    page-break-inside: avoid;
-                }
-                
-                .section-statistics {
-                    border-left-color: #2ecc71;
-                }
-                
-                .section-insights {
-                    border-left-color: #e74c3c;
-                }
-                
-                .section-visualizations {
-                    border-left-color: #f39c12;
-                }
-                
-                h1 {
-                    font-size: 28px;
-                    margin: 0;
-                    font-weight: 300;
-                }
-                
-                h2 {
-                    color: #2c3e50;
-                    border-bottom: 2px solid #ecf0f1;
-                    padding-bottom: 8px;
-                    margin-top: 25px;
-                    font-size: 20px;
-                    page-break-after: avoid;
-                }
-                
-                h3 {
-                    color: #34495e;
-                    margin-top: 15px;
-                    font-size: 16px;
-                }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-                    gap: 12px;
-                    margin: 15px 0;
-                }
-                
-                .stat-card {
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 6px;
-                    text-align: center;
-                    border-top: 4px solid #3498db;
-                }
-                
-                .stat-value {
-                    font-size: 20px;
-                    font-weight: bold;
-                    color: #2c3e50;
-                    margin: 5px 0;
-                }
-                
-                .stat-label {
-                    font-size: 12px;
-                    color: #7f8c8d;
-                }
-                
-                .table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin: 15px 0;
-                    font-size: 12px;
-                }
-                
-                .table th, .table td {
-                    border: 1px solid #ddd;
-                    padding: 8px;
-                    text-align: left;
-                }
-                
-                .table th {
-                    background-color: #34495e;
-                    color: white;
-                    font-weight: 600;
-                }
-                
-                .table tr:nth-child(even) {
-                    background-color: #f8f9fa;
-                }
-                
-                .visualization {
-                    text-align: center;
-                    margin: 20px 0;
-                    page-break-inside: avoid;
-                }
-                
-                .visualization img {
-                    max-width: 100%;
-                    height: auto;
-                    border: 1px solid #ddd;
-                    border-radius: 6px;
-                    margin: 10px 0;
-                }
-                
-                .insight-box {
-                    background: #fff3cd;
-                    border: 1px solid #ffeaa7;
-                    border-radius: 6px;
-                    padding: 12px;
-                    margin: 12px 0;
-                    font-size: 14px;
-                }
-                
-                .recommendation {
-                    background: #d1ecf1;
-                    border: 1px solid #bee5eb;
-                    border-radius: 6px;
-                    padding: 12px;
-                    margin: 12px 0;
-                    font-size: 14px;
-                }
-                
-                .footer {
-                    text-align: center;
-                    margin-top: 30px;
-                    padding: 15px;
-                    color: #7f8c8d;
-                    font-size: 11px;
-                    border-top: 1px solid #ecf0f1;
-                }
-                
-                .page-break {
-                    page-break-before: always;
-                }
-                
-                .code-block {
-                    background: #f8f9fa;
-                    border: 1px solid #e9ecef;
-                    border-radius: 4px;
-                    padding: 10px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 11px;
-                    margin: 10px 0;
-                    overflow-x: auto;
-                }
-                
-                ul, ol {
-                    margin: 10px 0;
-                    padding-left: 20px;
-                }
-                
-                li {
-                    margin: 5px 0;
-                }
-                
-                strong {
-                    color: #2c3e50;
-                }
-                
-                .metadata {
-                    background: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 6px;
-                    margin: 15px 0;
-                    font-size: 13px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="header">
-                <h1>📊 Data Analysis Report</h1>
-                <p>Generated by AI Data Analyzer</p>
-                <div class="metadata">
-                    <strong>Dataset:</strong> {{ dataset_name }}<br>
-                    <strong>Generated on:</strong> {{ timestamp }}<br>
-                    <strong>Total Rows:</strong> {{ total_rows }} | <strong>Total Columns:</strong> {{ total_columns }}
-                </div>
-            </div>
-
-            {% if overview_stats %}
-            <div class="section">
-                <h2>📋 Dataset Overview</h2>
-                <div class="stats-grid">
-                    {% for stat in overview_stats %}
-                    <div class="stat-card">
-                        <div class="stat-value">{{ stat.value }}</div>
-                        <div class="stat-label">{{ stat.label }}</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% if column_types %}
-            <div class="section">
-                <h2>🔧 Data Types Summary</h2>
-                <div class="stats-grid">
-                    {% for type in column_types %}
-                    <div class="stat-card" style="border-top-color: {{ type.color }};">
-                        <div class="stat-value">{{ type.count }}</div>
-                        <div class="stat-label">{{ type.name }} Columns</div>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endif %}
-
-            {% if statistics_html %}
-            <div class="section section-statistics">
-                <h2>📈 Descriptive Statistics</h2>
-                {{ statistics_html }}
-            </div>
-            {% endif %}
-
-            {% if insights_html %}
-            <div class="page-break"></div>
-            <div class="section section-insights">
-                <h2>🤖 AI Insights & Analysis</h2>
-                {{ insights_html }}
-            </div>
-            {% endif %}
-
-            {% if visualizations and visualizations|length > 0 %}
-            <div class="page-break"></div>
-            <div class="section section-visualizations">
-                <h2>📊 Key Visualizations</h2>
-                {% for viz in visualizations %}
-                <div class="visualization">
-                    <h3>{{ viz.title }}</h3>
-                    <img src="data:image/png;base64,{{ viz.image }}" alt="{{ viz.title }}">
-                </div>
-                {% if not loop.last %}<hr style="margin: 20px 0;">{% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-
-            <div class="footer">
-                <p>Report generated automatically by Data Analyzer AI</p>
-                <p>https://data-analyzer-pr.streamlit.app</p>
-            </div>
-        </body>
-        </html>
-        """
+        self.pdf = None
     
-    def convert_plotly_to_base64(self, fig):
-        """Convert Plotly figure to base64 encoded image"""
+    def convert_plotly_to_image(self, fig):
+        """Convert Plotly figure to PIL Image"""
         try:
-            # Increase DPI for better print quality
-            img_bytes = pio.to_image(fig, format='png', width=800, height=500, scale=2)
-            return base64.b64encode(img_bytes).decode('utf-8')
+            img_bytes = pio.to_image(fig, format='png', width=800, height=500, scale=1)
+            image = Image.open(BytesIO(img_bytes))
+            return image
         except Exception as e:
             print(f"Error converting plotly figure: {e}")
             return None
     
-    def format_statistics_for_html(self, stats_text):
-        """Convert markdown statistics to HTML"""
-        if not stats_text:
-            return "<p>No statistics available.</p>"
-        
-        html = ""
-        lines = stats_text.split('\n')
-        in_list = False
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                if in_list:
-                    html += "</ul>"
-                    in_list = False
-                continue
-            
-            # Handle headers
-            if line.startswith('# '):
-                html += f"<h2>{line[2:]}</h2>"
-            elif line.startswith('## '):
-                html += f"<h3>{line[3:]}</h3>"
-            elif line.startswith('### '):
-                html += f"<h4>{line[4:]}</h4>"
-            # Handle bullet points
-            elif line.startswith('- **'):
-                if not in_list:
-                    html += "<ul>"
-                    in_list = True
-                # Extract content between ** **
-                content = line[2:]  # Remove '- '
-                content = content.replace('**', '')  # Remove bold markers
-                html += f"<li><strong>{content}</strong></li>"
-            elif line.startswith('- '):
-                if not in_list:
-                    html += "<ul>"
-                    in_list = True
-                html += f"<li>{line[2:]}</li>"
-            else:
-                if in_list:
-                    html += "</ul>"
-                    in_list = False
-                html += f"<p>{line}</p>"
-        
-        if in_list:
-            html += "</ul>"
-        
-        return html
-    
-    def format_insights_for_html(self, insights_text):
-        """Convert markdown insights to HTML with section formatting"""
-        if not insights_text:
-            return "<p>No insights available.</p>"
-        
-        html = ""
-        lines = insights_text.split('\n')
-        current_section = None
-        
-        for line in lines:
-            line = line.strip()
-            if not line:
-                continue
-            
-            # Handle main sections
-            if line.lower().startswith('executive summary'):
-                current_section = 'summary'
-                html += f'<div class="insight-box"><h3>{line}</h3>'
-            elif any(header in line.lower() for header in ['recommendations', 'suggestions']):
-                if current_section:
-                    html += '</div>'
-                current_section = 'recommendation'
-                html += f'<div class="recommendation"><h3>{line}</h3>'
-            elif line.startswith('# '):
-                if current_section:
-                    html += '</div>'
-                current_section = None
-                html += f"<h2>{line[2:]}</h2>"
-            elif line.startswith('## '):
-                if current_section:
-                    html += '</div>'
-                current_section = None
-                html += f"<h3>{line[3:]}</h3>"
-            else:
-                html += f"<p>{line}</p>"
-        
-        # Close any open section
-        if current_section:
-            html += '</div>'
-        
-        return html
-    
-    def generate_pdf_report(self, results, dataset_name, include_visualizations=True):
-        """Generate a complete PDF report from analysis results"""
-        if not WEASYPRINT_AVAILABLE:
-            raise Exception("WeasyPrint not available. Please install weasyprint and cairocffi.")
-        
+    def create_pdf_report(self, results, dataset_name):
+        """Create a comprehensive PDF report using FPDF2"""
         try:
-            df = results['dataframe']
+            # Create PDF
+            pdf = FPDF()
+            pdf.set_auto_page_break(auto=True, margin=15)
             
-            # Prepare overview statistics
-            overview_stats = [
-                {'value': f"{df.shape[0]:,}", 'label': 'Total Rows'},
-                {'value': f"{df.shape[1]}", 'label': 'Total Columns'},
-                {'value': f"{df.isnull().sum().sum():,}", 'label': 'Missing Values'},
-                {'value': f"{df.duplicated().sum():,}", 'label': 'Duplicated Rows'}
-            ]
+            # Add cover page
+            self._add_cover_page(pdf, dataset_name, results)
             
-            # Prepare column types
-            column_types = [
-                {'name': 'Numerical', 'count': len(df.select_dtypes(include=['number']).columns), 'color': '#3498db'},
-                {'name': 'Categorical', 'count': len(df.select_dtypes(include=['object', 'category']).columns), 'color': '#e74c3c'},
-                {'name': 'Boolean', 'count': len(df.select_dtypes(include=['bool']).columns), 'color': '#2ecc71'},
-                {'name': 'Date/Time', 'count': len(df.select_dtypes(include=['datetime']).columns), 'color': '#f39c12'}
-            ]
+            # Add table of contents
+            self._add_table_of_contents(pdf)
             
-            # Format statistics and insights
-            formatted_stats = self.format_statistics_for_html(results.get('statistics', ''))
-            formatted_insights = self.format_insights_for_html(results.get('ai_analysis', ''))
+            # Add dataset overview
+            self._add_dataset_overview(pdf, results)
             
-            # Prepare visualizations (limit to key ones)
-            visualizations = []
-            if include_visualizations and 'visualizations' in results:
-                key_viz = ['data_types', 'correlation_heatmap', 'missing_data']
-                for viz_name in key_viz:
-                    if viz_name in results['visualizations']:
-                        fig = results['visualizations'][viz_name]
-                        base64_img = self.convert_plotly_to_base64(fig)
-                        if base64_img:
-                            visualizations.append({
-                                'title': viz_name.replace('_', ' ').title(),
-                                'image': base64_img
-                            })
+            # Add statistics
+            self._add_statistics(pdf, results)
             
-            # Prepare template data
-            template_data = {
-                'dataset_name': dataset_name,
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'total_rows': f"{df.shape[0]:,}",
-                'total_columns': df.shape[1],
-                'overview_stats': overview_stats,
-                'column_types': column_types,
-                'statistics_html': formatted_stats,
-                'insights_html': formatted_insights,
-                'visualizations': visualizations
-            }
+            # Add AI insights
+            self._add_ai_insights(pdf, results)
             
-            # Render HTML
-            template = Template(self.html_template)
-            html_content = template.render(**template_data)
+            # Add visualizations if available
+            if 'visualizations' in results and results['visualizations']:
+                self._add_visualizations(pdf, results)
             
-            # Generate PDF
-            pdf_bytes = HTML(string=html_content, base_url='.').write_pdf()
+            # Add footer to all pages
+            pdf.alias_nb_pages()
             
+            # Get PDF bytes
+            pdf_bytes = pdf.output(dest='S').encode('latin-1')
             return pdf_bytes
             
         except Exception as e:
-            print(f"Error generating PDF: {e}")
-            raise Exception(f"PDF generation failed: {str(e)}")
+            print(f"Error creating PDF: {e}")
+            raise Exception(f"PDF creation failed: {str(e)}")
+    
+    def _add_cover_page(self, pdf, dataset_name, results):
+        """Add cover page to PDF"""
+        pdf.add_page()
+        
+        # Title
+        pdf.set_font('Arial', 'B', 24)
+        pdf.cell(0, 40, 'Data Analysis Report', 0, 1, 'C')
+        
+        # Subtitle
+        pdf.set_font('Arial', 'I', 16)
+        pdf.cell(0, 20, 'Generated by AI Data Analyzer', 0, 1, 'C')
+        
+        # Dataset info
+        pdf.set_font('Arial', '', 12)
+        pdf.ln(20)
+        pdf.cell(0, 10, f'Dataset: {dataset_name}', 0, 1, 'C')
+        
+        df = results['dataframe']
+        pdf.cell(0, 10, f'Shape: {df.shape[0]} rows × {df.shape[1]} columns', 0, 1, 'C')
+        pdf.cell(0, 10, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, 'C')
+        
+        # Add some spacing
+        pdf.ln(30)
+        
+        # Summary stats
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(0, 10, 'Dataset Summary', 0, 1, 'C')
+        pdf.set_font('Arial', '', 12)
+        
+        stats = [
+            f"Total Rows: {df.shape[0]:,}",
+            f"Total Columns: {df.shape[1]}",
+            f"Missing Values: {df.isnull().sum().sum():,}",
+            f"Duplicated Rows: {df.duplicated().sum():,}"
+        ]
+        
+        for stat in stats:
+            pdf.cell(0, 8, stat, 0, 1, 'C')
+    
+    def _add_table_of_contents(self, pdf):
+        """Add table of contents"""
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Table of Contents', 0, 1)
+        pdf.ln(10)
+        
+        pdf.set_font('Arial', '', 12)
+        contents = [
+            "1. Dataset Overview",
+            "2. Descriptive Statistics", 
+            "3. AI Insights & Analysis",
+            "4. Key Visualizations"
+        ]
+        
+        for item in contents:
+            pdf.cell(0, 8, item, 0, 1)
+            pdf.ln(5)
+    
+    def _add_dataset_overview(self, pdf, results):
+        """Add dataset overview section"""
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '1. Dataset Overview', 0, 1)
+        pdf.ln(10)
+        
+        df = results['dataframe']
+        
+        # Basic stats
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 8, 'Basic Information:', 0, 1)
+        pdf.set_font('Arial', '', 10)
+        
+        info_lines = [
+            f"Dataset Shape: {df.shape[0]} rows × {df.shape[1]} columns",
+            f"Total Cells: {df.shape[0] * df.shape[1]:,}",
+            f"Missing Values: {df.isnull().sum().sum():,}",
+            f"Duplicate Rows: {df.duplicated().sum():,}",
+            f"Memory Usage: {df.memory_usage(deep=True).sum() / 1024**2:.2f} MB"
+        ]
+        
+        for line in info_lines:
+            pdf.cell(0, 6, line, 0, 1)
+        
+        pdf.ln(10)
+        
+        # Data types
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 8, 'Data Types:', 0, 1)
+        pdf.set_font('Arial', '', 10)
+        
+        numerical_count = len(df.select_dtypes(include=['number']).columns)
+        categorical_count = len(df.select_dtypes(include=['object', 'category']).columns)
+        boolean_count = len(df.select_dtypes(include=['bool']).columns)
+        datetime_count = len(df.select_dtypes(include=['datetime']).columns)
+        
+        type_lines = [
+            f"Numerical Columns: {numerical_count}",
+            f"Categorical Columns: {categorical_count}", 
+            f"Boolean Columns: {boolean_count}",
+            f"Date/Time Columns: {datetime_count}"
+        ]
+        
+        for line in type_lines:
+            pdf.cell(0, 6, line, 0, 1)
+        
+        pdf.ln(10)
+        
+        # Column list
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 8, 'Columns:', 0, 1)
+        pdf.set_font('Arial', '', 8)
+        
+        for i, col in enumerate(df.columns, 1):
+            col_type = str(df[col].dtype)
+            pdf.cell(0, 5, f"{i}. {col} ({col_type})", 0, 1)
+    
+    def _add_statistics(self, pdf, results):
+        """Add descriptive statistics section"""
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '2. Descriptive Statistics', 0, 1)
+        pdf.ln(10)
+        
+        if 'statistics' not in results:
+            pdf.set_font('Arial', 'I', 12)
+            pdf.cell(0, 10, 'No statistics available.', 0, 1)
+            return
+        
+        # Add statistics text (simplified)
+        stats_text = results['statistics']
+        pdf.set_font('Arial', '', 10)
+        
+        # Split into lines and add to PDF
+        lines = stats_text.split('\n')
+        for line in lines[:50]:  # Limit to first 50 lines to avoid overflow
+            if line.strip():
+                # Clean up line
+                clean_line = line.strip()
+                if clean_line.startswith('#'):
+                    # Handle headers
+                    pdf.set_font('Arial', 'B', 12)
+                    pdf.cell(0, 8, clean_line.lstrip('# '), 0, 1)
+                    pdf.set_font('Arial', '', 10)
+                elif clean_line.startswith('-'):
+                    # Handle bullet points
+                    pdf.cell(10)  # Indent
+                    pdf.cell(0, 6, clean_line.lstrip('- '), 0, 1)
+                else:
+                    pdf.cell(0, 6, clean_line, 0, 1)
+        
+        pdf.ln(10)
+    
+    def _add_ai_insights(self, pdf, results):
+        """Add AI insights section"""
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '3. AI Insights & Analysis', 0, 1)
+        pdf.ln(10)
+        
+        if 'ai_analysis' not in results or not results['ai_analysis']:
+            pdf.set_font('Arial', 'I', 12)
+            pdf.cell(0, 10, 'No AI analysis available.', 0, 1)
+            return
+        
+        insights_text = results['ai_analysis']
+        pdf.set_font('Arial', '', 10)
+        
+        # Split into sections
+        sections = self._extract_sections(insights_text)
+        
+        for section_name, section_content in sections.items():
+            if section_content.strip():
+                # Section header
+                pdf.set_font('Arial', 'B', 12)
+                pdf.cell(0, 8, section_name, 0, 1)
+                pdf.set_font('Arial', '', 10)
+                
+                # Section content
+                lines = section_content.split('\n')
+                for line in lines[:30]:  # Limit lines per section
+                    if line.strip():
+                        pdf.multi_cell(0, 6, line.strip())
+                
+                pdf.ln(5)
+    
+    def _extract_sections(self, text):
+        """Extract sections from AI analysis text"""
+        sections = {
+            'Executive Summary': '',
+            'Statistical Analysis': '',
+            'Pattern Identification': '',
+            'Business Implications': '',
+            'Recommendations': ''
+        }
+        
+        current_section = None
+        lines = text.split('\n')
+        
+        for line in lines:
+            line_stripped = line.strip()
+            
+            # Check for section headers
+            if any(header in line_stripped.lower() for header in ['executive summary', 'summary']):
+                current_section = 'Executive Summary'
+                continue
+            elif any(header in line_stripped.lower() for header in ['statistical analysis', 'detailed analysis']):
+                current_section = 'Statistical Analysis'
+                continue
+            elif any(header in line_stripped.lower() for header in ['pattern identification', 'patterns']):
+                current_section = 'Pattern Identification'
+                continue
+            elif any(header in line_stripped.lower() for header in ['business implications', 'implications']):
+                current_section = 'Business Implications'
+                continue
+            elif any(header in line_stripped.lower() for header in ['recommendations', 'suggestions']):
+                current_section = 'Recommendations'
+                continue
+            
+            # Add content to current section
+            if current_section and line_stripped:
+                sections[current_section] += line + '\n'
+        
+        return sections
+    
+    def _add_visualizations(self, pdf, results):
+        """Add visualizations section"""
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '4. Key Visualizations', 0, 1)
+        pdf.ln(10)
+        
+        visualizations = results['visualizations']
+        added_viz = 0
+        
+        # Add key visualizations
+        key_viz_names = ['data_types', 'correlation_heatmap', 'missing_data']
+        
+        for viz_name in key_viz_names:
+            if viz_name in visualizations and added_viz < 3:  # Limit to 3 visualizations
+                fig = visualizations[viz_name]
+                image = self.convert_plotly_to_image(fig)
+                
+                if image:
+                    # Resize image to fit PDF
+                    max_width = 180
+                    max_height = 120
+                    image.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+                    
+                    # Save image to bytes
+                    img_buffer = BytesIO()
+                    image.save(img_buffer, format='PNG')
+                    img_buffer.seek(0)
+                    
+                    # Add image to PDF
+                    pdf.set_font('Arial', 'B', 10)
+                    pdf.cell(0, 8, viz_name.replace('_', ' ').title(), 0, 1, 'C')
+                    
+                    pdf.image(img_buffer, x=15, w=180)
+                    pdf.ln(5)
+                    
+                    added_viz += 1
+                    
+                    # Add page break if we've added multiple visualizations
+                    if added_viz % 2 == 0:
+                        pdf.add_page()
+    
+    def generate_pdf_report(self, results, dataset_name, include_visualizations=True):
+        """Main method to generate PDF report"""
+        try:
+            pdf_bytes = self.create_pdf_report(results, dataset_name)
+            return pdf_bytes
+        except Exception as e:
+            print(f"Error in generate_pdf_report: {e}")
+            raise
