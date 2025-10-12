@@ -11,6 +11,7 @@ import numpy as np
 
 # Import from our modules
 from en_01_analyzer import ChatBotAnalyzer
+from en_03_pdfgen import PDFReportGenerator
 
 # Set page configuration
 st.set_page_config(
@@ -154,6 +155,24 @@ st.markdown("""
         margin: 0.8rem 0;
         border-left: 4px solid #f39c12;
     }
+    .pdf-btn {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0.3rem;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 1rem;
+    }
+    .pdf-btn:hover {
+        background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
+        color: white;
+        text-decoration: none;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -178,6 +197,29 @@ def get_download_link(content, filename, text):
     """Generate a download link for text content"""
     b64 = base64.b64encode(content.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="download-btn">{text}</a>'
+
+def create_pdf_download_link(pdf_bytes, filename, text):
+    """Generate a download link for PDF content"""
+    b64 = base64.b64encode(pdf_bytes).decode()
+    return f'<a href="data:application/pdf;base64,{b64}" download="{filename}" class="pdf-btn">{text}</a>'
+
+def generate_complete_pdf_report(results, dataset_name):
+    """Generate a complete PDF report"""
+    try:
+        pdf_generator = PDFReportGenerator()
+        
+        with st.spinner("📊 Generating comprehensive PDF report..."):
+            pdf_bytes = pdf_generator.generate_pdf_report(results, dataset_name)
+            
+            if pdf_bytes and isinstance(pdf_bytes, bytes) and pdf_bytes.startswith(b'%PDF'):
+                return pdf_bytes
+            else:
+                st.error("Failed to generate valid PDF report")
+                return None
+                
+    except Exception as e:
+        st.error(f"Error generating PDF: {e}")
+        return None
 
 def display_welcome_screen(uploaded_file=None):
     """Display welcome screen with app information"""
@@ -229,6 +271,13 @@ def display_welcome_screen(uploaded_file=None):
             <p style="font-size: 0.9rem; margin: 0;">LLM-powered analysis to uncover hidden patterns</p>
         </div>
         """, unsafe_allow_html=True)
+        
+        st.markdown("""
+        <div class="feature-card">
+            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📄 PDF Reports</h4>
+            <p style="font-size: 0.9rem; margin: 0;">Professional PDF reports with all analysis and visualizations</p>
+        </div>
+        """, unsafe_allow_html=True)
     
     # How to use - More compact
     st.markdown("### 📋 How to Use")
@@ -240,7 +289,7 @@ def display_welcome_screen(uploaded_file=None):
                 <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download reports</strong> for offline use</li>
+                <li><strong>Download PDF reports</strong> for professional documentation</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
@@ -252,7 +301,7 @@ def display_welcome_screen(uploaded_file=None):
                 <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download reports</strong> for offline use</li>
+                <li><strong>Download PDF reports</strong> for professional documentation</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
@@ -339,10 +388,49 @@ def display_exploratory_analysis(results):
     """Display exploratory data analysis with tabs"""
     st.markdown('<div class="section-header">📊 Exploratory Data Analysis</div>', unsafe_allow_html=True)
     
-    # Download button
-    if 'ai_analysis' in results and 'statistics' in results:
-        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
-        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
+    # Nova seção de exportação
+    st.markdown("### 📥 Export Results")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="card">
+            <h4>📄 Professional PDF Report</h4>
+            <p>Generate a comprehensive PDF report with all analysis, insights, and visualizations.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔄 Generate PDF Report", use_container_width=True, key="pdf_full"):
+            pdf_bytes = generate_complete_pdf_report(
+                results, 
+                st.session_state.get('uploaded_file_name', 'dataset')
+            )
+            
+            if pdf_bytes:
+                st.markdown(
+                    create_pdf_download_link(
+                        pdf_bytes, 
+                        "complete_analysis_report.pdf", 
+                        "📥 Download Complete PDF Report"
+                    ), 
+                    unsafe_allow_html=True
+                )
+                st.success("✅ PDF report generated successfully!")
+            else:
+                st.error("❌ Failed to generate PDF report. Please try again.")
+    
+    with col2:
+        # Manter opção TXT como fallback
+        if 'ai_analysis' in results and 'statistics' in results:
+            combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+            st.markdown("""
+            <div class="card">
+                <h4>📝 Text Report</h4>
+                <p>Download the analysis in simple text format.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown(get_download_link(combined_report, "analysis_report.txt", "📥 Download Text Report"), unsafe_allow_html=True)
     
     # Overview cards
     df = results['dataframe']
@@ -677,10 +765,49 @@ def display_llm_insights(results):
     """Display LLM analysis with structured sections"""
     st.markdown('<div class="section-header">🤖 Insights Generated</div>', unsafe_allow_html=True)
     
-    # Download button
-    if 'ai_analysis' in results and 'statistics' in results:
-        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
-        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
+    # Nova seção de exportação
+    st.markdown("### 📥 Export Insights")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("""
+        <div class="card">
+            <h4>📄 PDF Insights Report</h4>
+            <p>Generate a professional PDF with AI insights and recommendations.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button("🔄 Generate PDF Insights", use_container_width=True, key="pdf_insights"):
+            pdf_bytes = generate_complete_pdf_report(
+                results, 
+                st.session_state.get('uploaded_file_name', 'dataset')
+            )
+            
+            if pdf_bytes:
+                st.markdown(
+                    create_pdf_download_link(
+                        pdf_bytes, 
+                        "ai_insights_report.pdf", 
+                        "📥 Download Insights PDF"
+                    ), 
+                    unsafe_allow_html=True
+                )
+                st.success("✅ PDF insights generated successfully!")
+            else:
+                st.error("❌ Failed to generate PDF insights. Please try again.")
+    
+    with col2:
+        # Manter opção TXT como alternativa
+        if 'ai_analysis' in results and 'statistics' in results:
+            combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+            st.markdown("""
+            <div class="card">
+                <h4>📝 Text Insights</h4>
+                <p>Download the insights in text format.</p>
+            </div>
+            """, unsafe_allow_html=True)
+            st.markdown(get_download_link(combined_report, "ai_insights_report.txt", "📥 Download Insights (TXT)"), unsafe_allow_html=True)
     
     if 'ai_analysis' not in results or not results['ai_analysis']:
         st.error("No AI analysis available. Please run the analysis first.")
