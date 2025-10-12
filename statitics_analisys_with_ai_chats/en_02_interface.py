@@ -204,21 +204,31 @@ def create_pdf_download_link(pdf_bytes, filename, text):
     return f'<a href="data:application/pdf;base64,{b64}" download="{filename}" class="pdf-btn">{text}</a>'
 
 def generate_complete_pdf_report(results, dataset_name):
-    """Generate a complete PDF report"""
+    """Generate a complete PDF report with error handling"""
     try:
         pdf_generator = PDFReportGenerator()
         
-        with st.spinner("📊 Generating comprehensive PDF report..."):
+        with st.spinner("📊 Generating comprehensive PDF report... This may take a moment."):
             pdf_bytes = pdf_generator.generate_pdf_report(results, dataset_name)
             
-            if pdf_bytes and isinstance(pdf_bytes, bytes) and pdf_bytes.startswith(b'%PDF'):
+            if pdf_bytes and isinstance(pdf_bytes, bytes) and len(pdf_bytes) > 1000:  # Basic PDF validation
                 return pdf_bytes
             else:
-                st.error("Failed to generate valid PDF report")
+                st.error("Generated PDF is invalid or too small")
                 return None
                 
     except Exception as e:
-        st.error(f"Error generating PDF: {e}")
+        st.error(f"PDF generation error: {str(e)}")
+        
+        # Provide helpful instructions
+        st.info("""
+        **Troubleshooting tips:**
+        - Make sure all dependencies are installed (weasyprint, cairocffi)
+        - For Streamlit Cloud, ensure these are in requirements.txt
+        - Try generating a smaller report with fewer visualizations
+        - The text report is always available as a fallback
+        """)
+        
         return None
 
 def display_welcome_screen(uploaded_file=None):
