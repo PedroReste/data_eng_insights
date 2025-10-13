@@ -12,37 +12,6 @@ import numpy as np
 # Import from our modules
 from en_01_analyzer import ChatBotAnalyzer
 
-# NEW: Importações para geração de PDF
-try:
-    from reportlab.lib.pagesizes import A4, letter
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, 
-        Image, PageBreak, KeepTogether
-    )
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-    from reportlab.lib.units import inch, cm
-    from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
-    from reportlab.pdfgen import canvas
-    from reportlab.pdfbase import pdfmetrics
-    from reportlab.pdfbase.ttfonts import TTFont
-    import plotly.io as pio
-    from PIL import Image as PILImage
-    import io
-    import tempfile
-    import base64
-    REPORTLAB_AVAILABLE = True
-except ImportError as e:
-    print(f"ReportLab não disponível: {e}")
-    REPORTLAB_AVAILABLE = False
-
-# NEW: Tentativa de importar HTML2PDF
-try:
-    import pdfkit
-    HTML2PDF_AVAILABLE = True
-except ImportError:
-    HTML2PDF_AVAILABLE = False
-
 # Set page configuration
 st.set_page_config(
     page_title="Data Analyzer",
@@ -51,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Dark theme CSS with print optimization
+# Dark theme CSS
 st.markdown("""
 <style>
     .stApp {
@@ -185,624 +154,8 @@ st.markdown("""
         margin: 0.8rem 0;
         border-left: 4px solid #f39c12;
     }
-    .pdf-btn {
-        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
-        color: white;
-        border: none;
-        padding: 0.8rem 1.5rem;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        margin: 0.3rem;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 1rem;
-    }
-    .pdf-btn:hover {
-        background: linear-gradient(135deg, #c0392b 0%, #e74c3c 100%);
-        color: white;
-        text-decoration: none;
-    }
-
-    /* Print Styles - Essential for PDF generation */
-    @media print {
-        /* Reset for printing */
-        * {
-            -webkit-print-color-adjust: exact !important;
-            color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        
-        .stApp {
-            background: white !important;
-            color: black !important;
-        }
-        
-        /* Hide elements that shouldn't be printed */
-        .stButton, 
-        .stDownloadButton, 
-        .stFileUploader,
-        .stSidebar,
-        [data-testid="stSidebar"],
-        [data-testid="stSidebarNav"],
-        .element-container:has(button),
-        .st-emotion-cache-1r6slb0,
-        .st-emotion-cache-1y4p8pa,
-        .no-print {
-            display: none !important;
-        }
-        
-        /* Main content adjustments */
-        .main-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            -webkit-background-clip: initial !important;
-            -webkit-text-fill-color: white !important;
-            color: white !important;
-            background-clip: initial !important;
-            text-fill-color: white !important;
-            font-size: 2rem !important;
-            padding: 1rem !important;
-            margin-bottom: 1rem !important;
-        }
-        
-        .section-header {
-            color: #2c3e50 !important;
-            border-bottom: 2px solid #3498db !important;
-            font-size: 1.3rem !important;
-            margin: 1rem 0 0.5rem 0 !important;
-        }
-        
-        .card, .stat-card, .analysis-card, .insight-section {
-            background: white !important;
-            color: black !important;
-            border: 1px solid #ddd !important;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-            page-break-inside: avoid !important;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-            color: white !important;
-        }
-        
-        /* Ensure proper page breaks */
-        .analysis-card, .insight-section {
-            page-break-inside: avoid;
-            break-inside: avoid;
-        }
-        
-        /* Plotly charts */
-        .js-plotly-plot, .plotly-graph-div {
-            page-break-inside: avoid !important;
-            max-width: 100% !important;
-        }
-        
-        /* Dataframes */
-        .dataframe {
-            page-break-inside: avoid !important;
-            font-size: 10px !important;
-        }
-        
-        /* Layout adjustments for printing */
-        [data-testid="stVerticalBlock"] {
-            gap: 0.5rem !important;
-        }
-        
-        /* Force A4 page size */
-        @page {
-            size: A4;
-            margin: 1cm;
-        }
-        
-        body {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-    }
-
-    /* Print-specific elements (hidden on screen) */
-    .print-only {
-        display: none;
-    }
-    
-    @media print {
-        .print-only {
-            display: block !important;
-        }
-    }
 </style>
 """, unsafe_allow_html=True)
-
-# =============================================================================
-# FUNÇÕES PARA HTML2PDF (OPÇÃO 1)
-# =============================================================================
-
-def generate_html2pdf(results, dataset_name):
-    """Tentativa de converter HTML para PDF usando pdfkit"""
-    if not HTML2PDF_AVAILABLE:
-        st.error("pdfkit não está disponível. Instale com: pip install pdfkit")
-        return None
-    
-    try:
-        # Criar conteúdo HTML que tenta imitar o Streamlit
-        html_content = create_streamlit_like_html(results, dataset_name)
-        
-        # Configurações para pdfkit
-        options = {
-            'page-size': 'A4',
-            'margin-top': '0.75in',
-            'margin-right': '0.75in',
-            'margin-bottom': '0.75in',
-            'margin-left': '0.75in',
-            'encoding': "UTF-8",
-            'custom-header': [
-                ('Accept-Encoding', 'gzip')
-            ],
-            'no-outline': None,
-            'enable-local-file-access': None
-        }
-        
-        # Gerar PDF
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
-            pdfkit.from_string(html_content, tmp_file.name, options=options)
-            
-            # Ler o arquivo gerado
-            with open(tmp_file.name, 'rb') as f:
-                pdf_bytes = f.read()
-            
-            # Limpar arquivo temporário
-            os.unlink(tmp_file.name)
-            
-            return pdf_bytes
-            
-    except Exception as e:
-        st.error(f"Erro ao gerar PDF com pdfkit: {str(e)}")
-        return None
-
-def create_streamlit_like_html(results, dataset_name):
-    """Criar HTML que tenta imitar o visual do Streamlit"""
-    df = results['dataframe']
-    
-    html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>Data Analysis Report - {dataset_name}</title>
-        <style>
-            body {{
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                background: linear-gradient(135deg, #0e1117 0%, #1e2130 100%);
-                color: #fafafa;
-                margin: 0;
-                padding: 20px;
-            }}
-            .container {{
-                max-width: 1200px;
-                margin: 0 auto;
-                background: rgba(30, 33, 48, 0.9);
-                border-radius: 15px;
-                padding: 30px;
-                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            }}
-            .header {{
-                text-align: center;
-                margin-bottom: 40px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                -webkit-background-clip: text;
-                -webkit-text-fill-color: transparent;
-                background-clip: text;
-            }}
-            .section {{
-                background: #1e2130;
-                border-radius: 12px;
-                padding: 25px;
-                margin: 20px 0;
-                border-left: 4px solid #3498db;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            }}
-            .metrics-grid {{
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 15px;
-                margin: 20px 0;
-            }}
-            .metric-card {{
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                border-radius: 10px;
-                padding: 20px;
-                text-align: center;
-                color: white;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-            }}
-            .metric-value {{
-                font-size: 2rem;
-                font-weight: bold;
-                margin: 10px 0;
-            }}
-            .metric-label {{
-                font-size: 0.9rem;
-                opacity: 0.9;
-            }}
-            .table-container {{
-                background: #2d3256;
-                border-radius: 8px;
-                padding: 15px;
-                margin: 15px 0;
-                overflow-x: auto;
-            }}
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-                color: white;
-            }}
-            th, td {{
-                padding: 12px;
-                text-align: left;
-                border-bottom: 1px solid #34495e;
-            }}
-            th {{
-                background: #3498db;
-                color: white;
-            }}
-            tr:hover {{
-                background: rgba(52, 152, 219, 0.1);
-            }}
-            .chart-container {{
-                background: #2d3256;
-                border-radius: 8px;
-                padding: 20px;
-                margin: 20px 0;
-                text-align: center;
-            }}
-            .ai-section {{
-                background: linear-gradient(135deg, #2d3256 0%, #1e2130 100%);
-                border-radius: 8px;
-                padding: 25px;
-                margin: 20px 0;
-                border-left: 4px solid #f39c12;
-            }}
-            .footer {{
-                text-align: center;
-                margin-top: 40px;
-                padding: 20px;
-                border-top: 1px solid #34495e;
-                color: #7f8c8d;
-            }}
-            h1 {{ font-size: 2.5rem; margin-bottom: 10px; }}
-            h2 {{ color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 10px; }}
-            h3 {{ color: #2ecc71; }}
-            .type-card {{
-                background: linear-gradient(135deg, #2d3256 0%, #1e2130 100%);
-                border-radius: 10px;
-                padding: 15px;
-                text-align: center;
-                margin: 10px;
-                border: 1px solid #3498db;
-                display: inline-block;
-                width: 200px;
-            }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="header">
-                <h1>📊 Data Analyzer</h1>
-                <h2>Analysis Report: {dataset_name}</h2>
-                <p>Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-            </div>
-            
-            <div class="section">
-                <h2>📈 Dataset Overview</h2>
-                <div class="metrics-grid">
-                    <div class="metric-card">
-                        <div class="metric-value">{df.shape[0]:,}</div>
-                        <div class="metric-label">Total Rows</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">{df.shape[1]}</div>
-                        <div class="metric-label">Total Columns</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">{df.isnull().sum().sum():,}</div>
-                        <div class="metric-label">Missing Values</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-value">{df.duplicated().sum():,}</div>
-                        <div class="metric-label">Duplicate Rows</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="section">
-                <h2>🔧 Data Types</h2>
-    """
-    
-    # Adicionar tipos de dados
-    analyzer = st.session_state.analyzer
-    simple_types = analyzer.get_simple_column_types()
-    
-    for col_type, columns in simple_types.items():
-        if columns:
-            html += f"""
-                <div class="type-card">
-                    <div style="font-size: 1.5rem; font-weight: bold;">{len(columns)}</div>
-                    <div style="font-size: 0.9rem;">{col_type} Columns</div>
-                </div>
-            """
-    
-    html += """
-            </div>
-            
-            <div class="section">
-                <h2>📊 Sample Data</h2>
-                <div class="table-container">
-    """
-    
-    # Adicionar amostra de dados (primeiras 5 linhas)
-    sample_html = df.head().to_html(classes='dataframe', index=False, escape=False)
-    html += sample_html
-    
-    html += """
-                </div>
-            </div>
-            
-            <div class="ai-section">
-                <h2>🤖 AI Analysis Summary</h2>
-                <p><em>Note: This is a simplified version of the AI analysis. Full analysis includes detailed insights and recommendations.</em></p>
-    """
-    
-    # Adicionar resumo da análise AI
-    if 'ai_analysis' in results:
-        ai_preview = results['ai_analysis'][:500] + "..." if len(results['ai_analysis']) > 500 else results['ai_analysis']
-        html += f'<p>{ai_preview}</p>'
-    
-    html += """
-            </div>
-            
-            <div class="footer">
-                <p>Generated by AI Data Analyzer | Professional Data Analysis Tool</p>
-                <p>This report was generated automatically based on the dataset analysis.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-    
-    return html
-
-# =============================================================================
-# FUNÇÕES PARA REPORTLAB (SOLUÇÃO PRÁTICA)
-# =============================================================================
-
-def export_plotly_figure(fig, width=800, height=400):
-    """Export Plotly figure to PNG bytes"""
-    try:
-        # Converter figura Plotly para imagem PNG
-        img_bytes = pio.to_image(fig, format='png', width=width, height=height)
-        return img_bytes
-    except Exception as e:
-        print(f"Erro ao exportar figura Plotly: {e}")
-        return None
-
-def generate_streamlit_like_pdf(results, dataset_name):
-    """Generate PDF that captures the essence of Streamlit presentation"""
-    if not REPORTLAB_AVAILABLE:
-        st.error("ReportLab não está disponível. Instale com: pip install reportlab")
-        return None
-    
-    try:
-        buffer = io.BytesIO()
-        
-        # Configuração do documento
-        doc = SimpleDocTemplate(
-            buffer,
-            pagesize=A4,
-            rightMargin=0.5*inch,
-            leftMargin=0.5*inch,
-            topMargin=0.5*inch,
-            bottomMargin=0.5*inch
-        )
-        
-        styles = getSampleStyleSheet()
-        
-        # Estilos customizados que lembram o tema escuro do Streamlit
-        title_style = ParagraphStyle(
-            'StreamlitTitle',
-            parent=styles['Heading1'],
-            fontSize=20,
-            textColor=colors.HexColor('#2c3e50'),
-            alignment=TA_CENTER,
-            spaceAfter=30,
-            backColor=colors.HexColor('#f8f9fa'),
-            borderPadding=10,
-            borderColor=colors.HexColor('#3498db'),
-            borderWidth=1
-        )
-        
-        section_style = ParagraphStyle(
-            'StreamlitSection',
-            parent=styles['Heading2'],
-            fontSize=14,
-            textColor=colors.HexColor('#3498db'),
-            leftIndent=10,
-            spaceAfter=15,
-            borderLeft=4,
-            borderColor=colors.HexColor('#3498db'),
-            borderPadding=5
-        )
-        
-        card_style = ParagraphStyle(
-            'StreamlitCard',
-            parent=styles['Normal'],
-            fontSize=10,
-            textColor=colors.HexColor('#2c3e50'),
-            backColor=colors.HexColor('#f8f9fa'),
-            borderColor=colors.HexColor('#e0e0e0'),
-            borderWidth=1,
-            borderPadding=10,
-            spaceAfter=10
-        )
-        
-        story = []
-        
-        # Cabeçalho estilo Streamlit
-        story.append(Paragraph("📊 Data Analyzer", title_style))
-        story.append(Paragraph(f"Analysis Report: {dataset_name}", styles['Heading2']))
-        story.append(Paragraph(f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
-        story.append(Spacer(1, 20))
-        
-        # Cards de métricas (similar aos cards do Streamlit)
-        df = results['dataframe']
-        story.append(Paragraph("📈 Dataset Overview", section_style))
-        
-        # Grid de métricas
-        metrics_data = [
-            ['Total Rows', 'Total Columns', 'Missing Values', 'Duplicate Rows'],
-            [f"{df.shape[0]:,}", f"{df.shape[1]}", f"{df.isnull().sum().sum():,}", f"{df.duplicated().sum():,}"]
-        ]
-        
-        metrics_table = Table(metrics_data, colWidths=[1.5*inch]*4)
-        metrics_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 11),
-            ('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f8f9fa')),
-            ('FONTSIZE', (0, 1), (-1, 1), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
-        ]))
-        story.append(metrics_table)
-        story.append(Spacer(1, 20))
-        
-        # Tipos de dados
-        analyzer = st.session_state.analyzer
-        simple_types = analyzer.get_simple_column_types()
-        
-        story.append(Paragraph("🔧 Data Types", section_style))
-        
-        type_data = [['Data Type', 'Count']]
-        for col_type, columns in simple_types.items():
-            if columns:
-                type_data.append([col_type, str(len(columns))])
-        
-        type_table = Table(type_data, colWidths=[3*inch, 1*inch])
-        type_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
-            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e0e0e0')),
-        ]))
-        story.append(type_table)
-        story.append(Spacer(1, 20))
-        
-        story.append(PageBreak())
-        
-        # Visualizações
-        story.append(Paragraph("📊 Visualizations", section_style))
-        
-        visualizations = results.get('visualizations', {})
-        for viz_name, fig in visualizations.items():
-            try:
-                # Título do gráfico
-                story.append(Paragraph(f"📈 {viz_name.replace('_', ' ').title()}", styles['Heading3']))
-                
-                # Exportar gráfico como imagem
-                img_bytes = export_plotly_figure(fig, width=600, height=400)
-                if img_bytes:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
-                        tmp_file.write(img_bytes)
-                        img = Image(tmp_file.name, width=6*inch, height=4*inch)
-                        story.append(img)
-                        story.append(Spacer(1, 10))
-                    os.unlink(tmp_file.name)
-                
-                # Adicionar quebra de página após cada 2 gráficos
-                if list(visualizations.keys()).index(viz_name) % 2 == 1:
-                    story.append(PageBreak())
-                    
-            except Exception as e:
-                continue
-        
-        story.append(PageBreak())
-        
-        # Análise da IA
-        if 'ai_analysis' in results and results['ai_analysis']:
-            story.append(Paragraph("🤖 AI Analysis", section_style))
-            
-            # Criar cards para cada seção da análise
-            ai_text = results['ai_analysis']
-            sections = extract_ai_sections(ai_text)
-            
-            for section_name, section_content in sections.items():
-                if section_content.strip():
-                    story.append(Paragraph(f"🔍 {section_name}", styles['Heading3']))
-                    
-                    # Card para conteúdo
-                    content_card = Paragraph(section_content, card_style)
-                    story.append(content_card)
-                    story.append(Spacer(1, 10))
-        
-        # Rodapé
-        story.append(Spacer(1, 20))
-        story.append(Paragraph("---", styles['Normal']))
-        footer_text = "Generated by AI Data Analyzer | Professional Data Analysis Tool"
-        story.append(Paragraph(footer_text, styles['Italic']))
-        
-        doc.build(story)
-        buffer.seek(0)
-        return buffer
-        
-    except Exception as e:
-        st.error(f"Error generating Streamlit-like PDF: {str(e)}")
-        return None
-
-def extract_ai_sections(ai_text):
-    """Extrair seções da análise da IA de forma mais inteligente"""
-    sections = {
-        'Executive Summary': '',
-        'Statistical Analysis': '', 
-        'Patterns & Insights': '',
-        'Recommendations': ''
-    }
-    
-    current_section = None
-    lines = ai_text.split('\n')
-    
-    for line in lines:
-        line_stripped = line.strip()
-        
-        # Detectar seções por palavras-chave
-        if not line_stripped:
-            continue
-            
-        lower_line = line_stripped.lower()
-        
-        if any(keyword in lower_line for keyword in ['executive', 'summary', 'overview']):
-            current_section = 'Executive Summary'
-            continue
-        elif any(keyword in lower_line for keyword in ['statistical', 'analysis', 'data quality']):
-            current_section = 'Statistical Analysis'
-            continue
-        elif any(keyword in lower_line for keyword in ['pattern', 'insight', 'trend', 'finding']):
-            current_section = 'Patterns & Insights'
-            continue
-        elif any(keyword in lower_line for keyword in ['recommendation', 'suggestion', 'next step']):
-            current_section = 'Recommendations'
-            continue
-        
-        # Adicionar conteúdo à seção atual
-        if current_section and line_stripped and not line_stripped.startswith('#'):
-            sections[current_section] += line_stripped + ' '
-    
-    return sections
-
-# =============================================================================
-# FUNÇÕES ORIGINAIS DA INTERFACE (mantidas para compatibilidade)
-# =============================================================================
 
 def create_stat_card(value, label, icon="📊", color="#667eea"):
     return f"""
@@ -825,58 +178,6 @@ def get_download_link(content, filename, text):
     """Generate a download link for text content"""
     b64 = base64.b64encode(content.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="download-btn">{text}</a>'
-
-def display_print_instructions():
-    """Display instructions for generating PDF via browser print"""
-    st.markdown("""
-    <div class="card no-print">
-        <h3>📄 Generate PDF Report</h3>
-        <p>To generate a PDF report with the exact same appearance as this page:</p>
-        <ol>
-            <li><strong>Use your browser's print function:</strong></li>
-            <li><strong>Windows/Linux:</strong> Press <kbd>Ctrl</kbd> + <kbd>P</kbd></li>
-            <li><strong>Mac:</strong> Press <kbd>Cmd</kbd> + <kbd>P</kbd></li>
-            <li>In the print dialog, select <strong>"Save as PDF"</strong> as destination</li>
-            <li>Click <strong>"Save"</strong> to download the PDF</li>
-        </ol>
-        <p><strong>Benefits of this method:</strong></p>
-        <ul>
-            <li>✅ Exact visual representation of the analysis</li>
-            <li>✅ Includes all interactive charts and graphs</li>
-            <li>✅ Professional formatting maintained</li>
-            <li>✅ Works with complex layouts and visualizations</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-
-def add_print_header(dataset_name):
-    """Add print-only header with dataset information"""
-    st.markdown(f"""
-    <div class="print-only" style="
-        border-bottom: 2px solid #3498db; 
-        padding-bottom: 1rem; 
-        margin-bottom: 2rem;
-        text-align: center;
-    ">
-        <h1 style="color: #2c3e50; margin: 0; font-size: 2rem;">Data Analysis Report</h1>
-        <p style="color: #7f8c8d; margin: 0.5rem 0; font-size: 1.1rem;">
-            Dataset: {dataset_name} | Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}
-        </p>
-        <p style="color: #95a5a6; margin: 0; font-size: 0.9rem;">
-            Generated by AI Data Analyzer
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-
-def add_print_javascript():
-    """Add JavaScript to trigger print dialog"""
-    st.markdown("""
-    <script>
-    function openPrintDialog() {
-        window.print();
-    }
-    </script>
-    """, unsafe_allow_html=True)
 
 def display_welcome_screen(uploaded_file=None):
     """Display welcome screen with app information"""
@@ -928,13 +229,6 @@ def display_welcome_screen(uploaded_file=None):
             <p style="font-size: 0.9rem; margin: 0;">LLM-powered analysis to uncover hidden patterns</p>
         </div>
         """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="feature-card">
-            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📄 PDF Reports</h4>
-            <p style="font-size: 0.9rem; margin: 0;">Professional PDF reports via browser print function</p>
-        </div>
-        """, unsafe_allow_html=True)
     
     # How to use - More compact
     st.markdown("### 📋 How to Use")
@@ -946,7 +240,7 @@ def display_welcome_screen(uploaded_file=None):
                 <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download PDF reports</strong> using Ctrl+P (Windows) or Cmd+P (Mac)</li>
+                <li><strong>Download reports</strong> for offline use</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
@@ -958,7 +252,7 @@ def display_welcome_screen(uploaded_file=None):
                 <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
                 <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download PDF reports</strong> using Ctrl+P (Windows) or Cmd+P (Mac)</li>
+                <li><strong>Download reports</strong> for offline use</li>
             </ol>
         </div>
         """, unsafe_allow_html=True)
@@ -1018,22 +312,26 @@ def create_correlation_heatmap(df):
     # Calculate correlation matrix
     corr_matrix = df_encoded.corr()
     
-    # Create heatmap - configuração mais simples
+    # Create heatmap
     fig = px.imshow(
         corr_matrix,
         title="Correlation Matrix (All Variables)",
         color_continuous_scale='RdBu_r',
         aspect="auto",
-        range_color=[-1, 1],
-        labels=dict(color="Correlation")
+        range_color=[-1, 1]
     )
     
     fig.update_layout(
         height=600,
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white'),
-        coloraxis_colorbar=dict(
+        font=dict(color='white')
+    )
+    
+    # Update colorbar
+    fig.update_coloraxes(
+        colorbar=dict(
             title="Correlation",
+            titleside="right",
             tickvals=[-1, -0.5, 0, 0.5, 1],
             ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
         )
@@ -1045,152 +343,10 @@ def display_exploratory_analysis(results):
     """Display exploratory data analysis with tabs"""
     st.markdown('<div class="section-header">📊 Exploratory Data Analysis</div>', unsafe_allow_html=True)
     
-    # Add print header
-    dataset_name = st.session_state.get('uploaded_file_name', 'dataset')
-    add_print_header(dataset_name)
-    
-    # Add JavaScript for print functionality
-    add_print_javascript()
-    
-    # NOVA SEÇÃO: Comparação de Métodos PDF
-    st.markdown("### 🧪 PDF Generation Methods Comparison")
-    
-    # Informações sobre disponibilidade
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        if REPORTLAB_AVAILABLE:
-            st.success("✅ ReportLab disponível")
-        else:
-            st.error("❌ ReportLab não disponível")
-            
-    with col2:
-        if HTML2PDF_AVAILABLE:
-            st.success("✅ HTML2PDF disponível")
-        else:
-            st.warning("⚠️ HTML2PDF não disponível")
-    
-    # Métodos de PDF
-    st.markdown("#### 📄 Escolha o Método de Geração de PDF:")
-    
-    pdf_method = st.radio(
-        "Selecione a abordagem de geração de PDF:",
-        [
-            "🎯 ReportLab - Layout Otimizado (Recomendado)",
-            "🌐 HTML2PDF - Tentativa de replicar Streamlit", 
-            "🖨️ Impressão do Navegador - Fidelidade Máxima"
-        ],
-        index=0
-    )
-    
-    if pdf_method == "🎯 ReportLab - Layout Otimizado (Recomendado)":
-        if not REPORTLAB_AVAILABLE:
-            st.error("ReportLab não está disponível. Instale com: `pip install reportlab pillow`")
-        else:
-            if st.button("🚀 Gerar PDF com ReportLab", use_container_width=True):
-                with st.spinner("Gerando PDF otimizado com ReportLab..."):
-                    pdf_buffer = generate_streamlit_like_pdf(results, dataset_name)
-                    if pdf_buffer:
-                        st.success("✅ PDF gerado com sucesso!")
-                        st.download_button(
-                            label="📥 Download PDF (ReportLab)",
-                            data=pdf_buffer,
-                            file_name=f"{dataset_name}_reportlab_report.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    else:
-                        st.error("❌ Falha ao gerar PDF com ReportLab")
-            
-            st.markdown("""
-            **Vantagens do ReportLab:**
-            - ✅ Layout profissional e organizado
-            - ✅ Gráficos incluídos como imagens de alta qualidade
-            - ✅ Controle total sobre o design
-            - ✅ Performance otimizada
-            - ✅ Estrutura de tópicos clara
-            """)
-    
-    elif pdf_method == "🌐 HTML2PDF - Tentativa de replicar Streamlit":
-        if not HTML2PDF_AVAILABLE:
-            st.error("HTML2PDF não está disponível. Instale com: `pip install pdfkit` e instale wkhtmltopdf")
-            st.info("""
-            **Instalação do wkhtmltopdf:**
-            - **Ubuntu/Debian**: `sudo apt-get install wkhtmltopdf`
-            - **Windows**: Baixe do site oficial
-            - **Mac**: `brew install wkhtmltopdf`
-            """)
-        else:
-            if st.button("🌐 Gerar PDF com HTML2PDF", use_container_width=True):
-                with st.spinner("Gerando PDF com HTML2PDF (pode ser mais lento)..."):
-                    pdf_bytes = generate_html2pdf(results, dataset_name)
-                    if pdf_bytes:
-                        st.success("✅ PDF gerado com sucesso!")
-                        st.download_button(
-                            label="📥 Download PDF (HTML2PDF)",
-                            data=pdf_bytes,
-                            file_name=f"{dataset_name}_html2pdf_report.pdf",
-                            mime="application/pdf",
-                            use_container_width=True
-                        )
-                    else:
-                        st.error("❌ Falha ao gerar PDF com HTML2PDF")
-            
-            st.markdown("""
-            **Características do HTML2PDF:**
-            - ✅ Tenta replicar visual do Streamlit
-            - ❌ Pode não funcionar bem com gráficos complexos
-            - ❌ Performance variável
-            - ❌ Depende de wkhtmltopdf externo
-            """)
-    
-    else:  # Impressão do navegador
-        display_print_instructions()
-        
-        st.markdown("""
-        **Vantagens da Impressão do Navegador:**
-        - ✅ Fidelidade visual máxima (exatamente igual ao que você vê)
-        - ✅ Funciona com todos os gráficos interativos
-        - ✅ Grátis e sem dependências adicionais
-        - ✅ Layout responsivo mantido
-        """)
-        
-        if st.button("🖨️ Abrir Diálogo de Impressão", use_container_width=True, key="print_main"):
-            st.markdown("""
-            <script>
-            window.print();
-            </script>
-            """, unsafe_allow_html=True)
-            st.info("💰 **Dica**: No diálogo de impressão, selecione 'Salvar como PDF' como destino")
-    
-    st.markdown("---")
-    
-    # Conteúdo original da análise
-    # Export section original
-    st.markdown("### 📥 Export Results")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        # Text report fallback
-        if 'ai_analysis' in results and 'statistics' in results:
-            combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
-            st.markdown("""
-            <div class="card">
-                <h4>📝 Text Report (Fallback)</h4>
-                <p>Download the analysis in simple text format as a fallback option.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(get_download_link(combined_report, "analysis_report.txt", "📥 Download Text Report"), unsafe_allow_html=True)
-    
-    with col2:
-        # Additional export options
-        st.markdown("""
-        <div class="card">
-            <h4>🔧 Outras Opções</h4>
-            <p>Formatos alternativos para exportação dos dados.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    # Download button
+    if 'ai_analysis' in results and 'statistics' in results:
+        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
     
     # Overview cards
     df = results['dataframe']
@@ -1262,9 +418,6 @@ def display_exploratory_analysis(results):
         with tabs[tab_index]:
             display_datetime_tab(results)
 
-# ... (mantenha todas as outras funções display_* existentes: display_overview_tab, display_numerical_tab, etc.)
-# ... (essas funções permanecem exatamente como estavam antes)
-
 def display_overview_tab(results):
     """Display overview tab content"""
     df = results['dataframe']
@@ -1307,25 +460,12 @@ def display_numerical_tab(results):
             # Visualizations - Line chart instead of histogram
             viz_col1, viz_col2 = st.columns(2)
             with viz_col1:
-                # Gráfico de área
-                chart_data = df[col].dropna()
-                if len(chart_data) > 0:
-                    hist_values, bin_edges = np.histogram(chart_data, bins=50)
-                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
-                    
-                    fig_area = px.area(
-                        x=bin_centers, 
-                        y=hist_values, 
-                        title=f"Distribution - {col}",
-                        labels={'x': col, 'y': 'Frequency'}
-                    )
-                    
-                    fig_area.update_traces(
-                        line=dict(color='#3498db', width=2),
-                        fillcolor='rgba(52, 152, 219, 0.5)'
-                    )
-                    
-                    fig_area.update_layout(
+                # Line chart (distribution)
+                hist_data = df[col].dropna()
+                if len(hist_data) > 0:
+                    fig_line = px.histogram(hist_data, nbins=50, title=f"Distribution - {col}")
+                    fig_line.update_traces(marker_color='#3498db', opacity=0.7)
+                    fig_line.update_layout(
                         paper_bgcolor='rgba(0,0,0,0)',
                         plot_bgcolor='rgba(0,0,0,0)',
                         font=dict(color='white'),
@@ -1333,8 +473,7 @@ def display_numerical_tab(results):
                         xaxis_title=col,
                         yaxis_title="Frequency"
                     )
-                    
-                    st.plotly_chart(fig_area, use_container_width=True)
+                    st.plotly_chart(fig_line, use_container_width=True)
             
             with viz_col2:
                 # Box plot
@@ -1445,7 +584,7 @@ def display_boolean_tab(results):
                 # Larger donut chart with specific colors
                 colors = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
                 color_sequence = [colors.get(str(label), '#3498db') for label in value_counts.index]
-
+                
                 fig_donut = px.pie(
                     values=value_counts.values,
                     names=[str(label) for label in value_counts.index],
@@ -1456,8 +595,7 @@ def display_boolean_tab(results):
                 fig_donut.update_traces(
                     textposition='inside', 
                     textinfo='percent+label',
-                    marker=dict(line=dict(color="#000000", width=2)),
-                    textfont=dict(color='white', size=14)
+                    marker=dict(line=dict(color='#000000', width=2))
                 )
                 fig_donut.update_layout(
                     height=400,  # Larger chart
@@ -1473,6 +611,8 @@ def display_boolean_tab(results):
                     )
                 )
                 st.plotly_chart(fig_donut, use_container_width=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def display_datetime_tab(results):
     """Display datetime columns analysis"""
@@ -1528,50 +668,10 @@ def display_llm_insights(results):
     """Display LLM analysis with structured sections"""
     st.markdown('<div class="section-header">🤖 Insights Generated</div>', unsafe_allow_html=True)
     
-    # Add print header
-    dataset_name = st.session_state.get('uploaded_file_name', 'dataset')
-    add_print_header(dataset_name)
-    
-    # Add JavaScript for print functionality
-    add_print_javascript()
-    
-    # Export section
-    st.markdown("### 📥 Export Insights")
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        display_print_instructions()
-        
-        # Botão funcional usando st.button com JavaScript
-        st.markdown("""
-        <div class="no-print" style="text-align: center; margin: 2rem 0;">
-            <p style="color: #888; font-size: 0.9rem; margin-bottom: 1rem;">
-                Quick print shortcut: <kbd>Ctrl</kbd> + <kbd>P</kbd> (Windows/Linux) or <kbd>Cmd</kbd> + <kbd>P</kbd> (Mac)
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Botão que realmente funciona no Streamlit
-        if st.button("🖨️ Open Print Dialog", use_container_width=True, key="print_insights"):
-            st.markdown("""
-            <script>
-            window.print();
-            </script>
-            """, unsafe_allow_html=True)
-            st.info("💰 **Tip**: In the print dialog, select 'Save as PDF' as destination")
-    
-    with col2:
-        # Text report fallback
-        if 'ai_analysis' in results and 'statistics' in results:
-            combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
-            st.markdown("""
-            <div class="card">
-                <h4>📝 Text Insights (Fallback)</h4>
-                <p>Download the insights in text format as a fallback option.</p>
-            </div>
-            """, unsafe_allow_html=True)
-            st.markdown(get_download_link(combined_report, "ai_insights_report.txt", "📥 Download Insights (TXT)"), unsafe_allow_html=True)
+    # Download button
+    if 'ai_analysis' in results and 'statistics' in results:
+        combined_report = f"# Data Analysis Report\n\n## Descriptive Statistics\n\n{results['statistics']}\n\n## AI Analysis\n\n{results['ai_analysis']}"
+        st.markdown(get_download_link(combined_report, "complete_analysis_report.txt", "📥 Download Complete Report (TXT)"), unsafe_allow_html=True)
     
     if 'ai_analysis' not in results or not results['ai_analysis']:
         st.error("No AI analysis available. Please run the analysis first.")
