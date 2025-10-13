@@ -181,9 +181,11 @@ def get_download_link(content, filename, text):
 
 def display_welcome_screen(uploaded_file=None):
     """Display welcome screen with app information"""
-    st.markdown('<h1 class="main-header">📊 Data Analyzer</h1>', unsafe_allow_html=True)
+    # Título sem ícone
+    st.markdown('<h1 class="main-header">Data Analyzer</h1>', unsafe_allow_html=True)
     
     if uploaded_file:
+        # Unificar as seções de sucesso e análise profunda
         st.markdown(f"""
         <div class="welcome-card">
             <h2 style="color: #2ecc71; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">✅ File Uploaded Successfully!</h2>
@@ -191,6 +193,10 @@ def display_welcome_screen(uploaded_file=None):
             <strong>File:</strong> {uploaded_file.name}<br>
             Ready for analysis. Click the <strong>"Analyze Dataset"</strong> button in the sidebar to start.
             </p>
+            <div style="background: rgba(52, 152, 219, 0.1); border-radius: 8px; padding: 1rem; margin-top: 1rem;">
+                <h3 style="font-size: 1.2rem; color: #3498db; margin-bottom: 0.5rem;">🚀 Ready for Deep Analysis?</h3>
+                <p style="font-size: 0.9rem; margin: 0;">Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights.</p>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     else:
@@ -203,73 +209,71 @@ def display_welcome_screen(uploaded_file=None):
         </div>
         """, unsafe_allow_html=True)
     
-    # Features - More compact layout
+    # Features - Unificar os três cards em um
     st.markdown("### ✨ Application Features")
-    features_col1, features_col2 = st.columns(2)
-    
-    with features_col1:
-        st.markdown("""
-        <div class="feature-card">
-            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📊 Descriptive Analysis</h4>
-            <p style="font-size: 0.9rem; margin: 0;">Comprehensive statistical reports and data profiling</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="feature-card">
-            <h4 style="margin: 0.5rem 0; font-size: 1rem;">📈 Data Visualization</h4>
-            <p style="font-size: 0.9rem; margin: 0;">Interactive charts and graphs for all variable types</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with features_col2:
-        st.markdown("""
-        <div class="feature-card">
-            <h4 style="margin: 0.5rem 0; font-size: 1rem;">🤖 AI Insights</h4>
-            <p style="font-size: 0.9rem; margin: 0;">LLM-powered analysis to uncover hidden patterns</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # How to use - More compact
-    st.markdown("### 📋 How to Use")
-    if uploaded_file:
-        st.markdown(f"""
-        <div class="card">
-            <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
-                <li style="margin-bottom: 0.5rem;"><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download reports</strong> for offline use</li>
-            </ol>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div class="card">
-            <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
-                <li style="margin-bottom: 0.5rem;"><strong>Upload your CSV file</strong> using the sidebar uploader</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-                <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                <li><strong>Download reports</strong> for offline use</li>
-            </ol>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    # Tips - More compact
-    st.markdown("### 💡 Tips for Best Results")
     st.markdown("""
-    <div class="card">
-        <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
-            <li style="margin-bottom: 0.3rem;">Ensure your file is properly structured as CSV</li>
-            <li style="margin-bottom: 0.3rem;">Clean unnecessary columns before uploading</li>
-            <li style="margin-bottom: 0.3rem;">Handle missing values when possible</li>
-            <li style="margin-bottom: 0.3rem;">Use descriptive column names</li>
-            <li>Files should be under 200MB for optimal performance</li>
-        </ul>
+    <div class="feature-card">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px; padding: 0.5rem;">
+                <h4 style="margin: 0.5rem 0; font-size: 1rem;">📊 Descriptive Analysis</h4>
+                <p style="font-size: 0.9rem; margin: 0;">Comprehensive statistical reports and data profiling</p>
+            </div>
+            <div style="flex: 1; min-width: 200px; padding: 0.5rem;">
+                <h4 style="margin: 0.5rem 0; font-size: 1rem;">📈 Data Visualization</h4>
+                <p style="font-size: 0.9rem; margin: 0;">Interactive charts and graphs for all variable types</p>
+            </div>
+            <div style="flex: 1; min-width: 200px; padding: 0.5rem;">
+                <h4 style="margin: 0.5rem 0; font-size: 1rem;">🤖 AI Insights</h4>
+                <p style="font-size: 0.9rem; margin: 0;">LLM-powered analysis to uncover hidden patterns</p>
+            </div>
+        </div>
     </div>
     """, unsafe_allow_html=True)
+    
+    # How to Use e Tips lado a lado
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("### 📋 How to Use")
+        if uploaded_file:
+            st.markdown(f"""
+            <div class="card">
+                <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+                    <li><strong>Download reports</strong> for offline use</li>
+                </ol>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="card">
+                <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+                    <li style="margin-bottom: 0.5rem;"><strong>Upload your CSV file</strong> using the sidebar uploader</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                    <li style="margin-bottom: 0.5rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
+                    <li><strong>Download reports</strong> for offline use</li>
+                </ol>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    with col2:
+        # Tips - Mais compacto
+        st.markdown("### 💡 Tips for Best Results")
+        st.markdown("""
+        <div class="card">
+            <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem;">
+                <li style="margin-bottom: 0.3rem;">Ensure your file is properly structured as CSV</li>
+                <li style="margin-bottom: 0.3rem;">Clean unnecessary columns before uploading</li>
+                <li style="margin-bottom: 0.3rem;">Handle missing values when possible</li>
+                <li style="margin-bottom: 0.3rem;">Use descriptive column names</li>
+                <li>Files should be under 200MB for optimal performance</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 def display_column_types_cards(analyzer):
     """Display column types as cards instead of donut chart"""
@@ -363,14 +367,6 @@ def display_exploratory_analysis(results):
     analyzer = st.session_state.analyzer
     display_column_types_cards(analyzer)
     
-    # Correlation heatmap
-    st.markdown("### 🔗 Correlation Matrix")
-    try:
-        corr_fig = create_correlation_heatmap(df)
-        st.plotly_chart(corr_fig, use_container_width=True)
-    except Exception as e:
-        st.error(f"Could not generate correlation matrix: {str(e)}")
-    
     # Create tabs for different data types
     tab_names = ["Overview"]
     simple_types = analyzer.get_simple_column_types()
@@ -423,12 +419,26 @@ def display_overview_tab(results):
     
     with col1:
         st.markdown("#### First 10 Rows")
-        st.dataframe(df.head(10), use_container_width=True, height=350)
+        # Reset index para começar do 1
+        df_display = df.head(10).reset_index(drop=True)
+        df_display.index = df_display.index + 1  # Começar do 1
+        st.dataframe(df_display, use_container_width=True, height=350)
     
     with col2:
         st.markdown("#### Column Information")
         column_info = analyzer.get_detailed_column_info()
-        st.dataframe(column_info, use_container_width=True, height=350)
+        # Reset index para começar do 1
+        column_info_display = column_info.reset_index(drop=True)
+        column_info_display.index = column_info_display.index + 1  # Começar do 1
+        st.dataframe(column_info_display, use_container_width=True, height=350)
+    
+    # Correlation heatmap movido para dentro da aba Overview
+    st.markdown("### 🔗 Correlation Matrix")
+    try:
+        corr_fig = create_correlation_heatmap(df)
+        st.plotly_chart(corr_fig, use_container_width=True)
+    except Exception as e:
+        st.error(f"Could not generate correlation matrix: {str(e)}")
 
 def display_numerical_tab(results):
     """Display numerical columns analysis"""
@@ -792,41 +802,69 @@ def main():
                             st.session_state.uploaded_file_name = uploaded_file.name
                             st.success("✅ Analysis completed successfully!")
                         else:
-                            st.error("❌ Analysis failed. Please check your API key and try again.")
+                            st.error("❌ Analysis failed. Please check your file and try again.")
                         
-                        # Clean up
+                        # Clean up temporary file
                         os.unlink(tmp_file_path)
                         
                     except Exception as e:
-                        st.error(f"❌ Analysis error: {e}")
+                        st.error(f"❌ Error during analysis: {str(e)}")
+                        st.info("Please check that your CSV file is properly formatted.")
+            
+            # Clear analysis button
+            if st.session_state.analysis_results:
+                if st.button("Clear Analysis", type="secondary", use_container_width=True):
+                    st.session_state.analysis_results = None
+                    st.rerun()
+        
+        # API Configuration
+        st.markdown("---")
+        st.markdown("## ⚙️ Configuration")
+        api_key = st.text_input(
+            "OpenRouter API Key",
+            type="password",
+            help="Enter your OpenRouter API key",
+            placeholder="sk-or-v1-..."
+        )
+        
+        if api_key:
+            st.session_state.analyzer.set_api_key(api_key)
+            st.success("✅ API key configured")
+        
+        # Model selection
+        model_options = [
+            "anthropic/claude-3.5-sonnet",
+            "google/gemini-pro-1.5",
+            "openai/gpt-3.5-turbo",
+            "meta-llama/llama-3-70b-instruct"
+        ]
+        selected_model = st.selectbox(
+            "Select AI Model",
+            model_options,
+            index=0,
+            help="Choose the AI model for analysis"
+        )
+        st.session_state.analyzer.set_model(selected_model)
     
     # Main content area
-    if uploaded_file is not None and st.session_state.analysis_results is None:
-        # Show welcome screen with file uploaded message
+    if uploaded_file is None:
+        # Welcome screen when no file is uploaded
+        display_welcome_screen()
+    elif st.session_state.analysis_results is None:
+        # Welcome screen when file is uploaded but not analyzed
         display_welcome_screen(uploaded_file)
+    else:
+        # Analysis results when file is uploaded and analyzed
+        results = st.session_state.analysis_results
         
-        # Analysis prompt
-        st.markdown("---")
-        st.markdown("""
-        <div class="upload-card">
-            <h3 style="font-size: 1.2rem;">🚀 Ready for Deep Analysis?</h3>
-            <p style="font-size: 0.9rem;">Click the <strong>"Analyze Dataset"</strong> button in the sidebar to generate comprehensive AI-powered insights.</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    elif st.session_state.analysis_results:
-        # Show analysis results in tabs
-        tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 Insights Generated"])
+        # Tabs for different analysis views
+        tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 AI Insights"])
         
         with tab1:
-            display_exploratory_analysis(st.session_state.analysis_results)
+            display_exploratory_analysis(results)
         
         with tab2:
-            display_llm_insights(st.session_state.analysis_results)
-    
-    else:
-        # Welcome screen
-        display_welcome_screen()
+            display_llm_insights(results)
 
 if __name__ == "__main__":
     main()
