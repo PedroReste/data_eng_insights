@@ -12,6 +12,30 @@ import numpy as np
 # Import from our modules
 from en_01_analyzer import ChatBotAnalyzer
 
+# NEW: Importações para geração de PDF
+try:
+    from reportlab.lib.pagesizes import A4, letter
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, 
+        Image, PageBreak, KeepTogether
+    )
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
+    from reportlab.pdfgen import canvas
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import plotly.io as pio
+    from PIL import Image as PILImage
+    import io
+    import tempfile
+    import base64
+    REPORTLAB_AVAILABLE = True
+except ImportError as e:
+    print(f"ReportLab não disponível: {e}")
+    REPORTLAB_AVAILABLE = False
+
 # Set page configuration
 st.set_page_config(
     page_title="Data Analyzer",
@@ -282,6 +306,408 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# =============================================================================
+# FUNÇÕES AUXILIARES PARA PDF
+# =============================================================================
+
+def export_plotly_figure(fig, width=800, height=400):
+    """Export Plotly figure to PNG bytes"""
+    try:
+        # Converter figura Plotly para imagem PNG
+        img_bytes = pio.to_image(fig, format='png', width=width, height=height)
+        return img_bytes
+    except Exception as e:
+        print(f"Erro ao exportar figura Plotly: {e}")
+        return None
+
+def create_statistics_table(df):
+    """Create a formatted statistics table for the PDF"""
+    # Basic statistics
+    data = [
+        ['Metric', 'Value'],
+        ['Total Rows', f"{df.shape[0]:,}"],
+        ['Total Columns', f"{df.shape[1]}"],
+        ['Total Cells', f"{df.shape[0] * df.shape[1]:,}"],
+        ['Missing Values', f"{df.isnull().sum().sum():,}"],
+        ['Duplicate Rows', f"{df.duplicated().sum():,}"],
+        ['Memory Usage', f"{df.memory_usage(deep=True).sum() / 1024 / 1024:.2f} MB"]
+    ]
+    
+    return data
+
+def create_column_types_table(analyzer):
+    """Create column types summary table"""
+    simple_types = analyzer.get_simple_column_types()
+    
+    data = [['Data Type', 'Count']]
+    for col_type, columns in simple_types.items():
+        if columns:  # Only include types that have columns
+            data.append([col_type, str(len(columns))])
+    
+    return data
+
+def create_numerical_stats_table(df):
+    """Create numerical statistics summary"""
+    numerical_cols = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+    
+    if len(numerical_cols) == 0:
+        return None
+    
+    data = [['Column', 'Mean', 'Std Dev', 'Min', 'Max', 'Missing']]
+    
+    for col in numerical_cols[:10]:  # Limit to first 10 columns
+        data.append([
+            col,
+            f"{df[col].mean():.2f}",
+            f"{df[col].std():.2f}",
+            f"{df[col].min():.2f}",
+            f"{df[col].max():.2f}",
+            f"{df[col].isnull().sum()}"
+        ])
+    
+    return data
+
+def generate_pdf_with_reportlab(results, dataset_name):
+    """Generate comprehensive PDF report with charts using ReportLab"""
+    if not REPORTLAB_AVAILABLE:
+        st.error("ReportLab não está disponível. Instale com: pip install reportlab")
+        return None
+    
+    try:
+        # Create buffer for PDF
+        buffer = io.BytesIO()
+        
+        # Setup document with margins
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72,
+            title=f"Data Analysis Report - {dataset_name}"
+        )
+        
+        # Get styles
+        styles = getSampleStyleSheet()
+        
+        # Custom styles
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=18,
+            spaceAfter=30,
+            textColor=colors.HexColor('#2c3e50'),
+            alignment=TA_CENTER
+        )
+        
+        heading1_style = ParagraphStyle(
+            'CustomHeading1',
+            parent=styles['Heading2'],
+            fontSize=14,
+            spaceAfter=12,
+            textColor=colors.HexColor('#3498db'),
+            alignment=TA_LEFT
+        )
+        
+        heading2_style = ParagraphStyle(
+            'CustomHeading2',
+            parent=styles['Heading3'],
+            fontSize=12,
+            spaceAfter=8,
+            textColor=colors.HexColor('#2c3e50'),
+            alignment=TA_LEFT
+        )
+        
+        normal_style = ParagraphStyle(
+            'CustomNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=6,
+            alignment=TA_JUSTIFY
+        )
+        
+        # Story elements
+        story = []
+        
+        # Title Page
+        story.append(Paragraph("DATA ANALYSIS REPORT", title_style))
+        story.append(Spacer(1, 20))
+        story.append(Paragraph(f"Dataset: {dataset_name}", heading1_style))
+        story.append(Paragraph(f"Generated on: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}", normal_style))
+        story.append(Spacer(1, 40))
+        story.append(Paragraph("Generated by AI Data Analyzer", normal_style))
+        
+        story.append(PageBreak())
+        
+        # Table of Contents
+        story.append(Paragraph("Table of Contents", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        toc_items = [
+            "1. Executive Summary",
+            "2. Dataset Overview", 
+            "3. Data Types Summary",
+            "4. Numerical Analysis",
+            "5. Visualizations",
+            "6. AI Insights Summary"
+        ]
+        
+        for item in toc_items:
+            story.append(Paragraph(item, normal_style))
+        
+        story.append(PageBreak())
+        
+        # 1. Executive Summary
+        story.append(Paragraph("1. Executive Summary", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        df = results['dataframe']
+        exec_summary = f"""
+        This report provides a comprehensive analysis of the dataset '{dataset_name}' 
+        containing {df.shape[0]:,} rows and {df.shape[1]} columns. The analysis includes 
+        descriptive statistics, data quality assessment, and AI-powered insights to 
+        help understand patterns and relationships within the data.
+        """
+        story.append(Paragraph(exec_summary, normal_style))
+        story.append(Spacer(1, 15))
+        
+        # 2. Dataset Overview
+        story.append(Paragraph("2. Dataset Overview", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        # Basic statistics table
+        stats_data = create_statistics_table(df)
+        stats_table = Table(stats_data, colWidths=[2.5*inch, 1.5*inch])
+        stats_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#3498db')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ]))
+        story.append(stats_table)
+        story.append(Spacer(1, 20))
+        
+        # 3. Data Types Summary
+        story.append(Paragraph("3. Data Types Summary", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        analyzer = st.session_state.analyzer
+        type_data = create_column_types_table(analyzer)
+        if type_data and len(type_data) > 1:
+            type_table = Table(type_data, colWidths=[2.5*inch, 1.5*inch])
+            type_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#e74c3c')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ]))
+            story.append(type_table)
+        else:
+            story.append(Paragraph("No column type information available.", normal_style))
+        
+        story.append(Spacer(1, 20))
+        
+        # 4. Numerical Analysis
+        numerical_data = create_numerical_stats_table(df)
+        if numerical_data and len(numerical_data) > 1:
+            story.append(Paragraph("4. Numerical Columns Summary", heading1_style))
+            story.append(Spacer(1, 10))
+            
+            # Use smaller font for numerical table if many columns
+            num_table = Table(numerical_data, colWidths=[1.2*inch] + [0.8*inch]*5)
+            num_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2ecc71')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f8f9fa')),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('FONTSIZE', (0, 1), (-1, -1), 7),
+                ('ROWBREAKS', (0, 0), (-1, -1), 10),  # Page break every 10 rows
+            ]))
+            story.append(num_table)
+            story.append(Spacer(1, 20))
+        
+        story.append(PageBreak())
+        
+        # 5. Visualizations
+        story.append(Paragraph("5. Data Visualizations", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        # Export and include Plotly figures as images
+        visualizations = results.get('visualizations', {})
+        if visualizations:
+            for viz_name, fig in visualizations.items():
+                try:
+                    story.append(Paragraph(f"Chart: {viz_name.replace('_', ' ').title()}", heading2_style))
+                    
+                    # Export Plotly figure to PNG
+                    img_bytes = export_plotly_figure(fig, width=600, height=400)
+                    if img_bytes:
+                        # Save to temporary file
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                            tmp_file.write(img_bytes)
+                            tmp_path = tmp_file.name
+                        
+                        # Add image to PDF
+                        img = Image(tmp_path, width=6*inch, height=4*inch)
+                        story.append(img)
+                        story.append(Spacer(1, 10))
+                        
+                        # Clean up
+                        os.unlink(tmp_path)
+                    else:
+                        story.append(Paragraph("Could not generate chart image.", normal_style))
+                    
+                    # Add page break after every 2 charts
+                    if list(visualizations.keys()).index(viz_name) % 2 == 1:
+                        story.append(PageBreak())
+                        
+                except Exception as e:
+                    story.append(Paragraph(f"Error including chart {viz_name}: {str(e)}", normal_style))
+                    continue
+        else:
+            story.append(Paragraph("No visualizations available.", normal_style))
+        
+        story.append(PageBreak())
+        
+        # 6. AI Insights Summary
+        story.append(Paragraph("6. AI Insights Summary", heading1_style))
+        story.append(Spacer(1, 10))
+        
+        if 'ai_analysis' in results and results['ai_analysis']:
+            # Truncate AI analysis if too long, but include key sections
+            ai_text = results['ai_analysis']
+            
+            # Extract first 1500 characters or split by sections
+            if len(ai_text) > 1500:
+                # Try to find a good breaking point
+                sections = ['##', '**', '-']
+                break_point = 1500
+                for section in sections:
+                    idx = ai_text.find(section, 1200)
+                    if idx != -1:
+                        break_point = idx
+                        break
+                
+                ai_preview = ai_text[:break_point] + "\n\n... (complete analysis available in the full report)"
+            else:
+                ai_preview = ai_text
+            
+            story.append(Paragraph(ai_preview, normal_style))
+        else:
+            story.append(Paragraph("No AI analysis available.", normal_style))
+        
+        story.append(Spacer(1, 20))
+        
+        # Footer
+        story.append(Paragraph("---", normal_style))
+        story.append(Paragraph("End of Report", heading2_style))
+        story.append(Paragraph("Generated by AI Data Analyzer - Advanced Data Analysis Tool", normal_style))
+        
+        # Build PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        return buffer
+        
+    except Exception as e:
+        st.error(f"Error generating PDF with ReportLab: {str(e)}")
+        import traceback
+        st.error(f"Detailed error: {traceback.format_exc()}")
+        return None
+
+def generate_simple_pdf_with_charts(results, dataset_name):
+    """Generate a simpler PDF with essential charts - more reliable"""
+    if not REPORTLAB_AVAILABLE:
+        return None
+    
+    try:
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4, 
+                              rightMargin=72, leftMargin=72,
+                              topMargin=72, bottomMargin=72)
+        
+        styles = getSampleStyleSheet()
+        story = []
+        
+        # Title
+        title_style = ParagraphStyle(
+            'Title',
+            parent=styles['Heading1'],
+            fontSize=16,
+            spaceAfter=30,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor('#2c3e50')
+        )
+        
+        story.append(Paragraph(f"Data Analysis Report: {dataset_name}", title_style))
+        story.append(Paragraph(f"Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Basic info
+        df = results['dataframe']
+        info_text = f"""
+        This dataset contains <b>{df.shape[0]:,} rows</b> and <b>{df.shape[1]} columns</b>, 
+        with <b>{df.isnull().sum().sum():,} missing values</b> and <b>{df.duplicated().sum():,} duplicate rows</b>.
+        """
+        story.append(Paragraph(info_text, styles['Normal']))
+        story.append(Spacer(1, 15))
+        
+        # Include key visualizations
+        visualizations = results.get('visualizations', {})
+        key_viz = ['data_types', 'correlation_heatmap']  # Prioritize these charts
+        
+        for viz_key in key_viz:
+            if viz_key in visualizations:
+                try:
+                    story.append(Paragraph(f"Chart: {viz_key.replace('_', ' ').title()}", styles['Heading2']))
+                    
+                    img_bytes = export_plotly_figure(visualizations[viz_key], width=500, height=300)
+                    if img_bytes:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.png') as tmp_file:
+                            tmp_file.write(img_bytes)
+                            img = Image(tmp_file.name, width=5*inch, height=3*inch)
+                            story.append(img)
+                            story.append(Spacer(1, 10))
+                        os.unlink(tmp_file.name)
+                except Exception as e:
+                    continue
+        
+        story.append(PageBreak())
+        
+        # AI Analysis preview
+        if 'ai_analysis' in results:
+            story.append(Paragraph("AI Analysis Insights", styles['Heading2']))
+            # Take first 1000 characters
+            preview = results['ai_analysis'][:1000] + "..." if len(results['ai_analysis']) > 1000 else results['ai_analysis']
+            story.append(Paragraph(preview, styles['Normal']))
+        
+        doc.build(story)
+        buffer.seek(0)
+        return buffer
+        
+    except Exception as e:
+        st.error(f"Error in simple PDF generation: {str(e)}")
+        return None
+
+# =============================================================================
+# FUNÇÕES ORIGINAIS DA INTERFACE
+# =============================================================================
+
 def create_stat_card(value, label, icon="📊", color="#667eea"):
     return f"""
     <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, #764ba2 100%);">
@@ -531,7 +957,82 @@ def display_exploratory_analysis(results):
     # Add JavaScript for print functionality
     add_print_javascript()
     
-    # Export section
+    # NOVA SEÇÃO: PDF Export com ReportLab
+    st.markdown("### 🎯 Advanced PDF Export (ReportLab)")
+    
+    if not REPORTLAB_AVAILABLE:
+        st.warning("""
+        **ReportLab não está instalado!** 
+        Para usar a geração avançada de PDF, instale: 
+        `pip install reportlab pillow`
+        """)
+    
+    pdf_col1, pdf_col2 = st.columns(2)
+    
+    with pdf_col1:
+        if st.button("📊 Generate Professional PDF", use_container_width=True, 
+                    disabled=not REPORTLAB_AVAILABLE):
+            with st.spinner("🔄 Generating comprehensive PDF report..."):
+                dataset_name = st.session_state.get('uploaded_file_name', 'dataset')
+                pdf_buffer = generate_pdf_with_reportlab(results, dataset_name)
+                
+                if pdf_buffer:
+                    st.success("✅ PDF generated successfully!")
+                    st.download_button(
+                        label="📥 Download Professional PDF",
+                        data=pdf_buffer,
+                        file_name=f"{dataset_name}_professional_report.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                else:
+                    st.error("❌ Failed to generate PDF. Trying simple version...")
+                    # Fallback to simple version
+                    simple_pdf = generate_simple_pdf_with_charts(results, dataset_name)
+                    if simple_pdf:
+                        st.download_button(
+                            label="📥 Download Simple PDF",
+                            data=simple_pdf,
+                            file_name=f"{dataset_name}_simple_report.pdf",
+                            mime="application/pdf",
+                            use_container_width=True
+                        )
+    
+    with pdf_col2:
+        if st.button("🚀 Generate Quick PDF", use_container_width=True,
+                    disabled=not REPORTLAB_AVAILABLE):
+            with st.spinner("🔄 Generating quick PDF report..."):
+                dataset_name = st.session_state.get('uploaded_file_name', 'dataset')
+                simple_pdf = generate_simple_pdf_with_charts(results, dataset_name)
+                
+                if simple_pdf:
+                    st.success("✅ Quick PDF generated!")
+                    st.download_button(
+                        label="📥 Download Quick PDF",
+                        data=simple_pdf,
+                        file_name=f"{dataset_name}_quick_report.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                else:
+                    st.error("❌ Failed to generate quick PDF")
+    
+    # Informações sobre a geração de PDF
+    st.markdown("""
+    <div class="card">
+        <h4>📋 PDF Features Included:</h4>
+        <ul>
+            <li>✅ Professional layout with table of contents</li>
+            <li>✅ Dataset statistics and overview</li>
+            <li>✅ All Plotly charts as high-quality images</li>
+            <li>✅ AI analysis summary</li>
+            <li>✅ Multi-page format with proper pagination</li>
+            <li>✅ Color-coded tables and sections</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Export section original
     st.markdown("### 📥 Export Results")
     
     col1, col2 = st.columns(2)
