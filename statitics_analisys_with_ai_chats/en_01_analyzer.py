@@ -130,6 +130,15 @@ class ChatBotAnalyzer:
             print(f"❌ Error reading API key file: {e}")
             return None
 
+    def get_excel_sheets(self, file_path: str) -> List[str]:
+        """Get list of available sheets in Excel file"""
+        try:
+            excel_file = pd.ExcelFile(file_path)
+            return excel_file.sheet_names
+        except Exception as e:
+            print(f"❌ Error reading Excel sheets: {e}")
+            return []
+
     def get_simple_column_types(self) -> Dict[str, List[str]]:
         """Get simplified column types grouped by category"""
         if self.df is None:
@@ -251,15 +260,6 @@ class ChatBotAnalyzer:
                 except Exception as json_error:
                     print(f"❌ Alternative JSON loading also failed: {json_error}")
             return None
-
-    def get_excel_sheets(self, file_path: str) -> List[str]:
-        """Get list of available sheets in Excel file"""
-        try:
-            excel_file = pd.ExcelFile(file_path)
-            return excel_file.sheet_names
-        except Exception as e:
-            print(f"❌ Error reading Excel sheets: {e}")
-            return []
 
     def generate_descriptive_stats(self) -> str:
         """Generate comprehensive descriptive statistics in Markdown format"""
