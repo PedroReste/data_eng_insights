@@ -901,7 +901,6 @@ def main():
                             st.success("✅ CSV file loaded successfully!")
                             
                         elif file_extension == 'xlsx':
-                            # CORREÇÃO: Remover o informativo "Reading Excel file structure..."
                             excel_file = pd.ExcelFile(uploaded_file)
                             sheet_names = excel_file.sheet_names
                             

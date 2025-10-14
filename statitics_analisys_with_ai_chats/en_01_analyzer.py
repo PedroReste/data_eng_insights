@@ -130,6 +130,11 @@ class ChatBotAnalyzer:
             print(f"❌ Error reading API key file: {e}")
             return None
 
+    def load_data(self, df: pd.DataFrame):
+        """Load DataFrame into analyzer"""
+        self.df = df
+        print(f"✅ Data loaded successfully: {self.df.shape[0]} rows, {self.df.shape[1]} columns")
+
     def get_excel_sheets(self, file_path: str) -> List[str]:
         """Get list of available sheets in Excel file"""
         try:
@@ -635,6 +640,41 @@ class ChatBotAnalyzer:
             print(f"❌ API Error: {e}")
             if hasattr(e, 'response') and e.response is not None:
                 print(f"Response: {e.response.text}")
+            return None
+
+    def analyze_dataset(self) -> Dict[str, Any]:
+        """Analyze the currently loaded dataset"""
+        if self.df is None:
+            return None
+        
+        print("🚀 Starting Data Analysis...")
+        
+        # Generate descriptive stats
+        print("📈 Generating descriptive statistics...")
+        stats_summary = self.generate_descriptive_stats()
+        
+        # Generate visualizations
+        print("🎨 Creating visualizations...")
+        visualizations = self.generate_visualizations()
+        
+        # Create analysis prompt
+        prompt = self.create_analysis_prompt(stats_summary)
+        
+        # Call API
+        print("🤖 Calling API for detailed analysis...")
+        analysis_result = self.call_open_router_api(prompt)
+        
+        if analysis_result:
+            results = {
+                'dataframe': self.df,
+                'statistics': stats_summary,
+                'ai_analysis': analysis_result,
+                'visualizations': visualizations
+            }
+            
+            return results
+        else:
+            print("❌ Failed to get analysis from API")
             return None
     
     def analyze_file(self, file_path: str, sheet_name: str = None, save_output: bool = False, output_dir: str = None) -> Dict[str, Any]:
