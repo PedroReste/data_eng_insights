@@ -161,6 +161,38 @@ st.markdown("""
     .dataframe tbody th {
         display: none;
     }
+    .format-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin: 0.2rem;
+    }
+    .upload-success-section {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid #2ecc71;
+    }
+    .upload-success-left {
+        background: rgba(46, 204, 113, 0.1);
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 4px solid #2ecc71;
+        height: 100%;
+    }
+    .upload-success-right {
+        background: rgba(52, 152, 219, 0.1);
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 4px solid #3498db;
+        height: 100%;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -188,35 +220,71 @@ def get_download_link(content, filename, text):
 
 def display_welcome_screen(uploaded_file=None):
     """Display welcome screen with app information"""
-    # Título sem ícone - CORREÇÃO: removido completamente o ícone
+    # Título sem ícone
     st.markdown('<h1 class="main-header">Data Analyzer</h1>', unsafe_allow_html=True)
     
     if uploaded_file:
-        # CORREÇÃO: Seção unificada na parte superior
-        st.markdown(f"""
-        <div class="welcome-card">
-            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <div style="flex: 1;">
-                    <h2 style="color: #2ecc71; margin: 0; font-size: 1.5rem;">✅ File Uploaded Successfully!</h2>
-                    <p style="font-size: 1rem; margin: 0.5rem 0 0 0;">
-                    <strong>File:</strong> {uploaded_file.name}<br>
-                    Ready for analysis. Click the <strong>"Analyze Dataset"</strong> button in the sidebar to start.
-                    </p>
-                </div>
-                <div style="margin-left: 1rem; padding: 1rem; background: rgba(52, 152, 219, 0.1); border-radius: 8px; border-left: 4px solid #3498db;">
-                    <h3 style="font-size: 1.1rem; color: #3498db; margin: 0 0 0.5rem 0;">🚀 Ready for Deep Analysis?</h3>
-                    <p style="font-size: 0.9rem; margin: 0;">Click the button in the sidebar to generate AI-powered insights.</p>
-                </div>
-            </div>
+        # SEÇÃO UNIFICADA PARA ARQUIVO CARREGADO - COM DUAS COLUNAS
+        st.markdown("""
+        <div class="upload-success-section">
+            <h2 style="color: #2ecc71; text-align: center; margin-bottom: 1.5rem; font-size: 1.8rem;">
+                🎉 File Ready for Analysis!
+            </h2>
         </div>
         """, unsafe_allow_html=True)
+        
+        # Duas colunas dentro da mesma seção
+        col_left, col_right = st.columns(2)
+        
+        with col_left:
+            st.markdown("""
+            <div class="upload-success-left">
+                <h3 style="color: #2ecc71; margin: 0 0 1rem 0; font-size: 1.3rem;">✅ File Uploaded Successfully</h3>
+                <div style="background: rgba(46, 204, 113, 0.2); padding: 0.8rem; border-radius: 8px; margin: 1rem 0;">
+                    <p style="margin: 0; font-size: 1rem;">
+                        <strong>📁 File:</strong> {uploaded_file.name}<br>
+                        <strong>📊 Format:</strong> {file_ext}<br>
+                        <strong>🕒 Status:</strong> Ready for processing
+                    </p>
+                </div>
+                <p style="font-size: 0.95rem; margin: 1rem 0 0 0; line-height: 1.5;">
+                    Your dataset has been successfully loaded and validated. 
+                    The system is ready to perform comprehensive analysis including 
+                    statistical profiling, data visualization, and AI-powered insights.
+                </p>
+            </div>
+            """.format(uploaded_file=uploaded_file, file_ext=uploaded_file.name.split('.')[-1].upper()), unsafe_allow_html=True)
+        
+        with col_right:
+            st.markdown("""
+            <div class="upload-success-right">
+                <h3 style="color: #3498db; margin: 0 0 1rem 0; font-size: 1.3rem;">🚀 Ready for Deep Analysis</h3>
+                <div style="background: rgba(52, 152, 219, 0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
+                    <p style="margin: 0; font-size: 1rem; font-weight: 600; color: #3498db;">
+                        Next Step: Click "Analyze Dataset" in the sidebar
+                    </p>
+                </div>
+                <ul style="font-size: 0.9rem; margin: 1rem 0; padding-left: 1.2rem; line-height: 1.6;">
+                    <li style="margin-bottom: 0.8rem;"><strong>Automatic format detection</strong> - CSV, Excel, or JSON</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Comprehensive statistics</strong> - Descriptive analysis and profiling</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Interactive visualizations</strong> - Charts and correlation matrices</li>
+                    <li><strong>AI-powered insights</strong> - Pattern recognition and recommendations</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
     else:
+        # Tela de boas-vindas padrão (sem arquivo carregado)
         st.markdown("""
         <div class="welcome-card">
             <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Welcome to Data Analyzer!</h2>
             <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
             Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
             </p>
+            <div style="text-align: center; margin: 1rem 0;">
+                <span class="format-badge">CSV</span>
+                <span class="format-badge">Excel (XLSX)</span>
+                <span class="format-badge">JSON</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -226,16 +294,16 @@ def display_welcome_screen(uploaded_file=None):
     <div class="feature-card">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
             <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Descriptive Analysis</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Comprehensive statistical reports and data profiling with detailed metrics and distributions</p>
+                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Multi-Format Support</h4>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Analyze CSV, Excel (XLSX), and JSON files with automatic format detection</p>
             </div>
             <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Data Visualization</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Interactive charts, graphs and correlation matrices for all variable types and relationships</p>
+                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Smart Data Analysis</h4>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Comprehensive statistical reports and data profiling with detailed metrics</p>
             </div>
             <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 AI Insights</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">LLM-powered analysis to uncover hidden patterns, trends and business intelligence</p>
+                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 AI-Powered Insights</h4>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">LLM-powered analysis to uncover hidden patterns and business intelligence</p>
             </div>
         </div>
     </div>
@@ -247,12 +315,20 @@ def display_welcome_screen(uploaded_file=None):
     with col1:
         st.markdown("### 📋 How to Use")
         if uploaded_file:
+            file_ext = uploaded_file.name.split('.')[-1].upper()
+            file_info = f"""
+            <div style="background: rgba(46, 204, 113, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 4px solid #2ecc71; margin-bottom: 1rem;">
+                <strong>✅ {file_ext} File Uploaded:</strong> {uploaded_file.name}
+            </div>
+            """
+            
             st.markdown(f"""
             <div class="card">
+                {file_info if uploaded_file else ""}
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>✅ File uploaded successfully</strong> - {uploaded_file.name}</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start the analysis</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start analysis</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Wait for processing</strong> - automatic format detection and analysis</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
                     <li><strong>Download reports</strong> for offline use and documentation</li>
                 </ol>
@@ -261,12 +337,17 @@ def display_welcome_screen(uploaded_file=None):
         else:
             st.markdown("""
             <div class="card">
+                <div style="text-align: center; margin-bottom: 1rem;">
+                    <span class="format-badge">CSV</span>
+                    <span class="format-badge">Excel (XLSX)</span>
+                    <span class="format-badge">JSON</span>
+                </div>
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Upload your CSV file</strong> using the sidebar uploader</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Upload your data file</strong> - CSV, Excel (XLSX), or JSON format</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> to start the analysis process</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Wait for processing</strong> - the system will generate descriptive statistics and AI insights</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Explore results</strong> in the Exploratory Data Analysis and Insights tabs</li>
-                    <li><strong>Download reports</strong> for offline use and documentation</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Wait for processing</strong> - automatic format detection and analysis</li>
+                    <li><strong>Explore results</strong> in the analysis tabs and download reports</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
@@ -277,7 +358,14 @@ def display_welcome_screen(uploaded_file=None):
         st.markdown("""
         <div class="card">
             <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                <li style="margin-bottom: 0.8rem;"><strong>Ensure CSV format</strong> - Properly structured comma-separated values</li>
+                <li style="margin-bottom: 0.8rem;">
+                    <strong>Supported Formats:</strong>
+                    <div style="margin: 0.5rem 0;">
+                        <span class="format-badge">CSV</span> - Comma-separated values<br>
+                        <span class="format-badge">Excel</span> - XLSX files with multiple sheets<br>
+                        <span class="format-badge">JSON</span> - Structured data files
+                    </div>
+                </li>
                 <li style="margin-bottom: 0.8rem;"><strong>Clean data first</strong> - Remove unnecessary columns before uploading</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Handle missing values</strong> - Address null values when possible</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Descriptive headers</strong> - Use clear, meaningful column names</li>
@@ -285,6 +373,8 @@ def display_welcome_screen(uploaded_file=None):
             </ul>
         </div>
         """, unsafe_allow_html=True)
+
+# ... (o restante das funções permanece igual - display_column_types_cards, create_correlation_heatmap, etc.)
 
 def display_column_types_cards(analyzer):
     """Display column types as cards instead of donut chart"""
@@ -430,17 +520,15 @@ def display_overview_tab(results):
     
     with col1:
         st.markdown("#### First 10 Rows")
-        # CORREÇÃO: Índice removido usando hide_index=True
         df_display = df.head(10)
         st.dataframe(df_display, use_container_width=True, height=350, hide_index=True)
     
     with col2:
         st.markdown("#### Column Information")
         column_info = analyzer.get_detailed_column_info()
-        # CORREÇÃO: Índice removido usando hide_index=True
         st.dataframe(column_info, use_container_width=True, height=350, hide_index=True)
     
-    # CORREÇÃO: Correlation heatmap movido para dentro da aba Overview
+    # Correlation heatmap
     st.markdown("### 🔗 Correlation Matrix")
     try:
         corr_fig = create_correlation_heatmap(df)
@@ -779,17 +867,57 @@ def main():
             st.error(f"❌ Failed to initialize analyzer: {e}")
             st.info("Please make sure your OpenRouter API key is properly configured.")
             return
+    if 'selected_sheet' not in st.session_state:
+        st.session_state.selected_sheet = None
+    if 'available_sheets' not in st.session_state:
+        st.session_state.available_sheets = []
     
     # Sidebar for file upload
     with st.sidebar:
         st.markdown("## 📁 Upload Dataset")
         uploaded_file = st.file_uploader(
-            "Choose a CSV file",
-            type=['csv'],
-            help="Upload your dataset in CSV format"
+            "Choose a data file",
+            type=['csv', 'xlsx', 'xls', 'json'],
+            help="Upload your dataset in CSV, Excel (XLSX), or JSON format"
         )
         
         if uploaded_file is not None:
+            # Detect file type and handle Excel sheets
+            file_ext = uploaded_file.name.split('.')[-1].lower()
+            
+            if file_ext in ['xlsx', 'xls']:
+                # Save uploaded file to temporary location to read sheets
+                with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_ext}') as tmp_file:
+                    tmp_file.write(uploaded_file.getvalue())
+                    tmp_file_path = tmp_file.name
+                
+                # Get available sheets
+                try:
+                    available_sheets = st.session_state.analyzer.get_excel_sheets(tmp_file_path)
+                    st.session_state.available_sheets = available_sheets
+                    
+                    if available_sheets:
+                        st.markdown("## 📑 Select Worksheet")
+                        selected_sheet = st.selectbox(
+                            "Choose worksheet to analyze:",
+                            available_sheets,
+                            index=0
+                        )
+                        st.session_state.selected_sheet = selected_sheet
+                        st.info(f"Selected: **{selected_sheet}**")
+                    else:
+                        st.error("No worksheets found in the Excel file.")
+                    
+                    # Clean up temporary file
+                    os.unlink(tmp_file_path)
+                    
+                except Exception as e:
+                    st.error(f"Error reading Excel file: {str(e)}")
+            else:
+                # For non-Excel files, clear sheet selection
+                st.session_state.selected_sheet = None
+                st.session_state.available_sheets = []
+            
             st.success(f"✅ File uploaded: {uploaded_file.name}")
             
             # Analysis button
@@ -798,12 +926,13 @@ def main():
                 with st.spinner("🔄 Processing dataset... This may take a few moments."):
                     try:
                         # Save uploaded file to temporary location
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_ext}') as tmp_file:
                             tmp_file.write(uploaded_file.getvalue())
                             tmp_file_path = tmp_file.name
                         
-                        # Run analysis
-                        results = st.session_state.analyzer.analyze_csv(tmp_file_path)
+                        # Run analysis with sheet selection for Excel files
+                        sheet_name = st.session_state.selected_sheet if file_ext in ['xlsx', 'xls'] else None
+                        results = st.session_state.analyzer.analyze_file(tmp_file_path, sheet_name=sheet_name)
                         
                         if results:
                             st.session_state.analysis_results = results
@@ -817,12 +946,14 @@ def main():
                         
                     except Exception as e:
                         st.error(f"❌ Error during analysis: {str(e)}")
-                        st.info("Please check that your CSV file is properly formatted.")
+                        st.info("Please check that your data file is properly formatted.")
             
             # Clear analysis button
             if st.session_state.analysis_results:
                 if st.button("Clear Analysis", type="secondary", use_container_width=True):
                     st.session_state.analysis_results = None
+                    st.session_state.selected_sheet = None
+                    st.session_state.available_sheets = []
                     st.rerun()
     
     # Main content area

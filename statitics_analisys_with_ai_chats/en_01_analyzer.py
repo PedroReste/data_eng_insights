@@ -181,16 +181,81 @@ class ChatBotAnalyzer:
         else:
             return "Categorical"
 
-    def load_and_preview_data(self, file_path: str) -> pd.DataFrame:
-        """Load CSV file and return basic information"""
+    def detect_file_format(self, file_path: str) -> str:
+        """Detect file format based on extension and content"""
+        _, ext = os.path.splitext(file_path)
+        ext = ext.lower()
+        
+        if ext == '.csv':
+            return 'csv'
+        elif ext in ['.xlsx', '.xls']:
+            return 'excel'
+        elif ext == '.json':
+            return 'json'
+        else:
+            # Try to detect by content for files without extension or unknown
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    first_line = f.readline().strip()
+                    # Check if it's JSON
+                    if first_line.startswith('{') or first_line.startswith('['):
+                        return 'json'
+                    # Check if it's CSV (comma separated)
+                    elif ',' in first_line:
+                        return 'csv'
+            except:
+                pass
+            
+            # Default to CSV for unknown formats
+            return 'csv'
+
+    def load_and_preview_data(self, file_path: str, sheet_name: str = None) -> pd.DataFrame:
+        """Load CSV, Excel, or JSON file and return basic information"""
         try:
-            self.df = pd.read_csv(file_path)
+            file_format = self.detect_file_format(file_path)
+            print(f"📁 Detected file format: {file_format}")
+            
+            if file_format == 'csv':
+                self.df = pd.read_csv(file_path)
+            elif file_format == 'excel':
+                if sheet_name:
+                    self.df = pd.read_excel(file_path, sheet_name=sheet_name)
+                else:
+                    # Load first sheet by default
+                    self.df = pd.read_excel(file_path)
+            elif file_format == 'json':
+                self.df = pd.read_json(file_path)
+            else:
+                raise ValueError(f"Unsupported file format: {file_format}")
+            
             print(f"✅ Dataset loaded successfully: {self.df.shape[0]} rows, {self.df.shape[1]} columns")
+            print(f"📊 Data types: {dict(self.df.dtypes)}")
             return self.df
+            
         except Exception as e:
-            print(f"❌ Error loading file: {e}")
+            print(f"❌ Error loading file {file_path}: {e}")
+            # Try alternative loading methods for JSON
+            if file_format == 'json':
+                try:
+                    print("🔄 Trying alternative JSON loading method...")
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    self.df = pd.json_normalize(data)
+                    print(f"✅ JSON loaded successfully with json_normalize: {self.df.shape}")
+                    return self.df
+                except Exception as json_error:
+                    print(f"❌ Alternative JSON loading also failed: {json_error}")
             return None
-    
+
+    def get_excel_sheets(self, file_path: str) -> List[str]:
+        """Get list of available sheets in Excel file"""
+        try:
+            excel_file = pd.ExcelFile(file_path)
+            return excel_file.sheet_names
+        except Exception as e:
+            print(f"❌ Error reading Excel sheets: {e}")
+            return []
+
     def generate_descriptive_stats(self) -> str:
         """Generate comprehensive descriptive statistics in Markdown format"""
         if self.df is None:
@@ -510,13 +575,13 @@ class ChatBotAnalyzer:
                 print(f"Response: {e.response.text}")
             return None
     
-    def analyze_csv(self, file_path: str, save_output: bool = False, output_dir: str = None) -> Dict[str, Any]:
-        """Main method to analyze CSV file"""
+    def analyze_file(self, file_path: str, sheet_name: str = None, save_output: bool = False, output_dir: str = None) -> Dict[str, Any]:
+        """Main method to analyze data file (CSV, Excel, JSON)"""
         
-        print("🚀 Starting CSV Analysis...")
+        print("🚀 Starting Data Analysis...")
         
         # Load data
-        df = self.load_and_preview_data(file_path)
+        df = self.load_and_preview_data(file_path, sheet_name)
         if df is None:
             return None
         
