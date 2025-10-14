@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 
 # Importar de nossos módulos
-from pt_01_analisador import AnalisadorChatBot
+from pt_01_analyzer import AnalisadorChatBot
 
 # Configurar página
 st.set_page_config(
