@@ -1,4 +1,4 @@
-# en_02_interface.py
+# pt_02_interface.py
 import streamlit as st
 import pandas as pd
 import tempfile
@@ -9,8 +9,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
-# Importar dos nossos módulos
-from pt_01_analyzer import ChatBotAnalyzer
+# Importar de nossos módulos
+from pt_01_analisador import AnalisadorChatBot
 
 # Configurar página
 st.set_page_config(
@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS do tema escuro
+# CSS para tema escuro
 st.markdown("""
 <style>
     .stApp {
@@ -154,63 +154,99 @@ st.markdown("""
         margin: 0.8rem 0;
         border-left: 4px solid #f39c12;
     }
-    /* Esconder índice do dataframe */
+    /* Ocultar índice do dataframe */
     .dataframe thead th:first-child {
         display: none;
     }
     .dataframe tbody th {
         display: none;
     }
+    .format-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin: 0.2rem;
+    }
+    .upload-success-section {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1.5rem 0;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        border: 1px solid #2ecc71;
+    }
+    .upload-success-left {
+        background: rgba(46, 204, 113, 0.1);
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 4px solid #2ecc71;
+        height: 100%;
+    }
+    .upload-success-right {
+        background: rgba(52, 152, 219, 0.1);
+        padding: 1.2rem;
+        border-radius: 10px;
+        border-left: 4px solid #3498db;
+        height: 100%;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-def create_stat_card(value, label, icon="📊", color="#667eea"):
+def inicializar_analisador():
+    """Inicializar o analisador com tratamento adequado de erros"""
+    try:
+        if 'analisador' not in st.session_state or st.session_state.analisador is None:
+            st.session_state.analisador = AnalisadorChatBot()
+            return True
+        return True
+    except Exception as e:
+        st.error(f"❌ Falha ao inicializar analisador: {e}")
+        st.info("Por favor, certifique-se de que sua chave API do OpenRouter está configurada corretamente.")
+        return False
+
+def criar_cartao_estatistica(valor, rotulo, icone="📊", cor="#667eea"):
     return f"""
-    <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, #764ba2 100%);">
-        <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">{icon}</div>
-        <div class="metric-value">{value}</div>
-        <div class="metric-label">{label}</div>
+    <div class="stat-card" style="background: linear-gradient(135deg, {cor} 0%, #764ba2 100%);">
+        <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">{icone}</div>
+        <div class="metric-value">{valor}</div>
+        <div class="metric-label">{rotulo}</div>
     </div>
     """
 
-def create_type_card(value, label, color="#3498db"):
+def criar_cartao_tipo(valor, rotulo, cor="#3498db"):
     return f"""
-    <div class="type-card" style="border-color: {color};">
-        <div class="metric-value">{value}</div>
-        <div class="metric-label">{label}</div>
+    <div class="type-card" style="border-color: {cor};">
+        <div class="metric-value">{valor}</div>
+        <div class="metric-label">{rotulo}</div>
     </div>
     """
 
-def get_download_link(content, filename, text):
-    """Gerar link de download para conteúdo de texto"""
-    b64 = base64.b64encode(content.encode()).decode()
-    return f'<a href="data:file/txt;base64,{b64}" download="{filename}" class="download-btn">{text}</a>'
+def obter_link_download(conteudo, nome_arquivo, texto):
+    """Gerar um link de download para conteúdo de texto"""
+    b64 = base64.b64encode(conteudo.encode()).decode()
+    return f'<a href="data:file/txt;base64,{b64}" download="{nome_arquivo}" class="download-btn">{texto}</a>'
 
-def display_welcome_screen(uploaded_file=None):
+def exibir_tela_boas_vindas(arquivo_carregado=None):
     """Exibir tela de boas-vindas com informações do aplicativo"""
     # Título sem ícone
     st.markdown('<h1 class="main-header">Analisador de Dados</h1>', unsafe_allow_html=True)
     
-    if uploaded_file:
-        # Seção unificada na parte superior
-        st.markdown(f"""
+    if arquivo_carregado:
+        # Tela de boas-vindas com arquivo carregado (sem seção "Arquivo Pronto para Análise")
+        st.markdown("""
         <div class="welcome-card">
-            <div style="display: flex; align-items: center; margin-bottom: 1rem;">
-                <div style="flex: 1;">
-                    <h2 style="color: #2ecc71; margin: 0; font-size: 1.5rem;">✅ Arquivo Carregado com Sucesso!</h2>
-                    <p style="font-size: 1rem; margin: 0.5rem 0 0 0;">
-                    <strong>Arquivo:</strong> {uploaded_file.name}<br>
-                    Pronto para análise. Clique no botão <strong>"Analisar Conjunto de Dados"</strong> na barra lateral para começar.
-                    </p>
-                </div>
-                <div style="margin-left: 1rem; padding: 1rem; background: rgba(52, 152, 219, 0.1); border-radius: 8px; border-left: 4px solid #3498db;">
-                    <h3 style="font-size: 1.1rem; color: #3498db; margin: 0 0 0.5rem 0;">🚀 Pronto para Análise Profunda?</h3>
-                    <p style="font-size: 0.9rem; margin: 0;">Clique no botão na barra lateral para gerar insights com IA.</p>
-                </div>
-            </div>
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Bem-vindo ao Analisador de Dados!</h2>
+            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
+            Ferramenta avançada com IA para análise abrangente de conjuntos de dados e geração de insights.
+            </p>
         </div>
         """, unsafe_allow_html=True)
     else:
+        # Tela de boas-vindas padrão (sem arquivo carregado)
         st.markdown("""
         <div class="welcome-card">
             <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Bem-vindo ao Analisador de Dados!</h2>
@@ -220,40 +256,41 @@ def display_welcome_screen(uploaded_file=None):
         </div>
         """, unsafe_allow_html=True)
     
-    # Funcionalidades em um único card com layout melhorado
-    st.markdown("### ✨ Funcionalidades do Aplicativo")
+    # CORREÇÃO: Recursos em um único cartão com layout melhorado
+    st.markdown("### ✨ Recursos do Aplicativo")
     st.markdown("""
     <div class="feature-card">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
             <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Análise Descritiva</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas e distribuições</p>
+                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Suporte a Múltiplos Formatos</h4>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Analise arquivos CSV, Excel (XLSX) e JSON com detecção automática de formato</p>
             </div>
             <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Visualização de Dados</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Gráficos interativos, visualizações e matrizes de correlação para todos os tipos de variáveis e relacionamentos</p>
+                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Análise Inteligente de Dados</h4>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas</p>
             </div>
             <div style="padding: 0.5rem;">
                 <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 Insights com IA</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos, tendências e inteligência de negócios</p>
+                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos e inteligência de negócios</p>
             </div>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Como Usar e Dicas lado a lado com layout melhorado
+    # CORREÇÃO: Como Usar e Dicas lado a lado com layout melhorado
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("### 📋 Como Usar")
-        if uploaded_file:
-            st.markdown(f"""
+        if arquivo_carregado:
+            # CORREÇÃO: Remover o cartão que mostra que o arquivo foi carregado com sucesso
+            st.markdown("""
             <div class="card">
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>✅ Arquivo carregado com sucesso</strong> - {uploaded_file.name}</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Selecione a planilha</strong> (se arquivo Excel) na barra lateral</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Clique em "Analisar Conjunto de Dados"</strong> na barra lateral para iniciar a análise</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - o sistema gerará estatísticas descritivas e insights com IA</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Explore os resultados</strong> nas abas Análise Exploratória e Insights Gerados</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - detecção automática de formato e análise</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Explore os resultados</strong> nas abas de Análise Exploratória e Insights</li>
                     <li><strong>Baixe os relatórios</strong> para uso offline e documentação</li>
                 </ol>
             </div>
@@ -262,198 +299,217 @@ def display_welcome_screen(uploaded_file=None):
             st.markdown("""
             <div class="card">
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Carregue seu arquivo CSV</strong> usando o carregador na barra lateral</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Carregue seu arquivo de dados</strong> - formato CSV, Excel (XLSX) ou JSON</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Selecione a planilha</strong> (se arquivo Excel) na barra lateral</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Clique em "Analisar Conjunto de Dados"</strong> para iniciar o processo de análise</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - o sistema gerará estatísticas descritivas e insights com IA</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Explore os resultados</strong> nas abas Análise Exploratória e Insights Gerados</li>
-                    <li><strong>Baixe os relatórios</strong> para uso offline e documentação</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - detecção automática de formato e análise</li>
+                    <li><strong>Explore os resultados</strong> nas abas de análise e baixe os relatórios</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
     
     with col2:
-        # Dicas - Layout melhorado
+        # Dicas - Layout melhorado (removido "Formatos Suportados")
         st.markdown("### 💡 Dicas para Melhores Resultados")
         st.markdown("""
         <div class="card">
             <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                <li style="margin-bottom: 0.8rem;"><strong>Garanta formato CSV</strong> - Valores separados por vírgula adequadamente estruturados</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Limpe os dados primeiro</strong> - Remova colunas desnecessárias antes de carregar</li>
-                <li style="margin-bottom: 0.8rem;"><strong>Trate valores faltantes</strong> - Resolva valores nulos quando possível</li>
+                <li style="margin-bottom: 0.8rem;"><strong>Trate valores ausentes</strong> - Resolva valores nulos quando possível</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Cabeçalhos descritivos</strong> - Use nomes de colunas claros e significativos</li>
                 <li><strong>Otimização de tamanho</strong> - Arquivos abaixo de 200MB para desempenho ideal</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
 
-def display_column_types_cards(analyzer):
-    """Exibir tipos de coluna como cards em vez de gráfico de rosca"""
-    simple_types = analyzer.get_simple_column_types()
+def exibir_cartoes_tipos_coluna(analisador):
+    """Exibir tipos de coluna como cartões em vez de gráfico de rosca"""
+    if analisador is None or analisador.df is None:
+        # Retornar cartões vazios se não houver dados
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(criar_cartao_tipo(0, "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
+        with col2:
+            st.markdown(criar_cartao_tipo(0, "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
+        with col3:
+            st.markdown(criar_cartao_tipo(0, "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
+        with col4:
+            st.markdown(criar_cartao_tipo(0, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
+        return
+    
+    tipos_simples = analisador.obter_tipos_coluna_simples()
     
     # Obter contagens para cada tipo, garantindo que contagens zero sejam incluídas
-    numerical_count = len(simple_types.get('Numéricas', []))
-    categorical_count = len(simple_types.get('Categóricas', []))
-    boolean_count = len(simple_types.get('Verdadeiro/Falso', []))
-    datetime_count = len(simple_types.get('Data/Hora', []))
+    contagem_numericas = len(tipos_simples.get('Numéricas', []))
+    contagem_categoricas = len(tipos_simples.get('Categóricas', []))
+    contagem_booleanas = len(tipos_simples.get('Verdadeiro/Falso', []))
+    contagem_data_hora = len(tipos_simples.get('Data/Hora', []))
     
-    # Exibir como cards
+    # Exibir como cartões
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown(create_type_card(numerical_count, "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(contagem_numericas, "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
     
     with col2:
-        st.markdown(create_type_card(categorical_count, "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(contagem_categoricas, "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
     
     with col3:
-        st.markdown(create_type_card(boolean_count, "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(contagem_booleanas, "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
     
     with col4:
-        st.markdown(create_type_card(datetime_count, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(contagem_data_hora, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
 
-def create_correlation_heatmap(df):
+def criar_mapa_calor_correlacao(df):
     """Criar mapa de calor de correlação para todas as variáveis"""
+    if df is None or df.empty:
+        st.warning("Nenhum dado disponível para análise de correlação")
+        return None
+        
     # Criar uma cópia do dataframe para codificação
-    df_encoded = df.copy()
+    df_codificado = df.copy()
     
     # Codificar variáveis categóricas
-    for col in df_encoded.select_dtypes(include=['object', 'category']).columns:
-        df_encoded[col] = pd.factorize(df_encoded[col])[0]
+    for col in df_codificado.select_dtypes(include=['object', 'category']).columns:
+        df_codificado[col] = pd.factorize(df_codificado[col])[0]
     
     # Codificar variáveis booleanas
-    for col in df_encoded.select_dtypes(include='bool').columns:
-        df_encoded[col] = df_encoded[col].astype(int)
+    for col in df_codificado.select_dtypes(include='bool').columns:
+        df_codificado[col] = df_codificado[col].astype(int)
     
     # Calcular matriz de correlação
-    corr_matrix = df_encoded.corr()
-    
-    # Criar mapa de calor
-    fig = px.imshow(
-        corr_matrix,
-        title="Matriz de Correlação (Todas as Variáveis)",
-        color_continuous_scale='RdBu_r',
-        aspect="auto",
-        range_color=[-1, 1],
-        labels=dict(color="Correlação")
-    )
-    
-    fig.update_layout(
-        height=600,
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white'),
-        coloraxis_colorbar=dict(
-            title="Correlação",
-            tickvals=[-1, -0.5, 0, 0.5, 1],
-            ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+    try:
+        matriz_corr = df_codificado.corr()
+        
+        # Criar mapa de calor
+        fig = px.imshow(
+            matriz_corr,
+            title="Matriz de Correlação (Todas as Variáveis)",
+            color_continuous_scale='RdBu_r',
+            aspect="auto",
+            range_color=[-1, 1],
+            labels=dict(color="Correlação")
         )
-    )
-    
-    return fig
+        
+        fig.update_layout(
+            height=600,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            coloraxis_colorbar=dict(
+                title="Correlação",
+                tickvals=[-1, -0.5, 0, 0.5, 1],
+                ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+            )
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
+        return None
 
-def display_exploratory_analysis(results):
+def exibir_analise_exploratoria(resultados):
     """Exibir análise exploratória de dados com abas"""
     st.markdown('<div class="section-header">📊 Análise Exploratória de Dados</div>', unsafe_allow_html=True)
     
     # Botão de download
-    if 'ai_analysis' in results and 'statistics' in results:
-        combined_report = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{results['statistics']}\n\n## Análise com IA\n\n{results['ai_analysis']}"
-        st.markdown(get_download_link(combined_report, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
+    if 'analise_ia' in resultados and 'estatisticas' in resultados:
+        relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
+        st.markdown(obter_link_download(relatorio_combinado, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
     
-    # Cards de visão geral
-    df = results['dataframe']
+    # Cartões de visão geral
+    df = resultados['dataframe']
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.markdown(create_stat_card(f"{df.shape[0]:,}", "Total de Linhas", "📈", "#2ecc71"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_estatistica(f"{df.shape[0]:,}", "Total de Linhas", "📈", "#2ecc71"), unsafe_allow_html=True)
     with col2:
-        st.markdown(create_stat_card(f"{df.shape[1]}", "Total de Colunas", "📊", "#3498db"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_estatistica(f"{df.shape[1]}", "Total de Colunas", "📊", "#3498db"), unsafe_allow_html=True)
     with col3:
-        st.markdown(create_stat_card(f"{df.isnull().sum().sum():,}", "Valores Faltantes", "⚠️", "#f39c12"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_estatistica(f"{df.isnull().sum().sum():,}", "Valores Ausentes", "⚠️", "#f39c12"), unsafe_allow_html=True)
     with col4:
-        st.markdown(create_stat_card(f"{df.duplicated().sum():,}", "Linhas Duplicadas", "🔍", "#e74c3c"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_estatistica(f"{df.duplicated().sum():,}", "Linhas Duplicadas", "🔍", "#e74c3c"), unsafe_allow_html=True)
     with col5:
-        total_cells = df.shape[0] * df.shape[1]
-        st.markdown(create_stat_card(f"{total_cells:,}", "Total de Células", "🔢", "#9b59b6"), unsafe_allow_html=True)
+        total_celulas = df.shape[0] * df.shape[1]
+        st.markdown(criar_cartao_estatistica(f"{total_celulas:,}", "Total de Células", "🔢", "#9b59b6"), unsafe_allow_html=True)
     
-    # Tipos de coluna como cards
-    analyzer = st.session_state.analyzer
-    display_column_types_cards(analyzer)
+    # Tipos de coluna como cartões
+    analisador = st.session_state.analisador
+    exibir_cartoes_tipos_coluna(analisador)
     
     # Criar abas para diferentes tipos de dados
-    tab_names = ["Visão Geral"]
-    simple_types = analyzer.get_simple_column_types()
+    nomes_abas = ["Visão Geral"]
+    tipos_simples = analisador.obter_tipos_coluna_simples()
     
-    if simple_types['Numéricas']:
-        tab_names.append("Colunas Numéricas")
-    if simple_types['Categóricas']:
-        tab_names.append("Colunas Categóricas")
-    if simple_types['Verdadeiro/Falso']:
-        tab_names.append("Colunas Verdadeiro/Falso")
-    if simple_types['Data/Hora']:
-        tab_names.append("Colunas Data/Hora")
+    if tipos_simples['Numéricas']:
+        nomes_abas.append("Colunas Numéricas")
+    if tipos_simples['Categóricas']:
+        nomes_abas.append("Colunas Categóricas")
+    if tipos_simples['Verdadeiro/Falso']:
+        nomes_abas.append("Colunas Verdadeiro/Falso")
+    if tipos_simples['Data/Hora']:
+        nomes_abas.append("Colunas Data/Hora")
     
-    tabs = st.tabs(tab_names)
+    abas = st.tabs(nomes_abas)
     
     # Aba Visão Geral
-    with tabs[0]:
-        display_overview_tab(results)
+    with abas[0]:
+        exibir_aba_visao_geral(resultados)
     
     # Aba Colunas Numéricas
-    if simple_types['Numéricas']:
-        tab_index = tab_names.index("Colunas Numéricas")
-        with tabs[tab_index]:
-            display_numerical_tab(results)
+    if tipos_simples['Numéricas']:
+        indice_aba = nomes_abas.index("Colunas Numéricas")
+        with abas[indice_aba]:
+            exibir_aba_numericas(resultados)
     
     # Aba Colunas Categóricas
-    if simple_types['Categóricas']:
-        tab_index = tab_names.index("Colunas Categóricas")
-        with tabs[tab_index]:
-            display_categorical_tab(results)
+    if tipos_simples['Categóricas']:
+        indice_aba = nomes_abas.index("Colunas Categóricas")
+        with abas[indice_aba]:
+            exibir_aba_categoricas(resultados)
     
     # Aba Colunas Verdadeiro/Falso
-    if simple_types['Verdadeiro/Falso']:
-        tab_index = tab_names.index("Colunas Verdadeiro/Falso")
-        with tabs[tab_index]:
-            display_boolean_tab(results)
+    if tipos_simples['Verdadeiro/Falso']:
+        indice_aba = nomes_abas.index("Colunas Verdadeiro/Falso")
+        with abas[indice_aba]:
+            exibir_aba_booleanas(resultados)
     
     # Aba Colunas Data/Hora
-    if simple_types['Data/Hora']:
-        tab_index = tab_names.index("Colunas Data/Hora")
-        with tabs[tab_index]:
-            display_datetime_tab(results)
+    if tipos_simples['Data/Hora']:
+        indice_aba = nomes_abas.index("Colunas Data/Hora")
+        with abas[indice_aba]:
+            exibir_aba_data_hora(resultados)
 
-def display_overview_tab(results):
+def exibir_aba_visao_geral(resultados):
     """Exibir conteúdo da aba de visão geral"""
-    df = results['dataframe']
-    analyzer = st.session_state.analyzer
+    df = resultados['dataframe']
+    analisador = st.session_state.analisador
     
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### Primeiras 10 Linhas")
-        # Índice removido usando hide_index=True
-        df_display = df.head(10)
-        st.dataframe(df_display, use_container_width=True, height=350, hide_index=True)
+        df_exibicao = df.head(10)
+        st.dataframe(df_exibicao, use_container_width=True, height=350, hide_index=True)
     
     with col2:
-        st.markdown("#### Informações das Colunas")
-        column_info = analyzer.get_detailed_column_info()
-        # Índice removido usando hide_index=True
-        st.dataframe(column_info, use_container_width=True, height=350, hide_index=True)
+        st.markdown("#### Informações da Coluna")
+        info_coluna = analisador.obter_info_coluna_detalhada()
+        st.dataframe(info_coluna, use_container_width=True, height=350, hide_index=True)
     
-    # Mapa de calor de correlação movido para dentro da aba Visão Geral
+    # Mapa de calor de correlação
     st.markdown("### 🔗 Matriz de Correlação")
     try:
-        corr_fig = create_correlation_heatmap(df)
-        st.plotly_chart(corr_fig, use_container_width=True)
+        fig_corr = criar_mapa_calor_correlacao(df)
+        if fig_corr:
+            st.plotly_chart(fig_corr, use_container_width=True)
     except Exception as e:
         st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
 
-def display_numerical_tab(results):
+def exibir_aba_numericas(resultados):
     """Exibir análise de colunas numéricas"""
-    df = results['dataframe']
-    numerical_cols = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+    df = resultados['dataframe']
+    colunas_numericas = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
     
-    for col in numerical_cols:
+    for col in colunas_numericas:
         with st.container():
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 📈 {col}")
@@ -469,20 +525,20 @@ def display_numerical_tab(results):
                 st.metric("Mínimo", f"{df[col].min():.2f}")
                 st.metric("Máximo", f"{df[col].max():.2f}")
             
-            st.metric("Valores Faltantes", f"{df[col].isnull().sum()}")
+            st.metric("Valores Ausentes", f"{df[col].isnull().sum()}")
             
             # Visualizações
-            viz_col1, viz_col2 = st.columns(2)
-            with viz_col1:
+            col_viz1, col_viz2 = st.columns(2)
+            with col_viz1:
                 # Gráfico de área
-                chart_data = df[col].dropna()
-                if len(chart_data) > 0:
-                    hist_values, bin_edges = np.histogram(chart_data, bins=50)
-                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+                dados_grafico = df[col].dropna()
+                if len(dados_grafico) > 0:
+                    valores_hist, bordas_bin = np.histogram(dados_grafico, bins=50)
+                    centros_bin = (bordas_bin[:-1] + bordas_bin[1:]) / 2
                     
                     fig_area = px.area(
-                        x=bin_centers, 
-                        y=hist_values, 
+                        x=centros_bin, 
+                        y=valores_hist, 
                         title=f"Distribuição - {col}",
                         labels={'x': col, 'y': 'Frequência'}
                     )
@@ -503,7 +559,7 @@ def display_numerical_tab(results):
                     
                     st.plotly_chart(fig_area, use_container_width=True)
             
-            with viz_col2:
+            with col_viz2:
                 # Box plot
                 fig_box = px.box(df, y=col, title=f"Box Plot - {col}")
                 fig_box.update_traces(marker_color='#e74c3c')
@@ -517,44 +573,44 @@ def display_numerical_tab(results):
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_categorical_tab(results):
+def exibir_aba_categoricas(resultados):
     """Exibir análise de colunas categóricas"""
-    df = results['dataframe']
-    categorical_cols = df.select_dtypes(include=['object', 'category', 'string']).columns
+    df = resultados['dataframe']
+    colunas_categoricas = df.select_dtypes(include=['object', 'category', 'string']).columns
     
-    for col in categorical_cols:
+    for col in colunas_categoricas:
         with st.container():
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 🏷️ {col}")
             
             # Estatísticas
-            unique_count = df[col].nunique()
-            missing_count = df[col].isnull().sum()
-            top_values = df[col].value_counts().head(3)
+            contagem_unicos = df[col].nunique()
+            contagem_ausentes = df[col].isnull().sum()
+            valores_principais = df[col].value_counts().head(3)
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Categorias Únicas", unique_count)
-                st.metric("Valores Faltantes", missing_count)
+                st.metric("Categorias Únicas", contagem_unicos)
+                st.metric("Valores Ausentes", contagem_ausentes)
             
             with col2:
-                st.markdown("**Top 3 Categorias:**")
-                for value, count in top_values.items():
-                    st.write(f"- `{value}`: {count} ocorrências")
+                st.markdown("**3 Categorias Principais:**")
+                for valor, contagem in valores_principais.items():
+                    st.write(f"- `{valor}`: {contagem} ocorrências")
             
             # Gráfico de barras com orientação condicional
-            value_counts = df[col].value_counts().head(10)  # Apenas os 10 principais
+            contagem_valores = df[col].value_counts().head(10)  # Apenas 10 principais
             
-            if len(value_counts) <= 5:
+            if len(contagem_valores) <= 5:
                 # Gráfico de barras horizontal para 5 ou menos categorias
-                fig_bar = px.bar(
-                    x=value_counts.values,
-                    y=value_counts.index,
+                fig_barra = px.bar(
+                    x=contagem_valores.values,
+                    y=contagem_valores.index,
                     orientation='h',
-                    title=f"Principais Categorias - {col}",
+                    title=f"Categorias Principais - {col}",
                     color_discrete_sequence=['#3498db']
                 )
-                fig_bar.update_layout(
+                fig_barra.update_layout(
                     xaxis_title="Contagem",
                     yaxis_title="Categorias",
                     paper_bgcolor='rgba(0,0,0,0)',
@@ -564,13 +620,13 @@ def display_categorical_tab(results):
                 )
             else:
                 # Gráfico de barras vertical para mais de 5 categorias
-                fig_bar = px.bar(
-                    x=value_counts.index,
-                    y=value_counts.values,
-                    title=f"Principais Categorias - {col}",
+                fig_barra = px.bar(
+                    x=contagem_valores.index,
+                    y=contagem_valores.values,
+                    title=f"Categorias Principais - {col}",
                     color_discrete_sequence=['#3498db']
                 )
-                fig_bar.update_layout(
+                fig_barra.update_layout(
                     xaxis_title="Categorias",
                     yaxis_title="Contagem",
                     paper_bgcolor='rgba(0,0,0,0)',
@@ -578,55 +634,55 @@ def display_categorical_tab(results):
                     font=dict(color='white'),
                     showlegend=False
                 )
-                fig_bar.update_xaxes(tickangle=45)
+                fig_barra.update_xaxes(tickangle=45)
             
-            st.plotly_chart(fig_bar, use_container_width=True)
+            st.plotly_chart(fig_barra, use_container_width=True)
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_boolean_tab(results):
+def exibir_aba_booleanas(resultados):
     """Exibir análise de colunas booleanas"""
-    df = results['dataframe']
-    boolean_cols = df.select_dtypes(include='bool').columns
+    df = resultados['dataframe']
+    colunas_booleanas = df.select_dtypes(include='bool').columns
     
-    for col in boolean_cols:
+    for col in colunas_booleanas:
         with st.container():
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### ✅ {col}")
             
-            value_counts = df[col].value_counts()
-            percentages = df[col].value_counts(normalize=True) * 100
+            contagem_valores = df[col].value_counts()
+            percentuais = df[col].value_counts(normalize=True) * 100
             
             col1, col2 = st.columns([1, 2])
             
             with col1:
                 # Métricas
-                for val, count in value_counts.items():
-                    percentage = percentages[val]
+                for val, contagem in contagem_valores.items():
+                    percentual = percentuais[val]
                     st.metric(
                         f"Contagem {val}", 
-                        f"{count} ({percentage:.1f}%)"
+                        f"{contagem} ({percentual:.1f}%)"
                     )
             
             with col2:
                 # Gráfico de rosca
-                colors = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
-                color_sequence = [colors.get(str(label), '#3498db') for label in value_counts.index]
+                cores = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
+                sequencia_cores = [cores.get(str(rotulo), '#3498db') for rotulo in contagem_valores.index]
 
-                fig_donut = px.pie(
-                    values=value_counts.values,
-                    names=[str(label) for label in value_counts.index],
+                fig_rosca = px.pie(
+                    values=contagem_valores.values,
+                    names=[str(rotulo) for rotulo in contagem_valores.index],
                     title=f"Distribuição - {col}",
                     hole=0.5,
-                    color_discrete_sequence=color_sequence
+                    color_discrete_sequence=sequencia_cores
                 )
-                fig_donut.update_traces(
+                fig_rosca.update_traces(
                     textposition='inside', 
                     textinfo='percent+label',
                     marker=dict(line=dict(color="#000000", width=2)),
                     textfont=dict(color='white', size=14)
                 )
-                fig_donut.update_layout(
+                fig_rosca.update_layout(
                     height=400,
                     showlegend=True,
                     paper_bgcolor='rgba(0,0,0,0)',
@@ -639,45 +695,45 @@ def display_boolean_tab(results):
                         x=0.5
                     )
                 )
-                st.plotly_chart(fig_donut, use_container_width=True)
+                st.plotly_chart(fig_rosca, use_container_width=True)
 
-def display_datetime_tab(results):
-    """Exibir análise de colunas de data/hora"""
-    df = results['dataframe']
-    datetime_cols = df.select_dtypes(include=['datetime64']).columns
+def exibir_aba_data_hora(resultados):
+    """Exibir análise de colunas data/hora"""
+    df = resultados['dataframe']
+    colunas_data_hora = df.select_dtypes(include=['datetime64']).columns
     
-    for col in datetime_cols:
+    for col in colunas_data_hora:
         with st.container():
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 📅 {col}")
             
             # Estatísticas
-            min_date = df[col].min()
-            max_date = df[col].max()
-            date_range = max_date - min_date
+            data_min = df[col].min()
+            data_max = df[col].max()
+            intervalo_data = data_max - data_min
             
             # Data mais frequente
-            date_counts = df[col].value_counts()
-            most_frequent_date = date_counts.index[0] if len(date_counts) > 0 else None
-            most_frequent_count = date_counts.iloc[0] if len(date_counts) > 0 else 0
+            contagem_datas = df[col].value_counts()
+            data_mais_frequente = contagem_datas.index[0] if len(contagem_datas) > 0 else None
+            contagem_mais_frequente = contagem_datas.iloc[0] if len(contagem_datas) > 0 else 0
             
             col1, col2 = st.columns(2)
             with col1:
-                st.metric("Data Mais Antiga", min_date.strftime('%Y-%m-%d'))
-                st.metric("Data Mais Recente", max_date.strftime('%Y-%m-%d'))
-                st.metric("Intervalo de Datas", f"{date_range.days} dias")
+                st.metric("Data Mais Antiga", data_min.strftime('%Y-%m-%d'))
+                st.metric("Data Mais Recente", data_max.strftime('%Y-%m-%d'))
+                st.metric("Intervalo de Datas", f"{intervalo_data.days} dias")
             
             with col2:
-                if most_frequent_date:
-                    st.metric("Data Mais Frequente", most_frequent_date.strftime('%Y-%m-%d'))
-                    st.metric("Frequência", most_frequent_count)
+                if data_mais_frequente:
+                    st.metric("Data Mais Frequente", data_mais_frequente.strftime('%Y-%m-%d'))
+                    st.metric("Frequência", contagem_mais_frequente)
             
             # Gráfico de linha temporal
-            timeline_data = df[col].value_counts().sort_index()
+            dados_timeline = df[col].value_counts().sort_index()
             fig_timeline = px.line(
-                x=timeline_data.index,
-                y=timeline_data.values,
-                title=f"Linha do Tempo - {col}",
+                x=dados_timeline.index,
+                y=dados_timeline.values,
+                title=f"Linha Temporal - {col}",
                 labels={'x': 'Data', 'y': 'Contagem de Registros'}
             )
             fig_timeline.update_traces(line=dict(color='#3498db', width=3))
@@ -691,23 +747,23 @@ def display_datetime_tab(results):
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def display_llm_insights(results):
-    """Exibir análise de LLM com seções estruturadas"""
+def exibir_insights_ia(resultados):
+    """Exibir análise da IA com seções estruturadas"""
     st.markdown('<div class="section-header">🤖 Insights Gerados</div>', unsafe_allow_html=True)
     
     # Botão de download
-    if 'ai_analysis' in results and 'statistics' in results:
-        combined_report = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{results['statistics']}\n\n## Análise com IA\n\n{results['ai_analysis']}"
-        st.markdown(get_download_link(combined_report, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
+    if 'analise_ia' in resultados and 'estatisticas' in resultados:
+        relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
+        st.markdown(obter_link_download(relatorio_combinado, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
     
-    if 'ai_analysis' not in results or not results['ai_analysis']:
-        st.error("Nenhuma análise com IA disponível. Por favor, execute a análise primeiro.")
+    if 'analise_ia' not in resultados or not resultados['analise_ia']:
+        st.error("Nenhuma análise IA disponível. Por favor, execute a análise primeiro.")
         return
     
-    analysis_text = results['ai_analysis']
+    texto_analise = resultados['analise_ia']
     
     # Extração de seções melhorada
-    sections = {
+    secoes = {
         'Resumo Executivo': '',
         'Análise Estatística Detalhada': '',
         'Identificação de Padrões': '',
@@ -715,134 +771,209 @@ def display_llm_insights(results):
         'Recomendações': ''
     }
     
-    current_section = None
-    lines = analysis_text.split('\n')
+    secao_atual = None
+    linhas = texto_analise.split('\n')
     
-    for line in lines:
-        line_stripped = line.strip()
+    for linha in linhas:
+        linha_limpa = linha.strip()
         
         # Verificar se esta linha inicia uma nova seção
-        if any(header in line_stripped.lower() for header in ['resumo executivo', 'executive summary', 'summary']):
-            current_section = 'Resumo Executivo'
+        if any(cabecalho in linha_limpa.lower() for cabecalho in ['resumo executivo', 'resumo']):
+            secao_atual = 'Resumo Executivo'
             continue
-        elif any(header in line_stripped.lower() for header in ['análise estatística detalhada', 'detailed statistical analysis', 'statistical analysis']):
-            current_section = 'Análise Estatística Detalhada'
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['análise estatística detalhada', 'análise estatística']):
+            secao_atual = 'Análise Estatística Detalhada'
             continue
-        elif any(header in line_stripped.lower() for header in ['identificação de padrões', 'pattern identification', 'pattern analysis', 'patterns']):
-            current_section = 'Identificação de Padrões'
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['identificação de padrões', 'análise de padrões', 'padrões']):
+            secao_atual = 'Identificação de Padrões'
             continue
-        elif any(header in line_stripped.lower() for header in ['implicações para negócios/pesquisa', 'business/research implications', 'implications', 'business implications', 'research implications']):
-            current_section = 'Implicações para Negócios/Pesquisa'
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['implicações para negócios/pesquisa', 'implicações', 'implicações de negócios', 'implicações de pesquisa']):
+            secao_atual = 'Implicações para Negócios/Pesquisa'
             continue
-        elif any(header in line_stripped.lower() for header in ['recomendações', 'recommendations', 'suggestions', 'next steps']):
-            current_section = 'Recomendações'
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['recomendações', 'sugestões', 'próximos passos']):
+            secao_atual = 'Recomendações'
             continue
         
         # Pular linhas vazias no início das seções
-        if current_section and not line_stripped and not sections[current_section]:
+        if secao_atual and not linha_limpa and not secoes[secao_atual]:
             continue
             
         # Adicionar conteúdo à seção atual
-        if current_section and line_stripped:
-            sections[current_section] += line + '\n'
+        if secao_atual and linha_limpa:
+            secoes[secao_atual] += linha + '\n'
     
     # Exibir cada seção
-    section_displayed = False
-    for section_name, section_content in sections.items():
-        if section_content.strip():
-            section_displayed = True
+    secao_exibida = False
+    for nome_secao, conteudo_secao in secoes.items():
+        if conteudo_secao.strip():
+            secao_exibida = True
             st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
-            st.markdown(f"### {section_name}")
-            st.markdown(section_content)
+            st.markdown(f"### {nome_secao}")
+            st.markdown(conteudo_secao)
             st.markdown('</div>', unsafe_allow_html=True)
     
     # Se nenhuma seção foi extraída adequadamente, mostrar a análise bruta
-    if not section_displayed:
+    if not secao_exibida:
         st.markdown("""
         <div class="insight-section">
             <h3>Análise Completa</h3>
-            <p>A análise com IA não pôde ser analisada em seções específicas. Aqui está a análise completa:</p>
+            <p>A análise IA não pôde ser analisada em seções específicas. Aqui está a análise completa:</p>
         </div>
         """, unsafe_allow_html=True)
-        st.markdown(f'<div class="card">{analysis_text}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="card">{texto_analise}</div>', unsafe_allow_html=True)
 
 def main():
-    """Aplicação principal do Streamlit"""
-    
+    """Função principal do aplicativo"""
     # Inicializar estado da sessão
-    if 'analysis_results' not in st.session_state:
-        st.session_state.analysis_results = None
-    if 'analyzer' not in st.session_state:
-        try:
-            st.session_state.analyzer = ChatBotAnalyzer()
-        except Exception as e:
-            st.error(f"❌ Falha ao inicializar o analisador: {e}")
-            st.info("Por favor, certifique-se de que sua chave da API OpenRouter está configurada corretamente.")
-            return
+    if 'analisador' not in st.session_state:
+        st.session_state.analisador = None
+    if 'resultados_analise' not in st.session_state:
+        st.session_state.resultados_analise = None
+    if 'arquivo_carregado' not in st.session_state:
+        st.session_state.arquivo_carregado = False
+    if 'arquivo_atual' not in st.session_state:
+        st.session_state.arquivo_atual = None
+    if 'planilha_selecionada' not in st.session_state:
+        st.session_state.planilha_selecionada = None
+    if 'planilhas_excel' not in st.session_state:
+        st.session_state.planilhas_excel = []
     
-    # Barra lateral para upload de arquivo
+    # Inicializar analisador
+    if not inicializar_analisador():
+        return
+    
+    # Barra lateral
     with st.sidebar:
-        st.markdown("## 📁 Carregar Conjunto de Dados")
-        uploaded_file = st.file_uploader(
-            "Escolha um arquivo CSV",
-            type=['csv'],
-            help="Carregue seu conjunto de dados em formato CSV"
+        st.markdown("## ⚙️ Configuração")
+        
+        # Upload de arquivo
+        arquivo_carregado = st.file_uploader(
+            "📁 Carregar Arquivo de Dados",
+            type=['csv', 'xlsx', 'json'],
+            help="Carregue arquivos CSV, Excel (XLSX) ou JSON"
         )
         
-        if uploaded_file is not None:
-            st.success(f"✅ Arquivo carregado: {uploaded_file.name}")
-            
-            # Botão de análise
-            st.markdown("## 🚀 Iniciar Análise")
-            if st.button("Analisar Conjunto de Dados", type="primary", use_container_width=True):
-                with st.spinner("🔄 Processando conjunto de dados... Isso pode levar alguns instantes."):
+        # Lidar com upload de arquivo
+        if arquivo_carregado is not None:
+            # Verificar se o arquivo é diferente do atual
+            if (st.session_state.arquivo_atual is None or 
+                st.session_state.arquivo_atual.name != arquivo_carregado.name):
+                
+                st.session_state.arquivo_carregado = True
+                st.session_state.arquivo_atual = arquivo_carregado
+                st.session_state.resultados_analise = None
+                st.session_state.planilha_selecionada = None
+                st.session_state.planilhas_excel = []
+                
+                # Processar o arquivo carregado
+                with st.spinner("🔄 Processando arquivo carregado..."):
                     try:
-                        # Salvar arquivo carregado em local temporário
-                        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp_file:
-                            tmp_file.write(uploaded_file.getvalue())
-                            tmp_file_path = tmp_file.name
+                        extensao_arquivo = arquivo_carregado.name.split('.')[-1].lower()
                         
-                        # Executar análise
-                        results = st.session_state.analyzer.analyze_csv(tmp_file_path)
-                        
-                        if results:
-                            st.session_state.analysis_results = results
-                            st.session_state.uploaded_file_name = uploaded_file.name
-                            st.success("✅ Análise concluída com sucesso!")
-                        else:
-                            st.error("❌ A análise falhou. Por favor, verifique seu arquivo e tente novamente.")
-                        
-                        # Limpar arquivo temporário
-                        os.unlink(tmp_file_path)
+                        if extensao_arquivo == 'csv':
+                            df = pd.read_csv(arquivo_carregado)
+                            st.session_state.analisador.carregar_dados(df)
+                            st.success("✅ Arquivo CSV carregado com sucesso!")
+                            
+                        elif extensao_arquivo == 'xlsx':
+                            arquivo_excel = pd.ExcelFile(arquivo_carregado)
+                            nomes_planilhas = arquivo_excel.sheet_names
+                            st.session_state.planilhas_excel = nomes_planilhas
+                            
+                            if len(nomes_planilhas) == 1:
+                                df = pd.read_excel(arquivo_carregado, sheet_name=nomes_planilhas[0])
+                                st.session_state.analisador.carregar_dados(df)
+                                st.success(f"✅ Arquivo Excel carregado com sucesso! (Planilha: {nomes_planilhas[0]})")
+                            else:
+                                st.session_state.planilha_selecionada = None
+                                st.info(f"📑 Arquivo Excel tem {len(nomes_planilhas)} planilhas. Por favor, selecione uma abaixo.")
+                            
+                        elif extensao_arquivo == 'json':
+                            df = pd.read_json(arquivo_carregado)
+                            st.session_state.analisador.carregar_dados(df)
+                            st.success("✅ Arquivo JSON carregado com sucesso!")
                         
                     except Exception as e:
-                        st.error(f"❌ Erro durante a análise: {str(e)}")
-                        st.info("Por favor, verifique se seu arquivo CSV está formatado corretamente.")
+                        st.error(f"❌ Erro ao carregar arquivo: {str(e)}")
+                        st.session_state.arquivo_carregado = False
+                        st.session_state.arquivo_atual = None
             
-            # Botão limpar análise
-            if st.session_state.analysis_results:
-                if st.button("Limpar Análise", type="secondary", use_container_width=True):
-                    st.session_state.analysis_results = None
-                    st.rerun()
-    
-    # Área de conteúdo principal
-    if uploaded_file is not None and st.session_state.analysis_results is None:
-        # Mostrar tela de boas-vindas com mensagem de arquivo carregado
-        display_welcome_screen(uploaded_file)
-    
-    elif st.session_state.analysis_results:
-        # Mostrar resultados da análise em abas
-        tab1, tab2 = st.tabs(["📊 Análise Exploratória de Dados", "🤖 Insights Gerados"])
+            # Seleção de planilha para arquivos Excel - CORREÇÃO: Condicional simplificada
+            if (arquivo_carregado.name.endswith('.xlsx') and 
+                st.session_state.planilha_selecionada is None and
+                len(st.session_state.planilhas_excel) > 1):
+                
+                try:
+                    planilha_selecionada = st.selectbox(
+                        "📑 Selecionar Planilha",
+                        st.session_state.planilhas_excel,
+                        help="Escolha qual planilha analisar"
+                    )
+                    
+                    if st.button("Carregar Planilha Selecionada", type="secondary"):
+                        with st.spinner(f"🔄 Carregando planilha: {planilha_selecionada}..."):
+                            df = pd.read_excel(arquivo_carregado, sheet_name=planilha_selecionada)
+                            st.session_state.analisador.carregar_dados(df)
+                            st.session_state.planilha_selecionada = planilha_selecionada
+                            st.success(f"✅ Planilha '{planilha_selecionada}' carregada com sucesso!")
+                            st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Erro ao ler arquivo Excel: {str(e)}")
         
-        with tab1:
-            display_exploratory_analysis(st.session_state.analysis_results)
+        # Botão de análise
+        st.markdown("---")
+        analise_clicada = st.button(
+            "🚀 Analisar Conjunto de Dados",
+            type="primary",
+            use_container_width=True,
+            disabled=not st.session_state.arquivo_carregado or st.session_state.analisador.df is None
+        )
         
-        with tab2:
-            display_llm_insights(st.session_state.analysis_results)
+        if analise_clicada:
+            if st.session_state.analisador.df is not None:
+                with st.spinner("🤖 Analisando conjunto de dados com IA..."):
+                    try:
+                        resultados = st.session_state.analisador.analisar_conjunto_dados()
+                        if resultados:
+                            st.session_state.resultados_analise = resultados
+                            st.success("✅ Análise concluída com sucesso!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Análise falhou. Por favor, verifique seus dados e tente novamente.")
+                    except Exception as e:
+                        st.error(f"❌ Erro durante a análise: {str(e)}")
+            else:
+                st.error("❌ Por favor, carregue e carregue um arquivo de dados primeiro.")
+        
+        # Botão limpar análise
+        if st.session_state.resultados_analise:
+            if st.button("🗑️ Limpar Análise", type="secondary", use_container_width=True):
+                st.session_state.resultados_analise = None
+                st.session_state.arquivo_carregado = False
+                st.session_state.arquivo_atual = None
+                st.session_state.planilha_selecionada = None
+                st.session_state.planilhas_excel = []
+                st.session_state.analisador.df = None
+                st.rerun()
+    
+    # Área de conteúdo principal - CORREÇÃO: Lógica de exibição corrigida
+    if st.session_state.resultados_analise is not None:
+        # Mostrar resultados da análise
+        aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🤖 Insights IA"])
+        
+        with aba1:
+            exibir_analise_exploratoria(st.session_state.resultados_analise)
+        
+        with aba2:
+            exibir_insights_ia(st.session_state.resultados_analise)
+    
+    elif st.session_state.arquivo_carregado and st.session_state.arquivo_atual is not None:
+        # Mostrar tela de boas-vindas com arquivo carregado (mas sem análise ainda)
+        exibir_tela_boas_vindas(arquivo_carregado=st.session_state.arquivo_atual)
     
     else:
-        # Tela de boas-vindas
-        display_welcome_screen()
+        # Exibir tela de boas-vindas padrão
+        exibir_tela_boas_vindas()
 
 if __name__ == "__main__":
     main()
