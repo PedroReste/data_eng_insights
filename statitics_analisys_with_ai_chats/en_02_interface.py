@@ -196,6 +196,18 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def initialize_analyzer():
+    """Initialize the analyzer with proper error handling"""
+    try:
+        if 'analyzer' not in st.session_state or st.session_state.analyzer is None:
+            st.session_state.analyzer = ChatBotAnalyzer()
+            return True
+        return True
+    except Exception as e:
+        st.error(f"❌ Failed to initialize analyzer: {e}")
+        st.info("Please make sure your OpenRouter API key is properly configured.")
+        return False
+
 def create_stat_card(value, label, icon="📊", color="#667eea"):
     return f"""
     <div class="stat-card" style="background: linear-gradient(135deg, {color} 0%, #764ba2 100%);">
@@ -237,7 +249,8 @@ def display_welcome_screen(uploaded_file=None):
         col_left, col_right = st.columns(2)
         
         with col_left:
-            st.markdown("""
+            file_ext = uploaded_file.name.split('.')[-1].upper()
+            st.markdown(f"""
             <div class="upload-success-left">
                 <h3 style="color: #2ecc71; margin: 0 0 1rem 0; font-size: 1.3rem;">✅ File Uploaded Successfully</h3>
                 <div style="background: rgba(46, 204, 113, 0.2); padding: 0.8rem; border-radius: 8px; margin: 1rem 0;">
@@ -253,7 +266,7 @@ def display_welcome_screen(uploaded_file=None):
                     statistical profiling, data visualization, and AI-powered insights.
                 </p>
             </div>
-            """.format(uploaded_file=uploaded_file, file_ext=uploaded_file.name.split('.')[-1].upper()), unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         
         with col_right:
             st.markdown("""
@@ -324,7 +337,7 @@ def display_welcome_screen(uploaded_file=None):
             
             st.markdown(f"""
             <div class="card">
-                {file_info if uploaded_file else ""}
+                {file_info}
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
                     <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start analysis</li>
@@ -374,10 +387,21 @@ def display_welcome_screen(uploaded_file=None):
         </div>
         """, unsafe_allow_html=True)
 
-# ... (o restante das funções permanece igual - display_column_types_cards, create_correlation_heatmap, etc.)
-
 def display_column_types_cards(analyzer):
     """Display column types as cards instead of donut chart"""
+    if analyzer is None or analyzer.df is None:
+        # Return empty cards if no data
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.markdown(create_type_card(0, "Numerical Columns", "#3498db"), unsafe_allow_html=True)
+        with col2:
+            st.markdown(create_type_card(0, "Categorical Columns", "#e74c3c"), unsafe_allow_html=True)
+        with col3:
+            st.markdown(create_type_card(0, "True/False Columns", "#2ecc71"), unsafe_allow_html=True)
+        with col4:
+            st.markdown(create_type_card(0, "Date/Time Columns", "#f39c12"), unsafe_allow_html=True)
+        return
+    
     simple_types = analyzer.get_simple_column_types()
     
     # Get counts for each type, ensuring zero counts are included
@@ -403,6 +427,10 @@ def display_column_types_cards(analyzer):
 
 def create_correlation_heatmap(df):
     """Create correlation heatmap for all variables"""
+    if df is None or df.empty:
+        st.warning("No data available for correlation analysis")
+        return None
+        
     # Create a copy of the dataframe for encoding
     df_encoded = df.copy()
     
@@ -415,30 +443,34 @@ def create_correlation_heatmap(df):
         df_encoded[col] = df_encoded[col].astype(int)
     
     # Calculate correlation matrix
-    corr_matrix = df_encoded.corr()
-    
-    # Create heatmap
-    fig = px.imshow(
-        corr_matrix,
-        title="Correlation Matrix (All Variables)",
-        color_continuous_scale='RdBu_r',
-        aspect="auto",
-        range_color=[-1, 1],
-        labels=dict(color="Correlation")
-    )
-    
-    fig.update_layout(
-        height=600,
-        paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='white'),
-        coloraxis_colorbar=dict(
-            title="Correlation",
-            tickvals=[-1, -0.5, 0, 0.5, 1],
-            ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+    try:
+        corr_matrix = df_encoded.corr()
+        
+        # Create heatmap
+        fig = px.imshow(
+            corr_matrix,
+            title="Correlation Matrix (All Variables)",
+            color_continuous_scale='RdBu_r',
+            aspect="auto",
+            range_color=[-1, 1],
+            labels=dict(color="Correlation")
         )
-    )
-    
-    return fig
+        
+        fig.update_layout(
+            height=600,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            coloraxis_colorbar=dict(
+                title="Correlation",
+                tickvals=[-1, -0.5, 0, 0.5, 1],
+                ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+            )
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"Could not generate correlation matrix: {str(e)}")
+        return None
 
 def display_exploratory_analysis(results):
     """Display exploratory data analysis with tabs"""
@@ -532,7 +564,8 @@ def display_overview_tab(results):
     st.markdown("### 🔗 Correlation Matrix")
     try:
         corr_fig = create_correlation_heatmap(df)
-        st.plotly_chart(corr_fig, use_container_width=True)
+        if corr_fig:
+            st.plotly_chart(corr_fig, use_container_width=True)
     except Exception as e:
         st.error(f"Could not generate correlation matrix: {str(e)}")
 
@@ -861,16 +894,15 @@ def main():
     if 'analysis_results' not in st.session_state:
         st.session_state.analysis_results = None
     if 'analyzer' not in st.session_state:
-        try:
-            st.session_state.analyzer = ChatBotAnalyzer()
-        except Exception as e:
-            st.error(f"❌ Failed to initialize analyzer: {e}")
-            st.info("Please make sure your OpenRouter API key is properly configured.")
-            return
+        st.session_state.analyzer = None
     if 'selected_sheet' not in st.session_state:
         st.session_state.selected_sheet = None
     if 'available_sheets' not in st.session_state:
         st.session_state.available_sheets = []
+    
+    # Initialize analyzer
+    if not initialize_analyzer():
+        return
     
     # Sidebar for file upload
     with st.sidebar:

@@ -133,7 +133,12 @@ class ChatBotAnalyzer:
     def get_simple_column_types(self) -> Dict[str, List[str]]:
         """Get simplified column types grouped by category"""
         if self.df is None:
-            return {}
+            return {
+                'Numerical': [],
+                'Categorical': [],
+                'True/False': [],
+                'Date/Time': []
+            }
         
         numerical_cols = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
         categorical_cols = self.df.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
@@ -158,7 +163,7 @@ class ChatBotAnalyzer:
             col_type = self._get_simple_dtype(self.df[col].dtype)
             non_null_count = self.df[col].count()
             null_count = self.df[col].isnull().sum()
-            null_percentage = (null_count / len(self.df)) * 100
+            null_percentage = (null_count / len(self.df)) * 100 if len(self.df) > 0 else 0
             
             column_info.append({
                 'Column Name': col,
@@ -176,7 +181,7 @@ class ChatBotAnalyzer:
             return "Numerical"
         elif np.issubdtype(dtype, np.bool_):
             return "True/False"
-        elif np.issubdtype(dtype, np.datetime64):
+        elif np.issubdtype(dtype, np.datetime64) or np.issubdtype(dtype, np.timedelta64):
             return "Date/Time"
         else:
             return "Categorical"
@@ -376,18 +381,18 @@ class ChatBotAnalyzer:
     
     def generate_visualizations(self) -> Dict[str, go.Figure]:
         """Generate interactive visualizations for the dataset"""
-        if self.df is None:
+        if self.df is None or self.df.empty:
             return {}
         
         visualizations = {}
         
-        # Data types pie chart - Fixed with proper dtype categorization
+        # Data types pie chart
         def categorize_dtype(dtype):
             if np.issubdtype(dtype, np.number):
                 return "Numerical"
             elif np.issubdtype(dtype, np.bool_):
                 return "Boolean"
-            elif np.issubdtype(dtype, np.datetime64):
+            elif np.issubdtype(dtype, np.datetime64) or np.issubdtype(dtype, np.timedelta64):
                 return "Date/Time"
             else:
                 return "Categorical"
@@ -445,15 +450,15 @@ class ChatBotAnalyzer:
             fig_dist.update_layout(height=300*n_rows, title_text="Numerical Variables Distributions", showlegend=False)
             visualizations['numerical_distributions'] = fig_dist
         
-        # Categorical columns distributions - FIXED
+        # Categorical columns distributions
         categorical_cols = self.df.select_dtypes(include=['object', 'category', 'string']).columns
         if len(categorical_cols) > 0:
             n_cols = min(3, len(categorical_cols))
             n_rows = (len(categorical_cols) + n_cols - 1) // n_cols
 
-            fig_cat_dist = make_subplots(  # Changed variable name to avoid conflict
+            fig_cat_dist = make_subplots(
                 rows=n_rows, cols=n_cols,
-                subplot_titles=categorical_cols[:n_rows*n_cols],  # Fixed: use categorical_cols
+                subplot_titles=categorical_cols[:n_rows*n_cols],
                 horizontal_spacing=0.1,
                 vertical_spacing=0.15
             )
@@ -465,25 +470,25 @@ class ChatBotAnalyzer:
                 # For categorical data, use bar chart with value counts
                 value_counts = self.df[col].value_counts().head(10)  # Top 10 values only
                 fig_cat_dist.add_trace(
-                    go.Bar(x=value_counts.index, y=value_counts.values, name=col),  # Fixed: go.Bar not go.bar
+                    go.Bar(x=value_counts.index, y=value_counts.values, name=col),
                     row=row, col=col_num
                 )
             
             fig_cat_dist.update_layout(height=300*n_rows, title_text="Categorical Variables Distributions", showlegend=False)
             visualizations['categorical_distributions'] = fig_cat_dist
 
-        # Boolean columns distributions - FIXED
+        # Boolean columns distributions
         boolean_cols = self.df.select_dtypes(include='bool').columns
         if len(boolean_cols) > 0:
             n_cols = min(3, len(boolean_cols))
             n_rows = (len(boolean_cols) + n_cols - 1) // n_cols
 
-            fig_bool_dist = make_subplots(  # Changed variable name
+            fig_bool_dist = make_subplots(
                 rows=n_rows, cols=n_cols,
-                subplot_titles=boolean_cols[:n_rows*n_cols],  # Fixed: use boolean_cols
+                subplot_titles=boolean_cols[:n_rows*n_cols],
                 horizontal_spacing=0.1,
                 vertical_spacing=0.15,
-                specs=[[{"type": "pie"} for _ in range(n_cols)] for _ in range(n_rows)]  # Specify pie chart type
+                specs=[[{"type": "pie"} for _ in range(n_cols)] for _ in range(n_rows)]
             )
             
             for i, col in enumerate(boolean_cols[:n_rows*n_cols]):
@@ -494,20 +499,20 @@ class ChatBotAnalyzer:
                 value_counts = self.df[col].value_counts()
                 fig_bool_dist.add_trace(
                     go.Pie(labels=[str(label) for label in value_counts.index], 
-                        values=value_counts.values, name=col),  # Fixed: go.Pie not go.pie
+                          values=value_counts.values, name=col),
                     row=row, col=col_num
                 )
             
             fig_bool_dist.update_layout(height=300*n_rows, title_text="Boolean Variables Distributions", showlegend=False)
             visualizations['boolean_distributions'] = fig_bool_dist
 
-        # Date/time columns distributions - FIXED
-        datetime_cols = self.df.select_dtypes(include=['datetime64']).columns  # Removed timedelta64 for simplicity
+        # Date/time columns distributions
+        datetime_cols = self.df.select_dtypes(include=['datetime64']).columns
         if len(datetime_cols) > 0:
             n_cols = min(3, len(datetime_cols))
             n_rows = (len(datetime_cols) + n_cols - 1) // n_cols
 
-            fig_date_dist = make_subplots(  # Changed variable name
+            fig_date_dist = make_subplots(
                 rows=n_rows, cols=n_cols,
                 subplot_titles=datetime_cols[:n_rows*n_cols],
                 horizontal_spacing=0.1,
@@ -521,14 +526,14 @@ class ChatBotAnalyzer:
                 # For datetime data, use line chart with value counts over time
                 date_counts = self.df[col].value_counts().sort_index()
                 fig_date_dist.add_trace(
-                    go.Scatter(x=date_counts.index, y=date_counts.values, mode='lines', name=col),  # Fixed: go.Scatter for line chart
+                    go.Scatter(x=date_counts.index, y=date_counts.values, mode='lines', name=col),
                     row=row, col=col_num
                 )
             
-            fig_date_dist.update_layout(height=300*n_rows, title_text="Date/Time Variables Distributions", showlegend=False)  # Fixed title
-            visualizations['datetime_distributions'] = fig_date_dist  # Fixed key name
+            fig_date_dist.update_layout(height=300*n_rows, title_text="Date/Time Variables Distributions", showlegend=False)
+            visualizations['datetime_distributions'] = fig_date_dist
 
-        # Correlation heatmap for numerical data only - FIXED
+        # Correlation heatmap for numerical data only
         numerical_cols_for_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
         if len(numerical_cols_for_corr) > 1:
             corr_matrix = self.df[numerical_cols_for_corr].corr()
