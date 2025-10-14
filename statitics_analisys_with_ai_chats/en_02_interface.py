@@ -863,6 +863,8 @@ def main():
         st.session_state.current_file = None
     if 'selected_sheet' not in st.session_state:
         st.session_state.selected_sheet = None
+    if 'excel_sheets' not in st.session_state:
+        st.session_state.excel_sheets = []
     
     # Initialize analyzer
     if not initialize_analyzer():
@@ -889,6 +891,7 @@ def main():
                 st.session_state.current_file = uploaded_file
                 st.session_state.analysis_results = None
                 st.session_state.selected_sheet = None
+                st.session_state.excel_sheets = []
                 
                 # Process the uploaded file
                 with st.spinner("🔄 Processing uploaded file..."):
@@ -903,6 +906,7 @@ def main():
                         elif file_extension == 'xlsx':
                             excel_file = pd.ExcelFile(uploaded_file)
                             sheet_names = excel_file.sheet_names
+                            st.session_state.excel_sheets = sheet_names
                             
                             if len(sheet_names) == 1:
                                 df = pd.read_excel(uploaded_file, sheet_name=sheet_names[0])
@@ -922,28 +926,25 @@ def main():
                         st.session_state.file_uploaded = False
                         st.session_state.current_file = None
             
-            # Sheet selection for Excel files
+            # Sheet selection for Excel files - CORREÇÃO: Condicional simplificada
             if (uploaded_file.name.endswith('.xlsx') and 
                 st.session_state.selected_sheet is None and
-                st.session_state.analyzer.df is None):
+                len(st.session_state.excel_sheets) > 1):
                 
                 try:
-                    excel_file = pd.ExcelFile(uploaded_file)
-                    sheet_names = excel_file.sheet_names
+                    selected_sheet = st.selectbox(
+                        "📑 Select Worksheet",
+                        st.session_state.excel_sheets,
+                        help="Choose which worksheet to analyze"
+                    )
                     
-                    if len(sheet_names) > 1:
-                        selected_sheet = st.selectbox(
-                            "📑 Select Worksheet",
-                            sheet_names,
-                            help="Choose which worksheet to analyze"
-                        )
-                        
-                        if st.button("Load Selected Sheet"):
-                            with st.spinner(f"🔄 Loading sheet: {selected_sheet}..."):
-                                df = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
-                                st.session_state.analyzer.load_data(df)
-                                st.session_state.selected_sheet = selected_sheet
-                                st.success(f"✅ Sheet '{selected_sheet}' loaded successfully!")
+                    if st.button("Load Selected Sheet", type="secondary"):
+                        with st.spinner(f"🔄 Loading sheet: {selected_sheet}..."):
+                            df = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+                            st.session_state.analyzer.load_data(df)
+                            st.session_state.selected_sheet = selected_sheet
+                            st.success(f"✅ Sheet '{selected_sheet}' loaded successfully!")
+                            st.rerun()
                 except Exception as e:
                     st.error(f"❌ Error reading Excel file: {str(e)}")
         
@@ -964,27 +965,40 @@ def main():
                         if results:
                             st.session_state.analysis_results = results
                             st.success("✅ Analysis completed successfully!")
+                            st.rerun()
                         else:
                             st.error("❌ Analysis failed. Please check your data and try again.")
                     except Exception as e:
                         st.error(f"❌ Error during analysis: {str(e)}")
             else:
                 st.error("❌ Please upload and load a data file first.")
-    
-    # Main content area
-    if st.session_state.file_uploaded and st.session_state.current_file is not None:
-        # Display welcome screen with file loaded
-        display_welcome_screen(uploaded_file=st.session_state.current_file)
         
-        # Show analysis results if available
-        if st.session_state.analysis_results is not None:
-            tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 AI Insights"])
-            
-            with tab1:
-                display_exploratory_analysis(st.session_state.analysis_results)
-            
-            with tab2:
-                display_llm_insights(st.session_state.analysis_results)
+        # Clear analysis button
+        if st.session_state.analysis_results:
+            if st.button("🗑️ Clear Analysis", type="secondary", use_container_width=True):
+                st.session_state.analysis_results = None
+                st.session_state.file_uploaded = False
+                st.session_state.current_file = None
+                st.session_state.selected_sheet = None
+                st.session_state.excel_sheets = []
+                st.session_state.analyzer.df = None
+                st.rerun()
+    
+    # Main content area - CORREÇÃO: Lógica de exibição corrigida
+    if st.session_state.analysis_results is not None:
+        # Show analysis results
+        tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 AI Insights"])
+        
+        with tab1:
+            display_exploratory_analysis(st.session_state.analysis_results)
+        
+        with tab2:
+            display_llm_insights(st.session_state.analysis_results)
+    
+    elif st.session_state.file_uploaded and st.session_state.current_file is not None:
+        # Show welcome screen with file loaded (but no analysis yet)
+        display_welcome_screen(uploaded_file=st.session_state.current_file)
+    
     else:
         # Display default welcome screen
         display_welcome_screen()
