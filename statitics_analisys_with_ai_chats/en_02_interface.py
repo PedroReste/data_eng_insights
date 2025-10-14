@@ -749,7 +749,7 @@ def display_datetime_tab(results):
 
 def display_llm_insights(results):
     """Display LLM analysis with structured sections"""
-    st.markdown('<div class="section-header">🤖 Insights Generated</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">🤖 AI Insights</div>', unsafe_allow_html=True)
     
     # Download button
     if 'ai_analysis' in results and 'statistics' in results:
@@ -762,45 +762,74 @@ def display_llm_insights(results):
     
     analysis_text = results['ai_analysis']
     
-    # Improved section extraction
-    sections = {
-        'Executive Summary': '',
-        'Detailed Statistical Analysis': '',
-        'Pattern Identification': '',
-        'Business/Research Implications': '',
-        'Recommendations': ''
-    }
-    
-    current_section = None
-    lines = analysis_text.split('\n')
-    
-    for line in lines:
-        line_stripped = line.strip()
+    # CORREÇÃO: Algoritmo melhorado para extração de seções
+    def extract_sections(text):
+        """Extrai seções do texto de análise de forma mais robusta"""
+        sections = {
+            'Executive Summary': '',
+            'Detailed Statistical Analysis': '',
+            'Pattern Identification': '',
+            'Business/Research Implications': '',
+            'Recommendations': '',
+            'Other Insights': ''
+        }
         
-        # Check if this line starts a new section
-        if any(header in line_stripped.lower() for header in ['executive summary', 'summary']):
-            current_section = 'Executive Summary'
-            continue
-        elif any(header in line_stripped.lower() for header in ['detailed statistical analysis', 'statistical analysis']):
-            current_section = 'Detailed Statistical Analysis'
-            continue
-        elif any(header in line_stripped.lower() for header in ['pattern identification', 'pattern analysis', 'patterns']):
-            current_section = 'Pattern Identification'
-            continue
-        elif any(header in line_stripped.lower() for header in ['business/research implications', 'implications', 'business implications', 'research implications']):
-            current_section = 'Business/Research Implications'
-            continue
-        elif any(header in line_stripped.lower() for header in ['recommendations', 'suggestions', 'next steps']):
-            current_section = 'Recommendations'
-            continue
+        lines = text.split('\n')
+        current_section = 'Other Insights'
+        section_headers = {
+            'executive summary': 'Executive Summary',
+            'summary': 'Executive Summary',
+            'detailed statistical analysis': 'Detailed Statistical Analysis', 
+            'statistical analysis': 'Detailed Statistical Analysis',
+            'pattern identification': 'Pattern Identification',
+            'pattern analysis': 'Pattern Identification',
+            'patterns': 'Pattern Identification',
+            'business/research implications': 'Business/Research Implications',
+            'implications': 'Business/Research Implications',
+            'business implications': 'Business/Research Implications',
+            'research implications': 'Business/Research Implications',
+            'recommendations': 'Recommendations',
+            'suggestions': 'Recommendations',
+            'next steps': 'Recommendations'
+        }
         
-        # Skip empty lines at the beginning of sections
-        if current_section and not line_stripped and not sections[current_section]:
-            continue
+        for line in lines:
+            line_stripped = line.strip().lower()
             
-        # Add content to current section
-        if current_section and line_stripped:
-            sections[current_section] += line + '\n'
+            # Verifica se a linha é um cabeçalho de seção
+            is_header = False
+            for header_key, section_name in section_headers.items():
+                if (line_stripped.startswith('#') and header_key in line_stripped) or \
+                   (len(line_stripped) < 100 and header_key in line_stripped and any(word in line_stripped for word in ['analysis', 'summary', 'implications', 'recommendations', 'patterns'])):
+                    current_section = section_name
+                    is_header = True
+                    break
+            
+            # Se não for cabeçalho, adiciona ao conteúdo da seção atual
+            if not is_header and line_stripped:
+                # Pula linhas vazias no início das seções
+                if not sections[current_section] and not line_stripped:
+                    continue
+                sections[current_section] += line + '\n'
+        
+        return sections
+    
+    # Extrai as seções
+    sections = extract_sections(analysis_text)
+    
+    # CORREÇÃO: Se nenhuma seção foi extraída adequadamente, mostra o texto completo
+    total_content = sum(len(content.strip()) for content in sections.values())
+    if total_content < len(analysis_text.strip()) * 0.3:  # Se menos de 30% do conteúdo foi categorizado
+        st.markdown("""
+        <div class="insight-section" style="border-left-color: #3498db;">
+            <h3 style="color: #3498db; margin-top: 0; font-size: 1.3rem; font-weight: 700;">
+                📋 Complete Analysis
+            </h3>
+            <div style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap;">
+        """, unsafe_allow_html=True)
+        st.markdown(analysis_text)
+        st.markdown("</div></div>", unsafe_allow_html=True)
+        return
     
     # Display sections in cards
     section_colors = {
@@ -808,7 +837,8 @@ def display_llm_insights(results):
         'Detailed Statistical Analysis': '#e74c3c', 
         'Pattern Identification': '#2ecc71',
         'Business/Research Implications': '#f39c12',
-        'Recommendations': '#9b59b6'
+        'Recommendations': '#9b59b6',
+        'Other Insights': '#95a5a6'
     }
     
     section_icons = {
@@ -816,11 +846,23 @@ def display_llm_insights(results):
         'Detailed Statistical Analysis': '📊',
         'Pattern Identification': '🔍',
         'Business/Research Implications': '💼',
-        'Recommendations': '🚀'
+        'Recommendations': '🚀',
+        'Other Insights': '💡'
     }
     
-    for section_name, section_content in sections.items():
-        if section_content.strip():
+    # Ordem de exibição preferencial
+    display_order = [
+        'Executive Summary',
+        'Detailed Statistical Analysis', 
+        'Pattern Identification',
+        'Business/Research Implications',
+        'Recommendations',
+        'Other Insights'
+    ]
+    
+    for section_name in display_order:
+        section_content = sections[section_name].strip()
+        if section_content:
             icon = section_icons.get(section_name, '📄')
             color = section_colors.get(section_name, '#3498db')
             
@@ -829,23 +871,8 @@ def display_llm_insights(results):
                 <h3 style="color: {color}; margin-top: 0; font-size: 1.3rem; font-weight: 700;">
                     {icon} {section_name}
                 </h3>
-                <div style="font-size: 0.95rem; line-height: 1.6;">
+                <div style="font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap;">
                     {section_content}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
-            # Show empty section with placeholder
-            icon = section_icons.get(section_name, '📄')
-            color = section_colors.get(section_name, '#3498db')
-            
-            st.markdown(f"""
-            <div class="insight-section" style="border-left-color: {color}; opacity: 0.7;">
-                <h3 style="color: {color}; margin-top: 0; font-size: 1.3rem; font-weight: 700;">
-                    {icon} {section_name}
-                </h3>
-                <div style="font-size: 0.95rem; line-height: 1.6; font-style: italic;">
-                    No specific content found for this section in the analysis.
                 </div>
             </div>
             """, unsafe_allow_html=True)
