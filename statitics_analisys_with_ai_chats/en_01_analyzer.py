@@ -133,10 +133,67 @@ class ChatBotAnalyzer:
     def get_excel_sheets(self, file_path: str) -> List[str]:
         """Get list of available sheets in Excel file"""
         try:
-            excel_file = pd.ExcelFile(file_path)
-            return excel_file.sheet_names
+            print(f"📑 Attempting to read Excel file: {file_path}")
+            
+            # Verificar se o arquivo existe
+            if not os.path.exists(file_path):
+                print(f"❌ File does not exist: {file_path}")
+                return []
+            
+            # Verificar tamanho do arquivo
+            file_size = os.path.getsize(file_path)
+            print(f"📁 File size: {file_size} bytes")
+            
+            if file_size == 0:
+                print("❌ File is empty")
+                return []
+            
+            # Tentar diferentes engines para leitura do Excel
+            engines_to_try = []
+            
+            # Determinar quais engines tentar baseado na extensão do arquivo
+            if file_path.endswith('.xlsx'):
+                engines_to_try = ['openpyxl', 'xlrd']
+            elif file_path.endswith('.xls'):
+                engines_to_try = ['xlrd', 'openpyxl']
+            else:
+                engines_to_try = ['openpyxl', 'xlrd']
+            
+            sheets = []
+            successful_engine = None
+            
+            for engine in engines_to_try:
+                try:
+                    print(f"🔧 Trying engine: {engine}")
+                    excel_file = pd.ExcelFile(file_path, engine=engine)
+                    sheets = excel_file.sheet_names
+                    successful_engine = engine
+                    print(f"✅ Successfully read Excel file with {engine}. Sheets found: {sheets}")
+                    break
+                except ImportError as e:
+                    print(f"⚠️ Engine {engine} not available: {e}")
+                    continue
+                except Exception as e:
+                    print(f"⚠️ Error with engine {engine}: {e}")
+                    continue
+            
+            if not sheets and not successful_engine:
+                # Última tentativa sem engine específica
+                try:
+                    print("🔧 Trying default engine")
+                    excel_file = pd.ExcelFile(file_path)
+                    sheets = excel_file.sheet_names
+                    print(f"✅ Successfully read Excel file with default engine. Sheets found: {sheets}")
+                except Exception as e:
+                    print(f"❌ Failed to read Excel file with any engine: {e}")
+            
+            return sheets
+            
         except Exception as e:
             print(f"❌ Error reading Excel sheets: {e}")
+            # Log adicional para debug
+            import traceback
+            print(f"🔍 Stack trace: {traceback.format_exc()}")
             return []
 
     def get_simple_column_types(self) -> Dict[str, List[str]]:

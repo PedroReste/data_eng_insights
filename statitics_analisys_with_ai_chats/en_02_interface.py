@@ -329,15 +329,13 @@ def display_welcome_screen(uploaded_file=None):
         st.markdown("### 📋 How to Use")
         if uploaded_file:
             file_ext = uploaded_file.name.split('.')[-1].upper()
-            file_info = f"""
-            <div style="background: rgba(46, 204, 113, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 4px solid #2ecc71; margin-bottom: 1rem;">
-                <strong>✅ {file_ext} File Uploaded:</strong> {uploaded_file.name}
-            </div>
-            """
             
+            # CORREÇÃO: Usar st.markdown com unsafe_allow_html=True para cada parte
             st.markdown(f"""
             <div class="card">
-                {file_info}
+                <div style="background: rgba(46, 204, 113, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 4px solid #2ecc71; margin-bottom: 1rem;">
+                    <strong>✅ {file_ext} File Uploaded:</strong> {uploaded_file.name}
+                </div>
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
                     <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start analysis</li>
@@ -925,6 +923,7 @@ def main():
                 
                 # Get available sheets
                 try:
+                    st.info("🔄 Reading Excel file structure...")
                     available_sheets = st.session_state.analyzer.get_excel_sheets(tmp_file_path)
                     st.session_state.available_sheets = available_sheets
                     
@@ -936,15 +935,29 @@ def main():
                             index=0
                         )
                         st.session_state.selected_sheet = selected_sheet
-                        st.info(f"Selected: **{selected_sheet}**")
+                        st.success(f"✅ Selected: **{selected_sheet}**")
                     else:
-                        st.error("No worksheets found in the Excel file.")
+                        st.warning("📝 No worksheets found in the Excel file. This might be due to:")
+                        st.markdown("""
+                        - File is password protected
+                        - File is corrupted
+                        - File format is not supported
+                        - Required Excel reader libraries are not installed
+                        """)
+                        
+                        # Tentar carregar diretamente como fallback
+                        if st.button("Try to load first sheet automatically"):
+                            st.session_state.selected_sheet = 0  # Primeira planilha
+                            st.rerun()
                     
                     # Clean up temporary file
                     os.unlink(tmp_file_path)
                     
                 except Exception as e:
-                    st.error(f"Error reading Excel file: {str(e)}")
+                    st.error(f"❌ Error reading Excel file: {str(e)}")
+                    # Clean up temporary file in case of error
+                    if os.path.exists(tmp_file_path):
+                        os.unlink(tmp_file_path)
             else:
                 # For non-Excel files, clear sheet selection
                 st.session_state.selected_sheet = None
