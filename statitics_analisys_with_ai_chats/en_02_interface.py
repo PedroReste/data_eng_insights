@@ -236,55 +236,15 @@ def display_welcome_screen(uploaded_file=None):
     st.markdown('<h1 class="main-header">Data Analyzer</h1>', unsafe_allow_html=True)
     
     if uploaded_file:
-        # SEÇÃO UNIFICADA PARA ARQUIVO CARREGADO - COM DUAS COLUNAS
+        # Tela de boas-vindas com arquivo carregado (sem seção "File Ready for Analysis")
         st.markdown("""
-        <div class="upload-success-section">
-            <h2 style="color: #2ecc71; text-align: center; margin-bottom: 1.5rem; font-size: 1.8rem;">
-                🎉 File Ready for Analysis!
-            </h2>
+        <div class="welcome-card">
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Welcome to Data Analyzer!</h2>
+            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
+            Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
+            </p>
         </div>
         """, unsafe_allow_html=True)
-        
-        # Duas colunas dentro da mesma seção
-        col_left, col_right = st.columns(2)
-        
-        with col_left:
-            file_ext = uploaded_file.name.split('.')[-1].upper()
-            st.markdown(f"""
-            <div class="upload-success-left">
-                <h3 style="color: #2ecc71; margin: 0 0 1rem 0; font-size: 1.3rem;">✅ File Uploaded Successfully</h3>
-                <div style="background: rgba(46, 204, 113, 0.2); padding: 0.8rem; border-radius: 8px; margin: 1rem 0;">
-                    <p style="margin: 0; font-size: 1rem;">
-                        <strong>📁 File:</strong> {uploaded_file.name}<br>
-                        <strong>📊 Format:</strong> {file_ext}<br>
-                        <strong>🕒 Status:</strong> Ready for processing
-                    </p>
-                </div>
-                <p style="font-size: 0.95rem; margin: 1rem 0 0 0; line-height: 1.5;">
-                    Your dataset has been successfully loaded and validated. 
-                    The system is ready to perform comprehensive analysis including 
-                    statistical profiling, data visualization, and AI-powered insights.
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col_right:
-            st.markdown("""
-            <div class="upload-success-right">
-                <h3 style="color: #3498db; margin: 0 0 1rem 0; font-size: 1.3rem;">🚀 Ready for Deep Analysis</h3>
-                <div style="background: rgba(52, 152, 219, 0.2); padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                    <p style="margin: 0; font-size: 1rem; font-weight: 600; color: #3498db;">
-                        Next Step: Click "Analyze Dataset" in the sidebar
-                    </p>
-                </div>
-                <ul style="font-size: 0.9rem; margin: 1rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Automatic format detection</strong> - CSV, Excel, or JSON</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Comprehensive statistics</strong> - Descriptive analysis and profiling</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Interactive visualizations</strong> - Charts and correlation matrices</li>
-                    <li><strong>AI-powered insights</strong> - Pattern recognition and recommendations</li>
-                </ul>
-            </div>
-            """, unsafe_allow_html=True)
     else:
         # Tela de boas-vindas padrão (sem arquivo carregado)
         st.markdown("""
@@ -293,11 +253,6 @@ def display_welcome_screen(uploaded_file=None):
             <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
             Advanced AI-powered tool for comprehensive dataset analysis and insights generation.
             </p>
-            <div style="text-align: center; margin: 1rem 0;">
-                <span class="format-badge">CSV</span>
-                <span class="format-badge">Excel (XLSX)</span>
-                <span class="format-badge">JSON</span>
-            </div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -328,14 +283,9 @@ def display_welcome_screen(uploaded_file=None):
     with col1:
         st.markdown("### 📋 How to Use")
         if uploaded_file:
-            file_ext = uploaded_file.name.split('.')[-1].upper()
-            
-            # CORREÇÃO: Usar st.markdown com unsafe_allow_html=True para cada parte
-            st.markdown(f"""
+            # CORREÇÃO: Remover o card que mostra que o arquivo foi carregado com sucesso
+            st.markdown("""
             <div class="card">
-                <div style="background: rgba(46, 204, 113, 0.1); padding: 0.8rem; border-radius: 8px; border-left: 4px solid #2ecc71; margin-bottom: 1rem;">
-                    <strong>✅ {file_ext} File Uploaded:</strong> {uploaded_file.name}
-                </div>
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
                     <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Click "Analyze Dataset"</strong> in the sidebar to start analysis</li>
@@ -348,11 +298,6 @@ def display_welcome_screen(uploaded_file=None):
         else:
             st.markdown("""
             <div class="card">
-                <div style="text-align: center; margin-bottom: 1rem;">
-                    <span class="format-badge">CSV</span>
-                    <span class="format-badge">Excel (XLSX)</span>
-                    <span class="format-badge">JSON</span>
-                </div>
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
                     <li style="margin-bottom: 0.8rem;"><strong>Upload your data file</strong> - CSV, Excel (XLSX), or JSON format</li>
                     <li style="margin-bottom: 0.8rem;"><strong>Select worksheet</strong> (if Excel file) in the sidebar</li>
@@ -364,19 +309,11 @@ def display_welcome_screen(uploaded_file=None):
             """, unsafe_allow_html=True)
     
     with col2:
-        # Tips - Layout melhorado
+        # Tips - Layout melhorado (removido "Supported Formats")
         st.markdown("### 💡 Tips for Best Results")
         st.markdown("""
         <div class="card">
             <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                <li style="margin-bottom: 0.8rem;">
-                    <strong>Supported Formats:</strong>
-                    <div style="margin: 0.5rem 0;">
-                        <span class="format-badge">CSV</span> - Comma-separated values<br>
-                        <span class="format-badge">Excel</span> - XLSX files with multiple sheets<br>
-                        <span class="format-badge">JSON</span> - Structured data files
-                    </div>
-                </li>
                 <li style="margin-bottom: 0.8rem;"><strong>Clean data first</strong> - Remove unnecessary columns before uploading</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Handle missing values</strong> - Address null values when possible</li>
                 <li style="margin-bottom: 0.8rem;"><strong>Descriptive headers</strong> - Use clear, meaningful column names</li>
@@ -865,159 +802,192 @@ def display_llm_insights(results):
         if current_section and line_stripped:
             sections[current_section] += line + '\n'
     
-    # Display each section
-    section_displayed = False
+    # Display sections in cards
+    section_colors = {
+        'Executive Summary': '#3498db',
+        'Detailed Statistical Analysis': '#e74c3c', 
+        'Pattern Identification': '#2ecc71',
+        'Business/Research Implications': '#f39c12',
+        'Recommendations': '#9b59b6'
+    }
+    
+    section_icons = {
+        'Executive Summary': '📋',
+        'Detailed Statistical Analysis': '📊',
+        'Pattern Identification': '🔍',
+        'Business/Research Implications': '💼',
+        'Recommendations': '🚀'
+    }
+    
     for section_name, section_content in sections.items():
         if section_content.strip():
-            section_displayed = True
-            st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
-            st.markdown(f"### {section_name}")
-            st.markdown(section_content)
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    # If no sections were properly extracted, show the raw analysis
-    if not section_displayed:
-        st.markdown("""
-        <div class="insight-section">
-            <h3>Complete Analysis</h3>
-            <p>The AI analysis couldn't be parsed into specific sections. Here's the complete analysis:</p>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(f'<div class="card">{analysis_text}</div>', unsafe_allow_html=True)
+            icon = section_icons.get(section_name, '📄')
+            color = section_colors.get(section_name, '#3498db')
+            
+            st.markdown(f"""
+            <div class="insight-section" style="border-left-color: {color};">
+                <h3 style="color: {color}; margin-top: 0; font-size: 1.3rem; font-weight: 700;">
+                    {icon} {section_name}
+                </h3>
+                <div style="font-size: 0.95rem; line-height: 1.6;">
+                    {section_content}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Show empty section with placeholder
+            icon = section_icons.get(section_name, '📄')
+            color = section_colors.get(section_name, '#3498db')
+            
+            st.markdown(f"""
+            <div class="insight-section" style="border-left-color: {color}; opacity: 0.7;">
+                <h3 style="color: {color}; margin-top: 0; font-size: 1.3rem; font-weight: 700;">
+                    {icon} {section_name}
+                </h3>
+                <div style="font-size: 0.95rem; line-height: 1.6; font-style: italic;">
+                    No specific content found for this section in the analysis.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 def main():
-    """Main Streamlit application"""
-    
+    """Main application function"""
     # Initialize session state
-    if 'analysis_results' not in st.session_state:
-        st.session_state.analysis_results = None
     if 'analyzer' not in st.session_state:
         st.session_state.analyzer = None
+    if 'analysis_results' not in st.session_state:
+        st.session_state.analysis_results = None
+    if 'file_uploaded' not in st.session_state:
+        st.session_state.file_uploaded = False
+    if 'current_file' not in st.session_state:
+        st.session_state.current_file = None
     if 'selected_sheet' not in st.session_state:
         st.session_state.selected_sheet = None
-    if 'available_sheets' not in st.session_state:
-        st.session_state.available_sheets = []
     
     # Initialize analyzer
     if not initialize_analyzer():
         return
     
-    # Sidebar for file upload
+    # Sidebar
     with st.sidebar:
-        st.markdown("## 📁 Upload Dataset")
+        st.markdown("## ⚙️ Configuration")
+        
+        # File upload
         uploaded_file = st.file_uploader(
-            "Choose a data file",
-            type=['csv', 'xlsx', 'xls', 'json'],
-            help="Upload your dataset in CSV, Excel (XLSX), or JSON format"
+            "📁 Upload Data File",
+            type=['csv', 'xlsx', 'json'],
+            help="Upload CSV, Excel (XLSX), or JSON files"
         )
         
+        # Handle file upload
         if uploaded_file is not None:
-            # Detect file type and handle Excel sheets
-            file_ext = uploaded_file.name.split('.')[-1].lower()
-            
-            if file_ext in ['xlsx', 'xls']:
-                # Save uploaded file to temporary location to read sheets
-                with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_ext}') as tmp_file:
-                    tmp_file.write(uploaded_file.getvalue())
-                    tmp_file_path = tmp_file.name
+            # Check if file is different from current one
+            if (st.session_state.current_file is None or 
+                st.session_state.current_file.name != uploaded_file.name):
                 
-                # Get available sheets
-                try:
-                    st.info("🔄 Reading Excel file structure...")
-                    available_sheets = st.session_state.analyzer.get_excel_sheets(tmp_file_path)
-                    st.session_state.available_sheets = available_sheets
-                    
-                    if available_sheets:
-                        st.markdown("## 📑 Select Worksheet")
-                        selected_sheet = st.selectbox(
-                            "Choose worksheet to analyze:",
-                            available_sheets,
-                            index=0
-                        )
-                        st.session_state.selected_sheet = selected_sheet
-                        st.success(f"✅ Selected: **{selected_sheet}**")
-                    else:
-                        st.warning("📝 No worksheets found in the Excel file. This might be due to:")
-                        st.markdown("""
-                        - File is password protected
-                        - File is corrupted
-                        - File format is not supported
-                        - Required Excel reader libraries are not installed
-                        """)
-                        
-                        # Tentar carregar diretamente como fallback
-                        if st.button("Try to load first sheet automatically"):
-                            st.session_state.selected_sheet = 0  # Primeira planilha
-                            st.rerun()
-                    
-                    # Clean up temporary file
-                    os.unlink(tmp_file_path)
-                    
-                except Exception as e:
-                    st.error(f"❌ Error reading Excel file: {str(e)}")
-                    # Clean up temporary file in case of error
-                    if os.path.exists(tmp_file_path):
-                        os.unlink(tmp_file_path)
-            else:
-                # For non-Excel files, clear sheet selection
+                st.session_state.file_uploaded = True
+                st.session_state.current_file = uploaded_file
+                st.session_state.analysis_results = None
                 st.session_state.selected_sheet = None
-                st.session_state.available_sheets = []
-            
-            st.success(f"✅ File uploaded: {uploaded_file.name}")
-            
-            # Analysis button
-            st.markdown("## 🚀 Start Analysis")
-            if st.button("Analyze Dataset", type="primary", use_container_width=True):
-                with st.spinner("🔄 Processing dataset... This may take a few moments."):
+                
+                # Process the uploaded file
+                with st.spinner("🔄 Processing uploaded file..."):
                     try:
-                        # Save uploaded file to temporary location
-                        with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_ext}') as tmp_file:
-                            tmp_file.write(uploaded_file.getvalue())
-                            tmp_file_path = tmp_file.name
+                        file_extension = uploaded_file.name.split('.')[-1].lower()
                         
-                        # Run analysis with sheet selection for Excel files
-                        sheet_name = st.session_state.selected_sheet if file_ext in ['xlsx', 'xls'] else None
-                        results = st.session_state.analyzer.analyze_file(tmp_file_path, sheet_name=sheet_name)
-                        
-                        if results:
-                            st.session_state.analysis_results = results
-                            st.session_state.uploaded_file_name = uploaded_file.name
-                            st.success("✅ Analysis completed successfully!")
-                        else:
-                            st.error("❌ Analysis failed. Please check your file and try again.")
-                        
-                        # Clean up temporary file
-                        os.unlink(tmp_file_path)
+                        if file_extension == 'csv':
+                            df = pd.read_csv(uploaded_file)
+                            st.session_state.analyzer.load_data(df)
+                            st.success("✅ CSV file loaded successfully!")
+                            
+                        elif file_extension == 'xlsx':
+                            # CORREÇÃO: Remover o informativo "Reading Excel file structure..."
+                            excel_file = pd.ExcelFile(uploaded_file)
+                            sheet_names = excel_file.sheet_names
+                            
+                            if len(sheet_names) == 1:
+                                df = pd.read_excel(uploaded_file, sheet_name=sheet_names[0])
+                                st.session_state.analyzer.load_data(df)
+                                st.success(f"✅ Excel file loaded successfully! (Sheet: {sheet_names[0]})")
+                            else:
+                                st.session_state.selected_sheet = None
+                                st.info(f"📑 Excel file has {len(sheet_names)} sheets. Please select one below.")
+                            
+                        elif file_extension == 'json':
+                            df = pd.read_json(uploaded_file)
+                            st.session_state.analyzer.load_data(df)
+                            st.success("✅ JSON file loaded successfully!")
                         
                     except Exception as e:
-                        st.error(f"❌ Error during analysis: {str(e)}")
-                        st.info("Please check that your data file is properly formatted.")
+                        st.error(f"❌ Error loading file: {str(e)}")
+                        st.session_state.file_uploaded = False
+                        st.session_state.current_file = None
             
-            # Clear analysis button
-            if st.session_state.analysis_results:
-                if st.button("Clear Analysis", type="secondary", use_container_width=True):
-                    st.session_state.analysis_results = None
-                    st.session_state.selected_sheet = None
-                    st.session_state.available_sheets = []
-                    st.rerun()
+            # Sheet selection for Excel files
+            if (uploaded_file.name.endswith('.xlsx') and 
+                st.session_state.selected_sheet is None and
+                st.session_state.analyzer.df is None):
+                
+                try:
+                    excel_file = pd.ExcelFile(uploaded_file)
+                    sheet_names = excel_file.sheet_names
+                    
+                    if len(sheet_names) > 1:
+                        selected_sheet = st.selectbox(
+                            "📑 Select Worksheet",
+                            sheet_names,
+                            help="Choose which worksheet to analyze"
+                        )
+                        
+                        if st.button("Load Selected Sheet"):
+                            with st.spinner(f"🔄 Loading sheet: {selected_sheet}..."):
+                                df = pd.read_excel(uploaded_file, sheet_name=selected_sheet)
+                                st.session_state.analyzer.load_data(df)
+                                st.session_state.selected_sheet = selected_sheet
+                                st.success(f"✅ Sheet '{selected_sheet}' loaded successfully!")
+                except Exception as e:
+                    st.error(f"❌ Error reading Excel file: {str(e)}")
+        
+        # Analysis button
+        st.markdown("---")
+        analyze_clicked = st.button(
+            "🚀 Analyze Dataset",
+            type="primary",
+            use_container_width=True,
+            disabled=not st.session_state.file_uploaded or st.session_state.analyzer.df is None
+        )
+        
+        if analyze_clicked:
+            if st.session_state.analyzer.df is not None:
+                with st.spinner("🤖 Analyzing dataset with AI..."):
+                    try:
+                        results = st.session_state.analyzer.analyze_dataset()
+                        if results:
+                            st.session_state.analysis_results = results
+                            st.success("✅ Analysis completed successfully!")
+                        else:
+                            st.error("❌ Analysis failed. Please check your data and try again.")
+                    except Exception as e:
+                        st.error(f"❌ Error during analysis: {str(e)}")
+            else:
+                st.error("❌ Please upload and load a data file first.")
     
     # Main content area
-    if uploaded_file is not None and st.session_state.analysis_results is None:
-        # Show welcome screen with file uploaded message
-        display_welcome_screen(uploaded_file)
-    
-    elif st.session_state.analysis_results:
-        # Show analysis results in tabs
-        tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 Insights Generated"])
+    if st.session_state.file_uploaded and st.session_state.current_file is not None:
+        # Display welcome screen with file loaded
+        display_welcome_screen(uploaded_file=st.session_state.current_file)
         
-        with tab1:
-            display_exploratory_analysis(st.session_state.analysis_results)
-        
-        with tab2:
-            display_llm_insights(st.session_state.analysis_results)
-    
+        # Show analysis results if available
+        if st.session_state.analysis_results is not None:
+            tab1, tab2 = st.tabs(["📊 Exploratory Data Analysis", "🤖 AI Insights"])
+            
+            with tab1:
+                display_exploratory_analysis(st.session_state.analysis_results)
+            
+            with tab2:
+                display_llm_insights(st.session_state.analysis_results)
     else:
-        # Welcome screen
+        # Display default welcome screen
         display_welcome_screen()
 
 if __name__ == "__main__":
