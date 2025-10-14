@@ -419,7 +419,7 @@ class AnalisadorChatBot:
         ESTATÍSTICAS DESCRITIVAS:
         {resumo_estatisticas}
 
-        Por favor, forneça uma análise detalhada em formato MARKDOWN incluindo:
+        Por favor, forneça uma análise detalhada em formato MARKDOWN incluindo os seguintes tópicos abaixo:
 
         # Resumo Executivo
         Visão geral breve dos principais achados e avaliação da qualidade dos dados.
@@ -436,7 +436,7 @@ class AnalisadorChatBot:
         ## Recomendações
         Próximos passos sugeridos e melhorias.
 
-        Use formatação markdown adequada com cabeçalhos, pontos de lista e ênfase. Seja profissional e perspicaz.
+        Use formatação markdown adequada com cabeçalhos, pontos de lista e ênfase. Seja profissional e perspicaz. Matenha sempre a estrutura de tópicos acima para gerar o resultado.
         """
         
         return prompt

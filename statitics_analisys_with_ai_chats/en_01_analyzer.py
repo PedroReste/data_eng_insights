@@ -419,7 +419,7 @@ class ChatBotAnalyzer:
         DESCRIPTIVE STATISTICS:
         {stats_summary}
 
-        Please provide a detailed analysis in MARKDOWN format including:
+        Please provide a detailed analysis in MARKDOWN format including these topics below:
 
         # Executive Summary
         Brief overview of key findings and data quality assessment.
@@ -436,7 +436,7 @@ class ChatBotAnalyzer:
         ## Recommendations
         Suggested next steps and improvements.
 
-        Use proper markdown formatting with headers, bullet points, and emphasis. Be professional and insightful.
+        Use proper markdown formatting with headers, bullet points, and emphasis. Be professional and insightful. Always keep the topics structure above to generate the result.
         """
         
         return prompt
