@@ -408,10 +408,14 @@ class AnalisadorChatBot:
         if self.df is None:
             return "Nenhum dado disponível para análise"
 
-        with open(r"pt_instrucoes_analise.md", "r", encoding="utf-8") as f:
+        diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+        caminho_instrucoes_analise = os.path.join(diretorio_atual, "pt_instrucoes_analise.md")
+        caminho_instrucoes_insights = os.path.join(diretorio_atual, "pt_instrucoes_retorno_insights.md")
+
+        with open(caminho_instrucoes_analise, "r", encoding="utf-8") as f:
             bloco_de_instrucao_para_analise = f.read()
 
-        with open(r"pt_instrucoes_retorno_insights.md", "r", encoding="utf-8") as f:
+        with open(caminho_instrucoes_insights, "r", encoding="utf-8") as f:
             bloco_de_instrucao_retorno_insights = f.read()
 
         prompt = f"""

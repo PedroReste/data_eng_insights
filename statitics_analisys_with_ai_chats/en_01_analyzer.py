@@ -408,10 +408,14 @@ class ChatBotAnalyzer:
         if self.df is None:
             return "No data available for analysis"
 
-        with open(r"en_analysis_instructions.md", "r", encoding="utf-8") as f:
+        actual_directory = os.path.dirname(os.path.abspath(__file__))
+        path_analysis_instructions = os.path.join(actual_directory, "en_analysis_instructions.md")
+        path_insights_return = os.path.join(actual_directory, "en_insights_return.md")
+
+        with open(path_analysis_instructions, "r", encoding="utf-8") as f:
             analysis_instructions_block = f.read()
 
-        with open(r"en_insights_return.md", "r", encoding="utf-8") as f:
+        with open(path_insights_return, "r", encoding="utf-8") as f:
             insights_return_block = f.read()
 
         prompt = f"""
