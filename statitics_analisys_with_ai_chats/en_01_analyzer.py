@@ -408,10 +408,10 @@ class ChatBotAnalyzer:
         if self.df is None:
             return "No data available for analysis"
 
-        with open("en_analysis_instructions.md", "r", encoding="utf-8") as f:
+        with open(r"en_analysis_instructions.md", "r", encoding="utf-8") as f:
             analysis_instructions_block = f.read()
 
-        with open("en_insights_return.md", "r", encoding="utf-8") as f:
+        with open(r"en_insights_return.md", "r", encoding="utf-8") as f:
             insights_return_block = f.read()
 
         prompt = f"""
