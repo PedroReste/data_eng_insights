@@ -407,9 +407,16 @@ class AnalisadorChatBot:
         """Criar prompt detalhado para API com solicitação de formatação markdown"""
         if self.df is None:
             return "Nenhum dado disponível para análise"
-            
+
+        with open("pt_instrucoes_analise.md", "r", encoding="utf-8") as f:
+            bloco_de_instrucao_para_analise = f.read()
+
+        with open("pt_instrucoes_retorno_insights.md", "r", encoding="utf-8") as f:
+            bloco_de_instrucao_retorno_insights = f.read()
+
         prompt = f"""
-        Você é um analista de dados especialista. Por favor, analise o seguinte conjunto de dados e forneça um relatório abrangente de estatísticas descritivas com interpretação textual elaborada.
+        UTILIZE O BLOCO DE INSTRUÇÃO ABAIXO PARA GERAR OS RESULTADOS:
+        {bloco_de_instrucao_para_analise}
 
         VISÃO GERAL DO CONJUNTO DE DADOS:
         - Formato: {self.df.shape}
@@ -419,24 +426,8 @@ class AnalisadorChatBot:
         ESTATÍSTICAS DESCRITIVAS:
         {resumo_estatisticas}
 
-        Por favor, forneça uma análise detalhada em formato MARKDOWN incluindo os seguintes tópicos abaixo:
-
-        # Resumo Executivo
-        Visão geral breve dos principais achados e avaliação da qualidade dos dados.
-
-        ## Análise Estatística Detalhada
-        Interpretação de medidas e análise de distribuição.
-
-        ## Identificação de Padrões
-        Tendências, valores atípicos e padrões interessantes.
-
-        ## Implicações para Negócios/Pesquisa
-        O que os dados revelam e significância prática.
-
-        ## Recomendações
-        Próximos passos sugeridos e melhorias.
-
-        Use formatação markdown adequada com cabeçalhos, pontos de lista e ênfase. Seja profissional e perspicaz. Matenha sempre a estrutura de tópicos acima para gerar o resultado.
+        RETORNO ESPERADO DA ANÁLISE DO PROMPT ABAIXO:
+        {bloco_de_instrucao_retorno_insights}
         """
         
         return prompt

@@ -407,9 +407,16 @@ class ChatBotAnalyzer:
         """Create detailed prompt for API with markdown formatting request"""
         if self.df is None:
             return "No data available for analysis"
-            
+
+        with open("en_analysis_instructions.md", "r", encoding="utf-8") as f:
+            analysis_instructions_block = f.read()
+
+        with open("en_insights_return.md", "r", encoding="utf-8") as f:
+            insights_return_block = f.read()
+
         prompt = f"""
-        You are an expert data analyst. Please analyze the following dataset and provide a comprehensive descriptive statistics report with elaborate textual interpretation.
+        USE THE INSTRUCTION BLOCK BELOW TO GENARETE THE RESULTS:
+        {analysis_instructions_block}
 
         DATASET OVERVIEW:
         - Shape: {self.df.shape}
@@ -419,24 +426,8 @@ class ChatBotAnalyzer:
         DESCRIPTIVE STATISTICS:
         {stats_summary}
 
-        Please provide a detailed analysis in MARKDOWN format including these topics below:
-
-        # Executive Summary
-        Brief overview of key findings and data quality assessment.
-
-        ## Detailed Statistical Analysis
-        Interpretation of measures and distribution analysis.
-
-        ## Pattern Identification
-        Trends, outliers, and interesting patterns.
-
-        ## Business/Research Implications
-        What the data reveals and practical significance.
-
-        ## Recommendations
-        Suggested next steps and improvements.
-
-        Use proper markdown formatting with headers, bullet points, and emphasis. Be professional and insightful. Always keep the topics structure above to generate the result.
+        EXPECTED RETURN FROM THE PROMPT ANALYSIS BELOW:
+        {insights_return_block}
         """
         
         return prompt
