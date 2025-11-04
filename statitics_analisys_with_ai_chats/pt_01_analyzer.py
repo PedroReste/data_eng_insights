@@ -289,13 +289,15 @@ class AnalisadorChatBot:
             contagem_nao_nulos = self.df[col].count()
             contagem_nulos = self.df[col].isnull().sum()
             percentual_nulos = (contagem_nulos / len(self.df)) * 100 if len(self.df) > 0 else 0
+            valores_unicos = self.df[col].nunique()
             
             info_colunas.append({
-                'Nome da Coluna': col,
+                'Coluna': col,
                 'Tipo': tipo_col,
-                'Contagem Não Nulos': contagem_nao_nulos,
-                'Contagem Nulos': contagem_nulos,
-                'Percentual Nulos': f"{percentual_nulos:.2f}%"
+                'Não Nulos': contagem_nao_nulos,
+                'Nulos': contagem_nulos,
+                '% Nulos': f"{percentual_nulos:.1f}%",
+                'Valores Únicos': valores_unicos
             })
         
         return pd.DataFrame(info_colunas)

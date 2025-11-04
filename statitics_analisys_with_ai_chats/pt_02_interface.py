@@ -483,17 +483,81 @@ def exibir_aba_visao_geral(resultados):
     df = resultados['dataframe']
     analisador = st.session_state.analisador
     
+    # Primeiras 10 linhas vs Últimas 10 linhas
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### Primeiras 10 Linhas")
-        df_exibicao = df.head(10)
-        st.dataframe(df_exibicao, use_container_width=True, height=350, hide_index=True)
+        df_primeiras = df.head(10)
+        st.dataframe(df_primeiras, use_container_width=True, height=350, hide_index=True)
     
     with col2:
-        st.markdown("#### Informações da Coluna")
+        st.markdown("#### Últimas 10 Linhas")
+        df_ultimas = df.tail(10)
+        st.dataframe(df_ultimas, use_container_width=True, height=350, hide_index=True)
+    
+    # Informações das Colunas vs Linhas Duplicadas
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        st.markdown("#### Informações das Colunas")
         info_coluna = analisador.obter_info_coluna_detalhada()
         st.dataframe(info_coluna, use_container_width=True, height=350, hide_index=True)
+    
+    with col4:
+        st.markdown("#### Linhas Duplicadas")
+        linhas_duplicadas = df[df.duplicated(keep=False)]
+        
+        if len(linhas_duplicadas) > 0:
+            st.write(f"**Total de linhas duplicadas:** {len(linhas_duplicadas)}")
+            st.dataframe(linhas_duplicadas, use_container_width=True, height=350, hide_index=True)
+        else:
+            st.success("✅ Não existem linhas duplicadas no arquivo")
+            st.info("O conjunto de dados não contém linhas duplicadas.")
+    
+    # Gráfico de dados vazios por variável
+    st.markdown("### 📊 Volume de Dados Vazios por Variável")
+    
+    # Calcular dados vazios por coluna
+    dados_vazios = df.isnull().sum()
+    dados_vazios = dados_vazios[dados_vazios > 0]  # Apenas colunas com dados vazios
+    
+    if len(dados_vazios) > 0:
+        fig_vazios = px.bar(
+            x=dados_vazios.values,
+            y=dados_vazios.index,
+            orientation='h',
+            title="Volume de Dados Vazios por Variável",
+            color=dados_vazios.values,
+            color_continuous_scale='Viridis',
+            labels={'x': 'Quantidade de Valores Vazios', 'y': 'Variáveis'}
+        )
+        
+        fig_vazios.update_layout(
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            showlegend=False
+        )
+        
+        # Adicionar anotações com porcentagens
+        total_linhas = len(df)
+        for i, (col, valor) in enumerate(zip(dados_vazios.index, dados_vazios.values)):
+            percentual = (valor / total_linhas) * 100
+            fig_vazios.add_annotation(
+                x=valor,
+                y=col,
+                text=f"{percentual:.1f}%",
+                showarrow=False,
+                xshift=30,
+                font=dict(color='white', size=10)
+            )
+        
+        st.plotly_chart(fig_vazios, use_container_width=True)
+    else:
+        st.success("✅ Não existem dados vazios no arquivo")
+        st.info("Todas as colunas estão completamente preenchidas sem valores ausentes.")
     
     # Mapa de calor de correlação
     st.markdown("### 🔗 Matriz de Correlação")
