@@ -407,6 +407,97 @@ def criar_mapa_calor_correlacao(df):
         st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
         return None
 
+def criar_scatterplot_interativo(df):
+    """Criar gráfico de dispersão interativo com seleção de variáveis"""
+    if df is None or df.empty:
+        return None
+    
+    # Obter apenas colunas numéricas para scatterplot
+    colunas_numericas = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
+    
+    if len(colunas_numericas) < 2:
+        st.info("⚠️ É necessário pelo menos 2 colunas numéricas para gerar gráficos de dispersão.")
+        return None
+    
+    # Inicializar estado da sessão para seleções
+    if 'scatter_x' not in st.session_state:
+        st.session_state.scatter_x = colunas_numericas[0]
+    if 'scatter_y' not in st.session_state:
+        st.session_state.scatter_y = colunas_numericas[1] if len(colunas_numericas) > 1 else colunas_numericas[0]
+    
+    # Criar interface de seleção
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        nova_selecao_x = st.selectbox(
+            "Selecionar Variável X:",
+            options=colunas_numericas,
+            index=colunas_numericas.index(st.session_state.scatter_x),
+            key="select_x"
+        )
+    
+    with col2:
+        # Filtrar opções para Y (não pode ser igual a X)
+        opcoes_y = [col for col in colunas_numericas if col != nova_selecao_x]
+        indice_y = opcoes_y.index(st.session_state.scatter_y) if st.session_state.scatter_y in opcoes_y else 0
+        
+        nova_selecao_y = st.selectbox(
+            "Selecionar Variável Y:",
+            options=opcoes_y,
+            index=indice_y,
+            key="select_y"
+        )
+    
+    # Atualizar estado da sessão
+    st.session_state.scatter_x = nova_selecao_x
+    st.session_state.scatter_y = nova_selecao_y
+    
+    # Criar scatterplot
+    try:
+        fig = px.scatter(
+            df,
+            x=st.session_state.scatter_x,
+            y=st.session_state.scatter_y,
+            title=f"Gráfico de Dispersão: {st.session_state.scatter_x} vs {st.session_state.scatter_y}",
+            labels={
+                st.session_state.scatter_x: st.session_state.scatter_x,
+                st.session_state.scatter_y: st.session_state.scatter_y
+            },
+            color_discrete_sequence=['#3498db']
+        )
+        
+        # Adicionar linha de tendência
+        dados_sem_na = df[[st.session_state.scatter_x, st.session_state.scatter_y]].dropna()
+        if len(dados_sem_na) > 1:
+            z = np.polyfit(dados_sem_na[st.session_state.scatter_x], dados_sem_na[st.session_state.scatter_y], 1)
+            p = np.poly1d(z)
+            
+            fig.add_trace(
+                go.Scatter(
+                    x=dados_sem_na[st.session_state.scatter_x],
+                    y=p(dados_sem_na[st.session_state.scatter_x]),
+                    mode='lines',
+                    line=dict(color='#e74c3c', width=2, dash='dash'),
+                    name='Linha de Tendência'
+                )
+            )
+        
+        fig.update_layout(
+            height=500,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            showlegend=True,
+            xaxis=dict(gridcolor='rgba(255,255,255,0.1)'),
+            yaxis=dict(gridcolor='rgba(255,255,255,0.1)')
+        )
+        
+        return fig
+    
+    except Exception as e:
+        st.error(f"Erro ao criar gráfico de dispersão: {str(e)}")
+        return None
+
 def exibir_analise_exploratoria(resultados):
     """Exibir análise exploratória de dados com abas"""
     st.markdown('<div class="section-header">📊 Análise Exploratória de Dados</div>', unsafe_allow_html=True)
@@ -509,7 +600,6 @@ def exibir_aba_visao_geral(resultados):
         linhas_duplicadas = df[df.duplicated(keep=False)]
         
         if len(linhas_duplicadas) > 0:
-            st.write(f"**Total de linhas duplicadas:** {len(linhas_duplicadas)}")
             st.dataframe(linhas_duplicadas, use_container_width=True, height=350, hide_index=True)
         else:
             st.success("✅ Não existem linhas duplicadas no arquivo")
@@ -528,8 +618,7 @@ def exibir_aba_visao_geral(resultados):
             y=dados_vazios.index,
             orientation='h',
             title="Volume de Dados Vazios por Variável",
-            color=dados_vazios.values,
-            color_continuous_scale='Viridis',
+            color_discrete_sequence=['#3498db'],
             labels={'x': 'Quantidade de Valores Vazios', 'y': 'Variáveis'}
         )
         
@@ -558,6 +647,12 @@ def exibir_aba_visao_geral(resultados):
     else:
         st.success("✅ Não existem dados vazios no arquivo")
         st.info("Todas as colunas estão completamente preenchidas sem valores ausentes.")
+    
+    # Gráfico de dispersão interativo
+    st.markdown("### 📈 Gráfico de Dispersão Interativo")
+    fig_scatter = criar_scatterplot_interativo(df)
+    if fig_scatter:
+        st.plotly_chart(fig_scatter, use_container_width=True)
     
     # Mapa de calor de correlação
     st.markdown("### 🔗 Matriz de Correlação")
