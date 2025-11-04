@@ -130,10 +130,52 @@ class AnalisadorChatBot:
             print(f"❌ Erro ao ler arquivo de chave API: {e}")
             return None
 
+    def corrigir_tipos_incorretos(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Corrige apenas booleanos e datetime que foram identificados erroneamente
+        Usa amostra de 5% para validação
+        """
+        df = df.copy()
+        n_amostra = max(1, int(len(df) * 0.05))
+        df_amostra = df.sample(n=n_amostra, random_state=42) if len(df) > n_amostra else df
+        
+        for col in df.columns:
+            # 1. Corrigir datetime: se for object mas contém datas
+            if df[col].dtype == 'object':
+                # Tentar converter para datetime
+                datetime_convertido = pd.to_datetime(df[col], errors='coerce')
+                if datetime_convertido.notna().mean() > 0.7:  # 70% de sucesso na conversão
+                    df[col] = datetime_convertido
+            
+            # 2. Corrigir booleanos: se for object mas contém valores booleanos
+            elif df[col].dtype == 'object':
+                valores_unicos = set(map(str.lower, map(str, df_amostra[col].dropna().unique())))
+                valores_booleanos = {'true', 'false', 'sim', 'não', 'yes', 'no', '1', '0', 'v', 'f'}
+                
+                if valores_unicos.issubset(valores_booleanos):
+                    mapa_booleanos = {
+                        'true': True, 'false': False,
+                        'sim': True, 'não': False,
+                        'yes': True, 'no': False,
+                        '1': True, '0': False,
+                        'v': True, 'f': False
+                    }
+                    df[col] = (df[col].astype(str)
+                                  .str.strip()
+                                  .str.lower()
+                                  .map(mapa_booleanos)
+                                  .astype('boolean'))
+        
+        return df
+
     def carregar_dados(self, df: pd.DataFrame):
-        """Carregar DataFrame no analisador"""
+        """Carregar DataFrame no analisador com correção automática de tipos"""
         self.df = df
         print(f"✅ Dados carregados com sucesso: {self.df.shape[0]} linhas, {self.df.shape[1]} colunas")
+        
+        # Aplicar correção de tipos automaticamente
+        self.df = self.corrigir_tipos_incorretos(self.df)
+        print("🔧 Tipos de dados corrigidos automaticamente")
 
     def obter_planilhas_excel(self, caminho_arquivo: str) -> List[str]:
         """Obter lista de planilhas disponíveis em arquivo Excel"""
@@ -306,6 +348,11 @@ class AnalisadorChatBot:
             
             print(f"✅ Conjunto de dados carregado com sucesso: {self.df.shape[0]} linhas, {self.df.shape[1]} colunas")
             print(f"📊 Tipos de dados: {dict(self.df.dtypes)}")
+            
+            # Aplicar correção de tipos automaticamente
+            self.df = self.corrigir_tipos_incorretos(self.df)
+            print("🔧 Tipos de dados corrigidos automaticamente")
+            
             return self.df
             
         except Exception as e:
@@ -318,6 +365,10 @@ class AnalisadorChatBot:
                         dados = json.load(f)
                     self.df = pd.json_normalize(dados)
                     print(f"✅ JSON carregado com sucesso com json_normalize: {self.df.shape}")
+                    
+                    # Aplicar correção de tipos também para JSON
+                    self.df = self.corrigir_tipos_incorretos(self.df)
+                    
                     return self.df
                 except Exception as erro_json:
                     print(f"❌ Carregamento alternativo JSON também falhou: {erro_json}")

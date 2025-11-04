@@ -7,6 +7,8 @@ api_key.txt
 ideais.txt
 *.csv
 *.ipynb
+*.xlsx
+*.html
 
 # Python
 __pycache__/
