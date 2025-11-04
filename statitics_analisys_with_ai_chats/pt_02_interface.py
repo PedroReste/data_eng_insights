@@ -408,22 +408,22 @@ def criar_mapa_calor_correlacao(df):
         return None
 
 def criar_scatterplot_interativo(df):
-    """Criar gráfico de dispersão interativo com seleção de variáveis"""
+    """Criar gráfico de dispersão interativo otimizado para todos os tipos de variáveis"""
     if df is None or df.empty:
         return None
     
-    # Obter apenas colunas numéricas para scatterplot
-    colunas_numericas = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
+    # Obter todas as colunas disponíveis
+    todas_colunas = df.columns.tolist()
     
-    if len(colunas_numericas) < 2:
-        st.info("⚠️ É necessário pelo menos 2 colunas numéricas para gerar gráficos de dispersão.")
+    if len(todas_colunas) < 2:
+        st.info("⚠️ É necessário pelo menos 2 colunas para gerar gráficos de dispersão.")
         return None
     
     # Inicializar estado da sessão para seleções
     if 'scatter_x' not in st.session_state:
-        st.session_state.scatter_x = colunas_numericas[0]
+        st.session_state.scatter_x = todas_colunas[0]
     if 'scatter_y' not in st.session_state:
-        st.session_state.scatter_y = colunas_numericas[1] if len(colunas_numericas) > 1 else colunas_numericas[0]
+        st.session_state.scatter_y = todas_colunas[1] if len(todas_colunas) > 1 else todas_colunas[0]
     
     # Criar interface de seleção
     col1, col2 = st.columns(2)
@@ -431,14 +431,13 @@ def criar_scatterplot_interativo(df):
     with col1:
         nova_selecao_x = st.selectbox(
             "Selecionar Variável X:",
-            options=colunas_numericas,
-            index=colunas_numericas.index(st.session_state.scatter_x),
+            options=todas_colunas,
+            index=todas_colunas.index(st.session_state.scatter_x),
             key="select_x"
         )
     
     with col2:
-        # Filtrar opções para Y (não pode ser igual a X)
-        opcoes_y = [col for col in colunas_numericas if col != nova_selecao_x]
+        opcoes_y = [col for col in todas_colunas if col != nova_selecao_x]
         indice_y = opcoes_y.index(st.session_state.scatter_y) if st.session_state.scatter_y in opcoes_y else 0
         
         nova_selecao_y = st.selectbox(
@@ -452,36 +451,85 @@ def criar_scatterplot_interativo(df):
     st.session_state.scatter_x = nova_selecao_x
     st.session_state.scatter_y = nova_selecao_y
     
-    # Criar scatterplot
     try:
-        fig = px.scatter(
-            df,
-            x=st.session_state.scatter_x,
-            y=st.session_state.scatter_y,
-            title=f"Gráfico de Dispersão: {st.session_state.scatter_x} vs {st.session_state.scatter_y}",
-            labels={
-                st.session_state.scatter_x: st.session_state.scatter_x,
-                st.session_state.scatter_y: st.session_state.scatter_y
-            },
-            color_discrete_sequence=['#3498db']
-        )
+        # Preparar dados
+        df_plot = df[[st.session_state.scatter_x, st.session_state.scatter_y]].copy()
         
-        # Adicionar linha de tendência
-        dados_sem_na = df[[st.session_state.scatter_x, st.session_state.scatter_y]].dropna()
-        if len(dados_sem_na) > 1:
-            z = np.polyfit(dados_sem_na[st.session_state.scatter_x], dados_sem_na[st.session_state.scatter_y], 1)
-            p = np.poly1d(z)
-            
-            fig.add_trace(
-                go.Scatter(
-                    x=dados_sem_na[st.session_state.scatter_x],
-                    y=p(dados_sem_na[st.session_state.scatter_x]),
-                    mode='lines',
-                    line=dict(color='#e74c3c', width=2, dash='dash'),
-                    name='Linha de Tendência'
-                )
+        # Determinar tipos de forma otimizada
+        def classificar_tipo(serie):
+            if pd.api.types.is_numeric_dtype(serie):
+                return 'numerico'
+            elif pd.api.types.is_datetime64_any_dtype(serie):
+                return 'datetime'
+            else:
+                return 'categorico'
+        
+        tipo_x = classificar_tipo(df_plot[st.session_state.scatter_x])
+        tipo_y = classificar_tipo(df_plot[st.session_state.scatter_y])
+        
+        # Criar gráfico baseado na combinação de tipos
+        combinacao = f"{tipo_x}_{tipo_y}"
+        
+        if combinacao == 'numerico_numerico':
+            # Scatter plot com linha de tendência
+            fig = px.scatter(
+                df_plot, 
+                x=st.session_state.scatter_x, 
+                y=st.session_state.scatter_y,
+                title=f"Dispersão: {st.session_state.scatter_x} vs {st.session_state.scatter_y}",
+                color_discrete_sequence=['#3498db']
             )
+            
+            # Adicionar linha de tendência
+            dados_sem_na = df_plot.dropna()
+            if len(dados_sem_na) > 1:
+                try:
+                    z = np.polyfit(dados_sem_na[st.session_state.scatter_x], dados_sem_na[st.session_state.scatter_y], 1)
+                    p = np.poly1d(z)
+                    fig.add_trace(go.Scatter(
+                        x=dados_sem_na[st.session_state.scatter_x],
+                        y=p(dados_sem_na[st.session_state.scatter_x]),
+                        mode='lines', line=dict(color='#e74c3c', width=2, dash='dash'),
+                        name='Linha de Tendência'
+                    ))
+                except:
+                    pass
         
+        elif combinacao in ['categorico_numerico', 'numerico_categorico']:
+            # Box plot para categórico vs numérico
+            if tipo_x == 'categorico':
+                fig = px.box(df_plot, x=st.session_state.scatter_x, y=st.session_state.scatter_y,
+                           title=f"Distribuição por Categoria: {st.session_state.scatter_y} vs {st.session_state.scatter_x}",
+                           color=st.session_state.scatter_x)
+            else:
+                fig = px.box(df_plot, x=st.session_state.scatter_y, y=st.session_state.scatter_x,
+                           title=f"Distribuição por Categoria: {st.session_state.scatter_x} vs {st.session_state.scatter_y}",
+                           color=st.session_state.scatter_y)
+        
+        elif combinacao == 'categorico_categorico':
+            # Gráfico de contagem para duas categóricas
+            contagem = df_plot.groupby([st.session_state.scatter_x, st.session_state.scatter_y]).size().reset_index(name='count')
+            fig = px.scatter(contagem, x=st.session_state.scatter_x, y=st.session_state.scatter_y, size='count',
+                           title=f"Relação entre Categorias: {st.session_state.scatter_x} vs {st.session_state.scatter_y}",
+                           color='count', color_continuous_scale='Viridis')
+        
+        elif 'datetime' in combinacao:
+            # Gráfico temporal
+            if tipo_x == 'datetime':
+                df_temporal = df_plot.groupby(st.session_state.scatter_x)[st.session_state.scatter_y].mean().reset_index()
+                fig = px.line(df_temporal, x=st.session_state.scatter_x, y=st.session_state.scatter_y,
+                            title=f"Evolução Temporal: {st.session_state.scatter_y}", markers=True)
+            else:
+                df_temporal = df_plot.groupby(st.session_state.scatter_y)[st.session_state.scatter_x].mean().reset_index()
+                fig = px.line(df_temporal, x=st.session_state.scatter_y, y=st.session_state.scatter_x,
+                            title=f"Evolução Temporal: {st.session_state.scatter_x}", markers=True)
+        
+        else:
+            # Gráfico genérico como fallback
+            fig = px.scatter(df_plot, x=st.session_state.scatter_x, y=st.session_state.scatter_y,
+                           title=f"Relação: {st.session_state.scatter_x} vs {st.session_state.scatter_y}")
+        
+        # Configuração comum do layout
         fig.update_layout(
             height=500,
             paper_bgcolor='rgba(0,0,0,0)',
@@ -492,10 +540,16 @@ def criar_scatterplot_interativo(df):
             yaxis=dict(gridcolor='rgba(255,255,255,0.1)')
         )
         
+        # Ajustar ângulo dos ticks para categorias
+        if tipo_x == 'categorico':
+            fig.update_xaxes(tickangle=45)
+        if tipo_y == 'categorico':
+            fig.update_yaxes(tickangle=45)
+            
         return fig
-    
+        
     except Exception as e:
-        st.error(f"Erro ao criar gráfico de dispersão: {str(e)}")
+        st.error(f"Erro ao criar gráfico: {str(e)}")
         return None
 
 def exibir_analise_exploratoria(resultados):
