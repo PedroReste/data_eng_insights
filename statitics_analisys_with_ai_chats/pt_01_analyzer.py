@@ -130,43 +130,55 @@ class AnalisadorChatBot:
             print(f"❌ Erro ao ler arquivo de chave API: {e}")
             return None
 
-    def corrigir_tipos_incorretos(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Corrige apenas booleanos e datetime que foram identificados erroneamente
-        Usa amostra de 5% para validação
-        """
-        df = df.copy()
-        n_amostra = max(1, int(len(df) * 0.05))
-        df_amostra = df.sample(n=n_amostra, random_state=42) if len(df) > n_amostra else df
+def corrigir_tipos_incorretos(self, df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Corrige apenas booleanos e datetime que foram identificados erroneamente
+    Inclui conversão de colunas numéricas com apenas 0 e 1 para booleanas
+    """
+    df = df.copy()
+    n_amostra = max(1, int(len(df) * 0.05))
+    df_amostra = df.sample(n=n_amostra, random_state=42) if len(df) > n_amostra else df
+    
+    for col in df.columns:
+        # 1. Corrigir datetime: se for object mas contém datas
+        if df[col].dtype == 'object':
+            # Tentar converter para datetime
+            datetime_convertido = pd.to_datetime(df[col], errors='coerce')
+            if datetime_convertido.notna().mean() > 0.7:  # 70% de sucesso na conversão
+                df[col] = datetime_convertido
+                continue  # Pular para próxima coluna se converteu para datetime
         
-        for col in df.columns:
-            # 1. Corrigir datetime: se for object mas contém datas
-            if df[col].dtype == 'object':
-                # Tentar converter para datetime
-                datetime_convertido = pd.to_datetime(df[col], errors='coerce')
-                if datetime_convertido.notna().mean() > 0.7:  # 70% de sucesso na conversão
-                    df[col] = datetime_convertido
+        # 2. Corrigir booleanos: verificar TODOS os tipos de dados, incluindo numéricos
+        valores_unicos = set(map(str, df_amostra[col].dropna().unique()))
+        
+        # Verificar se são apenas 0 e 1 (em qualquer tipo de dado)
+        if valores_unicos.issubset({'0', '1', '0.0', '1.0', 0, 1, 0.0, 1.0}):
+            # Converter para booleano
+            df[col] = df[col].astype(bool)
+            print(f"🔧 Coluna '{col}' convertida de {df[col].dtype} para booleana (valores: 0/1)")
+        
+        # 3. Corrigir booleanos em colunas object com valores textuais
+        elif df[col].dtype == 'object':
+            valores_texto = set(map(str.lower, map(str, df_amostra[col].dropna().unique())))
+            valores_booleanos = {'true', 'false', 'sim', 'não', 'yes', 'no', 'v', 'f', 's', 'n'}
             
-            # 2. Corrigir booleanos: se for object mas contém valores booleanos
-            elif df[col].dtype == 'object':
-                valores_unicos = set(map(str.lower, map(str, df_amostra[col].dropna().unique())))
-                valores_booleanos = {'true', 'false', 'sim', 'não', 'yes', 'no', '1', '0', 'v', 'f'}
-                
-                if valores_unicos.issubset(valores_booleanos):
-                    mapa_booleanos = {
-                        'true': True, 'false': False,
-                        'sim': True, 'não': False,
-                        'yes': True, 'no': False,
-                        '1': True, '0': False,
-                        'v': True, 'f': False
-                    }
-                    df[col] = (df[col].astype(str)
-                                  .str.strip()
-                                  .str.lower()
-                                  .map(mapa_booleanos)
-                                  .astype('boolean'))
-        
-        return df
+            if valores_texto.issubset(valores_booleanos):
+                mapa_booleanos = {
+                    'true': True, 'false': False,
+                    'sim': True, 'não': False,
+                    'yes': True, 'no': False,
+                    '1': True, '0': False,
+                    'v': True, 'f': False,
+                    's': True, 'n': False
+                }
+                df[col] = (df[col].astype(str)
+                              .str.strip()
+                              .str.lower()
+                              .map(mapa_booleanos)
+                              .astype('boolean'))
+                print(f"🔧 Coluna '{col}' convertida de object para booleana")
+    
+    return df
 
     def carregar_dados(self, df: pd.DataFrame):
         """Carregar DataFrame no analisador com correção automática de tipos"""
