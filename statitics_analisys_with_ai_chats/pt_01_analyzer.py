@@ -1,4 +1,4 @@
-# pt_01_analyzer.py
+# pt_01_analisador.py
 import pandas as pd
 import requests
 import json
@@ -8,8 +8,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 from typing import Dict, Any, Optional, List
-from scipy.stats import chi2_contingency
-import scipy.stats as stats
 
 # Importar streamlit no nível superior, mas lidar com o caso quando não estiver disponível
 try:
@@ -648,220 +646,29 @@ class AnalisadorChatBot:
                 col_num = i % n_cols + 1
                 
                 # Para dados de data/hora, usar gráfico de linha com contagem de valores ao longo do tempo
-                contagem_datas = self.df[col].dt.date.value_counts().sort_index()
+                contagem_datas = self.df[col].value_counts().sort_index()
                 fig_dist_data.add_trace(
                     go.Scatter(x=contagem_datas.index, y=contagem_datas.values, mode='lines', name=col),
                     row=linha, col=col_num
                 )
             
-            fig_dist_data.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis de Data/Hora", showlegend=False)
+            fig_dist_data.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Data/Hora", showlegend=False)
             visualizacoes['distribuicoes_data_hora'] = fig_dist_data
 
+        # Mapa de calor de correlação apenas para dados numéricos
+        colunas_numericas_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+        if len(colunas_numericas_corr) > 1:
+            matriz_corr = self.df[colunas_numericas_corr].corr()
+            fig_corr = px.imshow(
+                matriz_corr,
+                title="Mapa de Calor de Correlação (Variáveis Numéricas)",
+                color_continuous_scale='RdBu_r',
+                aspect="auto"
+            )
+            fig_corr.update_layout(height=500)
+            visualizacoes['mapa_calor_correlacao'] = fig_corr
+        
         return visualizacoes
-
-    # ========== NOVOS MÉTODOS DE CORRELAÇÃO ==========
-
-    def calcular_cramers_v(self, x, y):
-        """Calcular correlação de Cramér's V para variáveis categóricas"""
-        try:
-            tabela_contingencia = pd.crosstab(x, y)
-            chi2 = chi2_contingency(tabela_contingencia)[0]
-            n = tabela_contingencia.sum().sum()
-            phi2 = chi2 / n
-            r, k = tabela_contingencia.shape
-            phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
-            rcorr = r - ((r-1)**2)/(n-1)
-            kcorr = k - ((k-1)**2)/(n-1)
-            return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
-        except:
-            return np.nan
-
-    def calcular_theils_u(self, x, y):
-        """Calcular Theil's U (incerteza) para variáveis categóricas"""
-        try:
-            # Theil's U é assimétrico, então calculamos U(x|y)
-            tabela_contingencia = pd.crosstab(x, y)
-            entropia_marginal_x = stats.entropy(tabela_contingencia.sum(axis=1))
-            entropia_condicional = 0
-            total = tabela_contingencia.sum().sum()
-            
-            for j in tabela_contingencia.columns:
-                col_sum = tabela_contingencia[j].sum()
-                if col_sum > 0:
-                    entropia_col = stats.entropy(tabela_contingencia[j])
-                    entropia_condicional += (col_sum / total) * entropia_col
-            
-            if entropia_marginal_x == 0:
-                return 1.0
-            else:
-                return (entropia_marginal_x - entropia_condicional) / entropia_marginal_x
-        except:
-            return np.nan
-
-    def calcular_phi(self, x, y):
-        """Calcular coeficiente Phi para variáveis binárias"""
-        try:
-            tabela_contingencia = pd.crosstab(x, y)
-            if tabela_contingencia.shape != (2, 2):
-                return np.nan
-            
-            a, b, c, d = tabela_contingencia.iloc[0, 0], tabela_contingencia.iloc[0, 1], tabela_contingencia.iloc[1, 0], tabela_contingencia.iloc[1, 1]
-            return (a*d - b*c) / np.sqrt((a+b)*(c+d)*(a+c)*(b+d))
-        except:
-            return np.nan
-
-    def calcular_correlation_ratio(self, categorias, valores):
-        """Calcular Correlation Ratio (eta) para relação categórica-numérica"""
-        try:
-            categorias_unicas = categorias.unique()
-            media_geral = valores.mean()
-            ssb = 0  # Soma dos quadrados entre grupos
-            sst = 0  # Soma total dos quadrados
-            
-            for categoria in categorias_unicas:
-                mascara = categorias == categoria
-                valores_grupo = valores[mascara]
-                if len(valores_grupo) > 0:
-                    media_grupo = valores_grupo.mean()
-                    ssb += len(valores_grupo) * (media_grupo - media_geral) ** 2
-            
-            sst = ((valores - media_geral) ** 2).sum()
-            
-            if sst == 0:
-                return 0
-            return np.sqrt(ssb / sst)
-        except:
-            return np.nan
-
-    def obter_metodos_correlacao_disponiveis(self):
-        """Obter lista de métodos de correlação disponíveis baseado nos dados"""
-        metodos = ['pearson', 'spearman', 'kendall']
-        
-        if self.df is None:
-            return metodos
-            
-        # Verificar se há colunas categóricas para métodos avançados
-        colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'bool']).columns
-        colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        
-        if len(colunas_categoricas) >= 2:
-            metodos.extend(['cramers_v', 'theils_u'])
-        
-        # Verificar se há colunas booleanas para Phi
-        colunas_booleanas = self.df.select_dtypes(include='bool').columns
-        if len(colunas_booleanas) >= 2:
-            metodos.append('phi')
-        
-        # Verificar se há combinação de categóricas e numéricas para Correlation Ratio
-        if len(colunas_categoricas) >= 1 and len(colunas_numericas) >= 1:
-            metodos.append('correlation_ratio')
-        
-        return metodos
-
-    def gerar_matriz_correlacao(self, metodo='pearson'):
-        """Gerar matriz de correlação com diferentes métodos"""
-        if self.df is None or self.df.empty:
-            return None, None
-        
-        colunas = self.df.columns
-        n_colunas = len(colunas)
-        
-        # Métodos numéricos padrão
-        if metodo in ['pearson', 'spearman', 'kendall']:
-            colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-            
-            if len(colunas_numericas) < 2:
-                return None, None
-            
-            df_numerico = self.df[colunas_numericas]
-            matriz_correlacao = df_numerico.corr(method=metodo)
-            
-            # Criar heatmap
-            fig = px.imshow(
-                matriz_correlacao,
-                x=matriz_correlacao.columns,
-                y=matriz_correlacao.index,
-                color_continuous_scale='RdBu_r',
-                aspect="auto",
-                title=f"Matriz de Correlação - {metodo.title()}",
-                zmin=-1, zmax=1
-            )
-            fig.update_layout(height=600)
-            
-            return fig, matriz_correlacao
-        
-        # Métodos avançados para todos os tipos de dados
-        else:
-            matriz_correlacao = pd.DataFrame(np.zeros((n_colunas, n_colunas)), 
-                                            index=colunas, columns=colunas)
-            
-            for i, col1 in enumerate(colunas):
-                for j, col2 in enumerate(colunas):
-                    if i == j:
-                        matriz_correlacao.iloc[i, j] = 1.0
-                        continue
-                    
-                    tipo1 = self.df[col1].dtype
-                    tipo2 = self.df[col2].dtype
-                    
-                    try:
-                        if metodo == 'cramers_v':
-                            # Para Cramér's V, ambas variáveis devem ser categóricas
-                            if (tipo1 in ['object', 'category', 'bool'] and 
-                                tipo2 in ['object', 'category', 'bool']):
-                                matriz_correlacao.iloc[i, j] = self.calcular_cramers_v(self.df[col1], self.df[col2])
-                            else:
-                                matriz_correlacao.iloc[i, j] = np.nan
-                        
-                        elif metodo == 'theils_u':
-                            # Para Theil's U, ambas variáveis devem ser categóricas
-                            if (tipo1 in ['object', 'category', 'bool'] and 
-                                tipo2 in ['object', 'category', 'bool']):
-                                matriz_correlacao.iloc[i, j] = self.calcular_theils_u(self.df[col1], self.df[col2])
-                            else:
-                                matriz_correlacao.iloc[i, j] = np.nan
-                        
-                        elif metodo == 'phi':
-                            # Para Phi, ambas variáveis devem ser binárias
-                            if (tipo1 == 'bool' and tipo2 == 'bool'):
-                                matriz_correlacao.iloc[i, j] = self.calcular_phi(self.df[col1], self.df[col2])
-                            else:
-                                matriz_correlacao.iloc[i, j] = np.nan
-                        
-                        elif metodo == 'correlation_ratio':
-                            # Para Correlation Ratio, uma categórica e uma numérica
-                            if ((tipo1 in ['object', 'category', 'bool'] and 
-                                 np.issubdtype(tipo2, np.number)) or
-                                (np.issubdtype(tipo1, np.number) and 
-                                 tipo2 in ['object', 'category', 'bool'])):
-                                
-                                if tipo1 in ['object', 'category', 'bool'] and np.issubdtype(tipo2, np.number):
-                                    cat_col, num_col = col1, col2
-                                else:
-                                    cat_col, num_col = col2, col1
-                                
-                                matriz_correlacao.iloc[i, j] = self.calcular_correlation_ratio(
-                                    self.df[cat_col], self.df[num_col]
-                                )
-                            else:
-                                matriz_correlacao.iloc[i, j] = np.nan
-                    
-                    except Exception:
-                        matriz_correlacao.iloc[i, j] = np.nan
-            
-            # Criar heatmap
-            fig = px.imshow(
-                matriz_correlacao,
-                x=matriz_correlacao.columns,
-                y=matriz_correlacao.index,
-                color_continuous_scale='RdBu_r',
-                aspect="auto",
-                title=f"Matriz de Associação - {metodo.replace('_', ' ').title()}",
-                zmin=0, zmax=1
-            )
-            fig.update_layout(height=600)
-            
-            return fig, matriz_correlacao
          
     def chamar_api_open_router(self, prompt: str) -> Optional[str]:
         """Fazer chamada API para Open Router"""
@@ -993,19 +800,19 @@ class AnalisadorChatBot:
         # Salvar relatório combinado como markdown
         relatorio_combinado = f"""# 📊 Relatório de Análise de Dados
 
-        ## Conjunto de Dados: {nome_base}
+## Conjunto de Dados: {nome_base}
 
-        ## Estatísticas Descritivas
+## Estatísticas Descritivas
 
-        {resultados['estatisticas']}
+{resultados['estatisticas']}
 
-        ## Análise
+## Análise
 
-        {resultados['analise_ia']}
+{resultados['analise_ia']}
 
-        ---
-        *Relatório gerado automaticamente com Analisador de Dados IA*
-        """
+---
+*Relatório gerado automaticamente com Analisador de Dados IA*
+"""
         with open(f"{caminho_base}_relatorio_completo.txt", "w", encoding="utf-8") as f:
             f.write(relatorio_combinado)
         

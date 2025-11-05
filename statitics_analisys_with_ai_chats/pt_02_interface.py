@@ -193,13 +193,6 @@ st.markdown("""
         border-left: 4px solid #3498db;
         height: 100%;
     }
-    .correlation-controls {
-        background: #1e2130;
-        border-radius: 8px;
-        padding: 1rem;
-        margin: 1rem 0;
-        border: 1px solid #3498db;
-    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -367,142 +360,52 @@ def exibir_cartoes_tipos_coluna(analisador):
     with col4:
         st.markdown(criar_cartao_tipo(contagem_data_hora, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
 
-def criar_mapa_calor_correlacao_avancado(analisador, metodo, tipo_visualizacao):
-    """Criar visualização avançada de correlação com múltiplos métodos"""
-    if analisador is None or analisador.df is None:
+def criar_mapa_calor_correlacao(df):
+    """Criar mapa de calor de correlação para todas as variáveis"""
+    if df is None or df.empty:
         st.warning("Nenhum dado disponível para análise de correlação")
-        return
+        return None
+        
+    # Criar uma cópia do dataframe para codificação
+    df_codificado = df.copy()
     
-    # Controles de seleção de método e visualização
-    st.markdown('<div class="correlation-controls">', unsafe_allow_html=True)
-    col1, col2 = st.columns(2)
+    # Codificar variáveis categóricas
+    for col in df_codificado.select_dtypes(include=['object', 'category']).columns:
+        df_codificado[col] = pd.factorize(df_codificado[col])[0]
     
-    with col1:
-        # Obter métodos disponíveis
-        metodos_disponiveis = analisador.obter_metodos_correlacao_disponiveis()
-        metodo_selecionado = st.selectbox(
-            "Selecione o método de correlação:",
-            options=metodos_disponiveis,
-            format_func=lambda x: x.replace('_', ' ').title(),
-            key="metodo_correlacao_select"
+    # Codificar variáveis booleanas
+    for col in df_codificado.select_dtypes(include='bool').columns:
+        df_codificado[col] = df_codificado[col].astype(int)
+    
+    # Calcular matriz de correlação
+    try:
+        matriz_corr = df_codificado.corr()
+        
+        # Criar mapa de calor
+        fig = px.imshow(
+            matriz_corr,
+            title="Matriz de Correlação (Todas as Variáveis)",
+            color_continuous_scale='RdBu_r',
+            aspect="auto",
+            range_color=[-1, 1],
+            labels=dict(color="Correlação")
         )
-    
-    with col2:
-        tipo_vis = st.radio(
-            "Tipo de visualização:",
-            options=["Gráfico", "Tabela"],
-            horizontal=True,
-            key="tipo_visualizacao_correlacao"
-        )
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Informações sobre o método selecionado
-    with st.expander("ℹ️ Sobre este método de correlação"):
-        if metodo_selecionado == 'pearson':
-            st.markdown("""
-            **Correlação de Pearson**: Mede a correlação linear entre variáveis numéricas.
-            - Varia de -1 (correlação negativa perfeita) a +1 (correlação positiva perfeita)
-            - 0 indica nenhuma correlação linear
-            - Ideal para relações lineares e dados normalmente distribuídos
-            """)
-        elif metodo_selecionado == 'spearman':
-            st.markdown("""
-            **Correlação de Spearman**: Mede correlações monotônicas (não necessariamente lineares).
-            - Baseada nos ranks dos dados
-            - Menos sensível a outliers que Pearson
-            - Ideal para relações não-lineares monotônicas
-            """)
-        elif metodo_selecionado == 'kendall':
-            st.markdown("""
-            **Correlação de Kendall Tau**: Mede a força da dependência entre variáveis.
-            - Baseada na concordância de pares de observações
-            - Robusta a outliers
-            - Ideal para amostras pequenas
-            """)
-        elif metodo_selecionado == 'cramers_v':
-            st.markdown("""
-            **Cramér's V**: Mede associação entre variáveis categóricas.
-            - Varia de 0 (nenhuma associação) a 1 (associação perfeita)
-            - Baseada no teste qui-quadrado
-            - Ideal para tabelas de contingência
-            """)
-        elif metodo_selecionado == 'theils_u':
-            st.markdown("""
-            **Theil's U**: Mede associação assimétrica entre variáveis categóricas.
-            - Varia de 0 a 1
-            - Útil quando uma variável prediz a outra
-            - Medida de incerteza assimétrica
-            """)
-        elif metodo_selecionado == 'phi':
-            st.markdown("""
-            **Coeficiente Phi**: Mede associação entre variáveis binárias.
-            - Similar ao coeficiente de correlação para dados binários
-            - Varia de -1 a +1
-            - Ideal para variáveis dicotômicas
-            """)
-        elif metodo_selecionado == 'correlation_ratio':
-            st.markdown("""
-            **Correlation Ratio (η)**: Mede relação entre variável categórica e numérica.
-            - Varia de 0 a 1
-            - Indica quanto da variância da numérica é explicada pela categórica
-            - Análogo ao R² em ANOVA
-            """)
-    
-    # Gerar matriz de correlação
-    with st.spinner(f"📈 Calculando correlação {metodo_selecionado}..."):
-        fig, matriz = analisador.gerar_matriz_correlacao(metodo_selecionado)
-    
-    if matriz is not None:
-        if tipo_vis == "Gráfico" and fig is not None:
-            st.plotly_chart(fig, use_container_width=True)
-            
-            # Estatísticas resumidas
-            st.markdown("#### 📊 Estatísticas da Matriz")
-            if not matriz.isnull().all().all():
-                valores = matriz.values.flatten()
-                valores_validos = valores[~np.isnan(valores)]
-                if len(valores_validos) > 0:
-                    col1, col2, col3, col4 = st.columns(4)
-                    with col1:
-                        st.metric("Correlação Mínima", f"{np.min(valores_validos):.3f}")
-                    with col2:
-                        st.metric("Correlação Máxima", f"{np.max(valores_validos):.3f}")
-                    with col3:
-                        st.metric("Correlação Média", f"{np.mean(valores_validos):.3f}")
-                    with col4:
-                        st.metric("Valores Calculados", len(valores_validos))
-            
-        else:
-            # Mostrar tabela
-            st.markdown("#### 📊 Matriz de Correlação")
-            
-            # Formatar a tabela para melhor visualização
-            matriz_formatada = matriz.copy()
-            
-            # Aplicar estilo gradiente se for matriz numérica
-            if metodo_selecionado in ['pearson', 'spearman', 'kendall']:
-                styled_df = matriz_formatada.style.background_gradient(
-                    cmap='RdBu_r', vmin=-1, vmax=1
-                ).format("{:.3f}")
-            else:
-                styled_df = matriz_formatada.style.background_gradient(
-                    cmap='viridis', vmin=0, vmax=1
-                ).format("{:.3f}")
-            
-            st.dataframe(styled_df, use_container_width=True, height=400)
-            
-            # Opção para download
-            csv = matriz_formatada.to_csv()
-            st.download_button(
-                label="📥 Baixar Matriz como CSV",
-                data=csv,
-                file_name=f"matriz_correlacao_{metodo_selecionado}.csv",
-                mime="text/csv"
+        
+        fig.update_layout(
+            height=600,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            coloraxis_colorbar=dict(
+                title="Correlação",
+                tickvals=[-1, -0.5, 0, 0.5, 1],
+                ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
             )
-    
-    else:
-        st.warning(f"⚠️ Não foi possível calcular correlação usando o método {metodo_selecionado}")
-        st.info("Este método pode não ser aplicável aos tipos de dados presentes no seu conjunto.")
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
+        return None
 
 def criar_scatterplot_interativo(df):
     """Criar gráfico de dispersão interativo otimizado para todos os tipos de variáveis"""
@@ -805,9 +708,14 @@ def exibir_aba_visao_geral(resultados):
     if fig_scatter:
         st.plotly_chart(fig_scatter, use_container_width=True)
     
-    # NOVA SEÇÃO: Múltiplos Métodos de Correlação
-    st.markdown("### 🔗 Análise de Correlação Avançada")
-    criar_mapa_calor_correlacao_avancado(analisador, 'pearson', 'Gráfico')
+    # Mapa de calor de correlação
+    st.markdown("### 🔗 Matriz de Correlação")
+    try:
+        fig_corr = criar_mapa_calor_correlacao(df)
+        if fig_corr:
+            st.plotly_chart(fig_corr, use_container_width=True)
+    except Exception as e:
+        st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
 
 def exibir_aba_numericas(resultados):
     """Exibir análise de colunas numéricas"""
