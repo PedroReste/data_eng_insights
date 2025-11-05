@@ -800,19 +800,19 @@ class AnalisadorChatBot:
         # Salvar relatório combinado como markdown
         relatorio_combinado = f"""# 📊 Relatório de Análise de Dados
 
-## Conjunto de Dados: {nome_base}
+        ## Conjunto de Dados: {nome_base}
 
-## Estatísticas Descritivas
+        ## Estatísticas Descritivas
 
-{resultados['estatisticas']}
+        {resultados['estatisticas']}
 
-## Análise
+        ## Análise
 
-{resultados['analise_ia']}
+        {resultados['analise_ia']}
 
----
-*Relatório gerado automaticamente com Analisador de Dados IA*
-"""
+        ---
+        *Relatório gerado automaticamente com Analisador de Dados IA*
+        """
         with open(f"{caminho_base}_relatorio_completo.txt", "w", encoding="utf-8") as f:
             f.write(relatorio_combinado)
         

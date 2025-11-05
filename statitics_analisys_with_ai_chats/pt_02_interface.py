@@ -8,6 +8,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+from scipy.stats import chi2_contingency, spearmanr, kendalltau, pearsonr
+import scipy.stats as stats
 
 # Importar de nossos módulos
 from pt_01_analyzer import AnalisadorChatBot
@@ -196,6 +198,176 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Funções para cálculos de correlação
+def cramers_v(x, y):
+    """Calcula Cramér's V para duas variáveis categóricas"""
+    confusion_matrix = pd.crosstab(x, y)
+    chi2 = chi2_contingency(confusion_matrix)[0]
+    n = confusion_matrix.sum().sum()
+    phi2 = chi2 / n
+    r, k = confusion_matrix.shape
+    phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+    rcorr = r - ((r-1)**2)/(n-1)
+    kcorr = k - ((k-1)**2)/(n-1)
+    return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+
+def theils_u(x, y):
+    """Calcula Theil's U para duas variáveis categóricas (assimétrico)"""
+    if x.name == y.name:
+        return 1.0
+    
+    # Calcular entropia condicional
+    conditional_entropy = 0
+    for value in x.unique():
+        mask = x == value
+        y_subset = y[mask]
+        prob = len(y_subset) / len(x)
+        if prob > 0:
+            value_counts = y_subset.value_counts(normalize=True)
+            entropy = -np.sum(value_counts * np.log2(value_counts))
+            conditional_entropy += prob * entropy
+    
+    # Calcular entropia de y
+    y_value_counts = y.value_counts(normalize=True)
+    y_entropy = -np.sum(y_value_counts * np.log2(y_value_counts))
+    
+    if y_entropy == 0:
+        return 1.0
+    
+    return (y_entropy - conditional_entropy) / y_entropy
+
+def phi_coefficient(x, y):
+    """Calcula coeficiente Phi para duas variáveis binárias"""
+    confusion_matrix = pd.crosstab(x, y)
+    if confusion_matrix.shape != (2, 2):
+        return np.nan
+    
+    a, b = confusion_matrix.iloc[0, 0], confusion_matrix.iloc[0, 1]
+    c, d = confusion_matrix.iloc[1, 0], confusion_matrix.iloc[1, 1]
+    
+    numerator = a * d - b * c
+    denominator = np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
+    
+    return numerator / denominator if denominator != 0 else 0
+
+def correlation_ratio(categories, values):
+    """Calcula Correlation Ratio (eta) entre categórica e numérica"""
+    categories = pd.Categorical(categories)
+    overall_mean = values.mean()
+    
+    # Variância entre grupos
+    between_variance = 0
+    for category in categories.categories:
+        mask = categories == category
+        group_values = values[mask]
+        if len(group_values) > 0:
+            between_variance += len(group_values) * (group_values.mean() - overall_mean) ** 2
+    
+    between_variance /= len(values)
+    
+    # Variância total
+    total_variance = values.var()
+    
+    return np.sqrt(between_variance / total_variance) if total_variance > 0 else 0
+
+def calcular_matriz_correlacao(df, metodo):
+    """Calcula matriz de correlação baseada no método selecionado"""
+    colunas = df.columns
+    n = len(colunas)
+    matriz = pd.DataFrame(np.zeros((n, n)), columns=colunas, index=colunas)
+    
+    for i, col1 in enumerate(colunas):
+        for j, col2 in enumerate(colunas):
+            if i == j:
+                matriz.iloc[i, j] = 1.0
+                continue
+                
+            try:
+                if metodo == "Pearson":
+                    if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
+                        corr, _ = pearsonr(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = corr
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Spearman":
+                    if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
+                        corr, _ = spearmanr(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = corr
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Kendall Tau":
+                    if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
+                        corr, _ = kendalltau(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = corr
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Cramers V":
+                    if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
+                       (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
+                        matriz.iloc[i, j] = cramers_v(df[col1].dropna(), df[col2].dropna())
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Theils U":
+                    if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
+                       (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
+                        matriz.iloc[i, j] = theils_u(df[col1].dropna(), df[col2].dropna())
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Phi":
+                    if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
+                       (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
+                        matriz.iloc[i, j] = phi_coefficient(df[col1].dropna(), df[col2].dropna())
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Correlation Ratio":
+                    if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
+                       pd.api.types.is_numeric_dtype(df[col2]):
+                        matriz.iloc[i, j] = correlation_ratio(df[col1].dropna(), df[col2].dropna())
+                    elif (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])) and \
+                         pd.api.types.is_numeric_dtype(df[col1]):
+                        matriz.iloc[i, j] = correlation_ratio(df[col2].dropna(), df[col1].dropna())
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+            except (ValueError, TypeError, ZeroDivisionError):
+                matriz.iloc[i, j] = np.nan
+                
+    return matriz
+
+def criar_mapa_calor_correlacao(matriz_corr, metodo):
+    """Criar mapa de calor de correlação para a matriz fornecida"""
+    try:
+        fig = px.imshow(
+            matriz_corr,
+            title=f"Mapa de Calor de Correlação - {metodo}",
+            color_continuous_scale='RdBu_r',
+            aspect="auto",
+            range_color=[-1, 1],
+            labels=dict(color="Correlação")
+        )
+        
+        fig.update_layout(
+            height=600,
+            paper_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            coloraxis_colorbar=dict(
+                title="Correlação",
+                tickvals=[-1, -0.5, 0, 0.5, 1],
+                ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+            )
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"Não foi possível gerar o mapa de calor: {str(e)}")
+        return None
+
 def inicializar_analisador():
     """Inicializar o analisador com tratamento adequado de erros"""
     try:
@@ -360,31 +532,20 @@ def exibir_cartoes_tipos_coluna(analisador):
     with col4:
         st.markdown(criar_cartao_tipo(contagem_data_hora, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
 
-def criar_mapa_calor_correlacao(df):
+def criar_mapa_calor_correlacao_completo(df, metodo):
     """Criar mapa de calor de correlação para todas as variáveis"""
     if df is None or df.empty:
         st.warning("Nenhum dado disponível para análise de correlação")
         return None
         
-    # Criar uma cópia do dataframe para codificação
-    df_codificado = df.copy()
+    # Calcular matriz de correlação baseada no método
+    matriz_corr = calcular_matriz_correlacao(df, metodo)
     
-    # Codificar variáveis categóricas
-    for col in df_codificado.select_dtypes(include=['object', 'category']).columns:
-        df_codificado[col] = pd.factorize(df_codificado[col])[0]
-    
-    # Codificar variáveis booleanas
-    for col in df_codificado.select_dtypes(include='bool').columns:
-        df_codificado[col] = df_codificado[col].astype(int)
-    
-    # Calcular matriz de correlação
+    # Criar mapa de calor
     try:
-        matriz_corr = df_codificado.corr()
-        
-        # Criar mapa de calor
         fig = px.imshow(
             matriz_corr,
-            title="Matriz de Correlação (Todas as Variáveis)",
+            title=f"Matriz de Correlação - {metodo}",
             color_continuous_scale='RdBu_r',
             aspect="auto",
             range_color=[-1, 1],
@@ -402,10 +563,10 @@ def criar_mapa_calor_correlacao(df):
             )
         )
         
-        return fig
+        return fig, matriz_corr
     except Exception as e:
         st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
-        return None
+        return None, None
 
 def criar_scatterplot_interativo(df):
     """Criar gráfico de dispersão interativo otimizado para todos os tipos de variáveis"""
@@ -708,14 +869,96 @@ def exibir_aba_visao_geral(resultados):
     if fig_scatter:
         st.plotly_chart(fig_scatter, use_container_width=True)
     
-    # Mapa de calor de correlação
-    st.markdown("### 🔗 Matriz de Correlação")
-    try:
-        fig_corr = criar_mapa_calor_correlacao(df)
-        if fig_corr:
-            st.plotly_chart(fig_corr, use_container_width=True)
-    except Exception as e:
-        st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
+    # NOVA SEÇÃO: Múltiplos Métodos de Correlação
+    st.markdown("### 🔗 Análise de Correlação - Múltiplos Métodos")
+    
+    # Seleção de método de correlação
+    metodos_correlacao = [
+        "Atual (Pearson Numérico)",
+        "Pearson", 
+        "Spearman", 
+        "Kendall Tau",
+        "Cramers V",
+        "Theils U", 
+        "Phi",
+        "Correlation Ratio"
+    ]
+    
+    col_metodo, col_viz = st.columns([1, 2])
+    
+    with col_metodo:
+        metodo_selecionado = st.selectbox(
+            "Selecione o Método de Correlação:",
+            options=metodos_correlacao,
+            index=0,
+            help="Escolha o método de correlação apropriado para seus dados"
+        )
+        
+        # Informações sobre o método selecionado
+        info_metodos = {
+            "Atual (Pearson Numérico)": "Correlação de Pearson apenas para variáveis numéricas",
+            "Pearson": "Correlação linear entre variáveis numéricas",
+            "Spearman": "Correlação de postos para relações monotônicas",
+            "Kendall Tau": "Correlação de postos mais robusta a outliers",
+            "Cramers V": "Associação entre variáveis categóricas",
+            "Theils U": "Associação assimétrica entre categóricas",
+            "Phi": "Associação entre variáveis binárias",
+            "Correlation Ratio": "Relação entre categórica e numérica"
+        }
+        
+        st.info(f"**{metodo_selecionado}**: {info_metodos[metodo_selecionado]}")
+        
+        # Seleção de visualização
+        tipo_visualizacao = st.radio(
+            "Tipo de Visualização:",
+            ["Gráfico Heatmap", "Tabela de Valores"],
+            horizontal=True
+        )
+    
+    with col_viz:
+        if metodo_selecionado == "Atual (Pearson Numérico)":
+            # Manter o heatmap atual como está
+            colunas_numericas_corr = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            if len(colunas_numericas_corr) > 1:
+                matriz_corr = df[colunas_numericas_corr].corr()
+                
+                if tipo_visualizacao == "Gráfico Heatmap":
+                    fig_corr = px.imshow(
+                        matriz_corr,
+                        title="Mapa de Calor de Correlação (Variáveis Numéricas - Pearson)",
+                        color_continuous_scale='RdBu_r',
+                        aspect="auto"
+                    )
+                    fig_corr.update_layout(height=500)
+                    st.plotly_chart(fig_corr, use_container_width=True)
+                else:
+                    st.dataframe(matriz_corr.round(3), use_container_width=True, height=400)
+            else:
+                st.warning("❌ É necessário pelo menos 2 colunas numéricas para a correlação Pearson")
+        else:
+            # Usar os novos métodos
+            fig, matriz_corr = criar_mapa_calor_correlacao_completo(df, metodo_selecionado)
+            
+            if matriz_corr is not None:
+                if tipo_visualizacao == "Gráfico Heatmap":
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.error("Não foi possível gerar o gráfico de correlação")
+                else:
+                    # Exibir tabela
+                    st.dataframe(matriz_corr.round(3), use_container_width=True, height=400)
+                    
+                    # Botão para download da matriz
+                    csv = matriz_corr.round(4).to_csv()
+                    st.download_button(
+                        label="📥 Baixar Matriz de Correlação (CSV)",
+                        data=csv,
+                        file_name=f"matriz_correlacao_{metodo_selecionado.replace(' ', '_')}.csv",
+                        mime="text/csv"
+                    )
+            else:
+                st.warning(f"❌ Não foi possível calcular a correlação usando {metodo_selecionado}")
 
 def exibir_aba_numericas(resultados):
     """Exibir análise de colunas numéricas"""
