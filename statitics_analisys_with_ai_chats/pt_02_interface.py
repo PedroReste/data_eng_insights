@@ -1188,7 +1188,6 @@ def exibir_aba_categoricas(resultados):
             # Estatísticas - Categorias Únicas e Valores Vazios na mesma linha
             contagem_unicos = df[col].nunique()
             contagem_ausentes = df[col].isnull().sum()
-            total_linhas = len(df)
             
             # Layout com duas colunas para as métricas principais
             col_met1, col_met2 = st.columns(2)
@@ -1254,16 +1253,39 @@ def exibir_aba_categoricas(resultados):
             # Resetar índice para evitar mostrar o índice original
             tabela_distribuicao = tabela_distribuicao.reset_index(drop=True)
             
-            # Exibir tabela com formatação
+            # CSS personalizado para ajustar a tabela e garantir que o percentual não seja cortado
+            st.markdown("""
+            <style>
+            .dataframe {
+                width: 100% !important;
+            }
+            .dataframe thead th {
+                background-color: #1e2130;
+                color: white;
+                padding: 8px 12px;
+                border: 1px solid #3498db;
+            }
+            .dataframe tbody td {
+                background-color: #1e2130;
+                color: white;
+                padding: 8px 12px;
+                border: 1px solid #3498db;
+            }
+            .dataframe tbody tr:nth-child(even) {
+                background-color: #2d3256;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Exibir tabela com formatação - altura mínima para 5 linhas
+            altura_tabela = max(200, min(400, 35 * len(tabela_distribuicao)))
+            
             st.dataframe(
                 tabela_distribuicao,
                 use_container_width=True,
-                height=min(400, 35 * len(tabela_distribuicao)),  # Altura dinâmica
+                height=altura_tabela,
                 hide_index=True
             )
-            
-            # Adicionar informações resumidas
-            st.caption(f"**Total de categorias:** {contagem_unicos} | **Total de registros:** {total_linhas} | **Registros válidos:** {total_linhas - contagem_ausentes}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
