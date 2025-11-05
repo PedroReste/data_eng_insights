@@ -201,77 +201,151 @@ st.markdown("""
 # Funções para cálculos de correlação
 def cramers_v(x, y):
     """Calcula Cramér's V para duas variáveis categóricas"""
-    confusion_matrix = pd.crosstab(x, y)
-    chi2 = chi2_contingency(confusion_matrix)[0]
-    n = confusion_matrix.sum().sum()
-    phi2 = chi2 / n
-    r, k = confusion_matrix.shape
-    phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
-    rcorr = r - ((r-1)**2)/(n-1)
-    kcorr = k - ((k-1)**2)/(n-1)
-    return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+    try:
+        # Garantir que estamos trabalhando com dados não nulos
+        mask = ~x.isna() & ~y.isna()
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) == 0 or len(y_clean) == 0:
+            return np.nan
+            
+        confusion_matrix = pd.crosstab(x_clean, y_clean)
+        chi2 = chi2_contingency(confusion_matrix)[0]
+        n = confusion_matrix.sum().sum()
+        
+        if n == 0:
+            return np.nan
+            
+        phi2 = chi2 / n
+        r, k = confusion_matrix.shape
+        phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+        rcorr = r - ((r-1)**2)/(n-1)
+        kcorr = k - ((k-1)**2)/(n-1)
+        return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+    except:
+        return np.nan
 
 def theils_u(x, y):
-    """Calcula Theil's U para duas variáveis categóricas (assimétrico)"""
-    if x.name == y.name:
-        return 1.0
-    
-    # Calcular entropia condicional
-    conditional_entropy = 0
-    for value in x.unique():
-        mask = x == value
-        y_subset = y[mask]
-        prob = len(y_subset) / len(x)
-        if prob > 0:
-            value_counts = y_subset.value_counts(normalize=True)
-            entropy = -np.sum(value_counts * np.log2(value_counts))
-            conditional_entropy += prob * entropy
-    
-    # Calcular entropia de y
-    y_value_counts = y.value_counts(normalize=True)
-    y_entropy = -np.sum(y_value_counts * np.log2(y_value_counts))
-    
-    if y_entropy == 0:
-        return 1.0
-    
-    return (y_entropy - conditional_entropy) / y_entropy
+    """Calcula Theil's U para duas variáveis categóricas (assimétrico) - CORRIGIDA"""
+    try:
+        if x.name == y.name:
+            return 1.0
+        
+        # Garantir que estamos trabalhando com dados não nulos e alinhados
+        mask = ~x.isna() & ~y.isna()
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) == 0 or len(y_clean) == 0:
+            return np.nan
+        
+        # Reindexar para garantir alinhamento
+        x_clean = x_clean.reset_index(drop=True)
+        y_clean = y_clean.reset_index(drop=True)
+        
+        # Calcular entropia condicional
+        conditional_entropy = 0
+        for value in x_clean.unique():
+            mask_value = x_clean == value
+            y_subset = y_clean[mask_value.values]  # Usar .values para evitar problemas de índice
+            prob = len(y_subset) / len(x_clean)
+            if prob > 0 and len(y_subset) > 0:
+                value_counts = y_subset.value_counts(normalize=True)
+                # Evitar log(0)
+                value_counts = value_counts[value_counts > 0]
+                if len(value_counts) > 0:
+                    entropy = -np.sum(value_counts * np.log2(value_counts))
+                    conditional_entropy += prob * entropy
+        
+        # Calcular entropia de y
+        y_value_counts = y_clean.value_counts(normalize=True)
+        y_value_counts = y_value_counts[y_value_counts > 0]  # Remover zeros
+        if len(y_value_counts) == 0:
+            return 1.0
+            
+        y_entropy = -np.sum(y_value_counts * np.log2(y_value_counts))
+        
+        if y_entropy == 0:
+            return 1.0
+        
+        return (y_entropy - conditional_entropy) / y_entropy
+    except Exception as e:
+        print(f"Erro em Theils U: {e}")
+        return np.nan
 
 def phi_coefficient(x, y):
     """Calcula coeficiente Phi para duas variáveis binárias"""
-    confusion_matrix = pd.crosstab(x, y)
-    if confusion_matrix.shape != (2, 2):
+    try:
+        # Garantir que estamos trabalhando com dados não nulos
+        mask = ~x.isna() & ~y.isna()
+        x_clean = x[mask]
+        y_clean = y[mask]
+        
+        if len(x_clean) == 0 or len(y_clean) == 0:
+            return np.nan
+            
+        confusion_matrix = pd.crosstab(x_clean, y_clean)
+        if confusion_matrix.shape != (2, 2):
+            return np.nan
+        
+        a, b = confusion_matrix.iloc[0, 0], confusion_matrix.iloc[0, 1]
+        c, d = confusion_matrix.iloc[1, 0], confusion_matrix.iloc[1, 1]
+        
+        numerator = a * d - b * c
+        denominator = np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
+        
+        return numerator / denominator if denominator != 0 else 0
+    except:
         return np.nan
-    
-    a, b = confusion_matrix.iloc[0, 0], confusion_matrix.iloc[0, 1]
-    c, d = confusion_matrix.iloc[1, 0], confusion_matrix.iloc[1, 1]
-    
-    numerator = a * d - b * c
-    denominator = np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
-    
-    return numerator / denominator if denominator != 0 else 0
 
 def correlation_ratio(categories, values):
-    """Calcula Correlation Ratio (eta) entre categórica e numérica"""
-    categories = pd.Categorical(categories)
-    overall_mean = values.mean()
-    
-    # Variância entre grupos
-    between_variance = 0
-    for category in categories.categories:
-        mask = categories == category
-        group_values = values[mask]
-        if len(group_values) > 0:
-            between_variance += len(group_values) * (group_values.mean() - overall_mean) ** 2
-    
-    between_variance /= len(values)
-    
-    # Variância total
-    total_variance = values.var()
-    
-    return np.sqrt(between_variance / total_variance) if total_variance > 0 else 0
+    """Calcula Correlation Ratio (eta) entre categórica e numérica - CORRIGIDA"""
+    try:
+        # Garantir que estamos trabalhando com dados não nulos e alinhados
+        mask = ~categories.isna() & ~values.isna()
+        categories_clean = categories[mask]
+        values_clean = values[mask]
+        
+        if len(categories_clean) == 0 or len(values_clean) == 0:
+            return np.nan
+        
+        # Reindexar para garantir alinhamento
+        categories_clean = categories_clean.reset_index(drop=True)
+        values_clean = values_clean.reset_index(drop=True)
+        
+        categories_coded = pd.Categorical(categories_clean)
+        overall_mean = values_clean.mean()
+        
+        if np.isnan(overall_mean):
+            return np.nan
+        
+        # Variância entre grupos
+        between_variance = 0
+        for category in categories_coded.categories:
+            mask_category = categories_coded == category
+            # Usar .values para evitar problemas de índice
+            group_values = values_clean[mask_category.values]
+            if len(group_values) > 0:
+                group_mean = group_values.mean()
+                if not np.isnan(group_mean):
+                    between_variance += len(group_values) * (group_mean - overall_mean) ** 2
+        
+        between_variance /= len(values_clean)
+        
+        # Variância total
+        total_variance = values_clean.var()
+        
+        if total_variance == 0:
+            return 0
+            
+        return np.sqrt(between_variance / total_variance)
+    except Exception as e:
+        print(f"Erro em Correlation Ratio: {e}")
+        return np.nan
 
 def calcular_matriz_correlacao(df, metodo):
-    """Calcula matriz de correlação baseada no método selecionado"""
+    """Calcula matriz de correlação baseada no método selecionado - CORRIGIDA"""
     colunas = df.columns
     n = len(colunas)
     matriz = pd.DataFrame(np.zeros((n, n)), columns=colunas, index=colunas)
@@ -283,73 +357,132 @@ def calcular_matriz_correlacao(df, metodo):
                 continue
                 
             try:
-                if metodo == "Pearson":
+                if metodo == "Automático":
+                    # Método automático: usa matriz de correlação codificada para todas as variáveis
+                    df_codificado = df.copy()
+                    
+                    # Codificar variáveis categóricas
+                    for col in df_codificado.select_dtypes(include=['object', 'category']).columns:
+                        df_codificado[col] = pd.factorize(df_codificado[col])[0]
+                    
+                    # Codificar variáveis booleanas
+                    for col in df_codificado.select_dtypes(include='bool').columns:
+                        df_codificado[col] = df_codificado[col].astype(int)
+                    
+                    # Calcular correlação de Pearson em todas as colunas codificadas
+                    if len(df_codificado) > 1:
+                        corr_matrix = df_codificado.corr()
+                        matriz.iloc[i, j] = corr_matrix.loc[col1, col2]
+                    else:
+                        matriz.iloc[i, j] = np.nan
+                        
+                elif metodo == "Pearson":
                     if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
-                        corr, _ = pearsonr(df[col1].dropna(), df[col2].dropna())
-                        matriz.iloc[i, j] = corr
+                        # Usar máscara para dados não nulos em ambas as colunas
+                        mask = ~df[col1].isna() & ~df[col2].isna()
+                        if mask.sum() > 1:  # Pelo menos 2 pontos para correlação
+                            x = df.loc[mask, col1]
+                            y = df.loc[mask, col2]
+                            corr, _ = pearsonr(x, y)
+                            matriz.iloc[i, j] = corr
+                        else:
+                            matriz.iloc[i, j] = np.nan
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Spearman":
                     if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
-                        corr, _ = spearmanr(df[col1].dropna(), df[col2].dropna())
-                        matriz.iloc[i, j] = corr
+                        mask = ~df[col1].isna() & ~df[col2].isna()
+                        if mask.sum() > 1:
+                            x = df.loc[mask, col1]
+                            y = df.loc[mask, col2]
+                            corr, _ = spearmanr(x, y)
+                            matriz.iloc[i, j] = corr
+                        else:
+                            matriz.iloc[i, j] = np.nan
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Kendall Tau":
                     if pd.api.types.is_numeric_dtype(df[col1]) and pd.api.types.is_numeric_dtype(df[col2]):
-                        corr, _ = kendalltau(df[col1].dropna(), df[col2].dropna())
-                        matriz.iloc[i, j] = corr
+                        mask = ~df[col1].isna() & ~df[col2].isna()
+                        if mask.sum() > 1:
+                            x = df.loc[mask, col1]
+                            y = df.loc[mask, col2]
+                            corr, _ = kendalltau(x, y)
+                            matriz.iloc[i, j] = corr
+                        else:
+                            matriz.iloc[i, j] = np.nan
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Cramers V":
                     if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
                        (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
-                        matriz.iloc[i, j] = cramers_v(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = cramers_v(df[col1], df[col2])
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Theils U":
                     if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
                        (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
-                        matriz.iloc[i, j] = theils_u(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = theils_u(df[col1], df[col2])
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Phi":
                     if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
                        (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])):
-                        matriz.iloc[i, j] = phi_coefficient(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = phi_coefficient(df[col1], df[col2])
                     else:
                         matriz.iloc[i, j] = np.nan
                         
                 elif metodo == "Correlation Ratio":
+                    # Correlation Ratio: x categórica, y numérica
                     if (pd.api.types.is_object_dtype(df[col1]) or pd.api.types.is_categorical_dtype(df[col1])) and \
                        pd.api.types.is_numeric_dtype(df[col2]):
-                        matriz.iloc[i, j] = correlation_ratio(df[col1].dropna(), df[col2].dropna())
+                        matriz.iloc[i, j] = correlation_ratio(df[col1], df[col2])
                     elif (pd.api.types.is_object_dtype(df[col2]) or pd.api.types.is_categorical_dtype(df[col2])) and \
                          pd.api.types.is_numeric_dtype(df[col1]):
-                        matriz.iloc[i, j] = correlation_ratio(df[col2].dropna(), df[col1].dropna())
+                        # Se estiver invertido, calcular na ordem correta
+                        matriz.iloc[i, j] = correlation_ratio(df[col2], df[col1])
                     else:
                         matriz.iloc[i, j] = np.nan
                         
-            except (ValueError, TypeError, ZeroDivisionError):
+            except (ValueError, TypeError, ZeroDivisionError) as e:
+                # Silenciosamente definir como NaN em caso de erro
                 matriz.iloc[i, j] = np.nan
                 
     return matriz
 
-def criar_mapa_calor_correlacao(matriz_corr, metodo):
-    """Criar mapa de calor de correlação para a matriz fornecida"""
+def criar_mapa_calor_correlacao_completo(df, metodo):
+    """Criar mapa de calor de correlação para todas as variáveis - CORRIGIDA"""
+    if df is None or df.empty:
+        st.warning("Nenhum dado disponível para análise de correlação")
+        return None, None
+        
+    # Calcular matriz de correlação baseada no método
+    with st.spinner(f"Calculando matriz de correlação ({metodo})..."):
+        matriz_corr = calcular_matriz_correlacao(df, metodo)
+    
+    # Criar mapa de calor
     try:
+        # Garantir que valores estejam entre -1 e 1
+        valores = matriz_corr.values
+        valores = np.clip(valores, -1, 1)  # Forçar valores entre -1 e 1
+        matriz_corr_clipped = pd.DataFrame(valores, 
+                                         index=matriz_corr.index, 
+                                         columns=matriz_corr.columns)
+        
         fig = px.imshow(
-            matriz_corr,
-            title=f"Mapa de Calor de Correlação - {metodo}",
+            matriz_corr_clipped,
+            title=f"Matriz de Correlação - {metodo}",
             color_continuous_scale='RdBu_r',
             aspect="auto",
-            range_color=[-1, 1],
-            labels=dict(color="Correlação")
+            range_color=[-1, 1],  # Forçar escala de -1 a 1
+            labels=dict(color="Correlação"),
+            zmin=-1,  # Valor mínimo da escala
+            zmax=1    # Valor máximo da escala
         )
         
         fig.update_layout(
@@ -363,10 +496,10 @@ def criar_mapa_calor_correlacao(matriz_corr, metodo):
             )
         )
         
-        return fig
+        return fig, matriz_corr
     except Exception as e:
-        st.error(f"Não foi possível gerar o mapa de calor: {str(e)}")
-        return None
+        st.error(f"Não foi possível gerar a matriz de correlação: {str(e)}")
+        return None, matriz_corr
 
 def inicializar_analisador():
     """Inicializar o analisador com tratamento adequado de erros"""
@@ -872,9 +1005,9 @@ def exibir_aba_visao_geral(resultados):
     # NOVA SEÇÃO: Múltiplos Métodos de Correlação
     st.markdown("### 🔗 Análise de Correlação - Múltiplos Métodos")
     
-    # Seleção de método de correlação
+    # Seleção de método de correlação - ATUALIZADA
     metodos_correlacao = [
-        "Atual (Pearson Numérico)",
+        "Automático",
         "Pearson", 
         "Spearman", 
         "Kendall Tau",
@@ -894,16 +1027,16 @@ def exibir_aba_visao_geral(resultados):
             help="Escolha o método de correlação apropriado para seus dados"
         )
         
-        # Informações sobre o método selecionado
+        # Informações sobre o método selecionado - ATUALIZADA
         info_metodos = {
-            "Atual (Pearson Numérico)": "Correlação de Pearson apenas para variáveis numéricas",
+            "Automático": "Correlação de Pearson com codificação automática para todas as variáveis",
             "Pearson": "Correlação linear entre variáveis numéricas",
             "Spearman": "Correlação de postos para relações monotônicas",
             "Kendall Tau": "Correlação de postos mais robusta a outliers",
-            "Cramers V": "Associação entre variáveis categóricas",
-            "Theils U": "Associação assimétrica entre categóricas",
-            "Phi": "Associação entre variáveis binárias",
-            "Correlation Ratio": "Relação entre categórica e numérica"
+            "Cramers V": "Associação entre variáveis categóricas (0-1)",
+            "Theils U": "Associação assimétrica entre categóricas (0-1)",
+            "Phi": "Associação entre variáveis binárias (-1 a +1)",
+            "Correlation Ratio": "Relação entre categórica e numérica (0-1)"
         }
         
         st.info(f"**{metodo_selecionado}**: {info_metodos[metodo_selecionado]}")
@@ -916,49 +1049,30 @@ def exibir_aba_visao_geral(resultados):
         )
     
     with col_viz:
-        if metodo_selecionado == "Atual (Pearson Numérico)":
-            # Manter o heatmap atual como está
-            colunas_numericas_corr = df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-            if len(colunas_numericas_corr) > 1:
-                matriz_corr = df[colunas_numericas_corr].corr()
+        fig, matriz_corr = criar_mapa_calor_correlacao_completo(df, metodo_selecionado)
+        
+        if matriz_corr is not None:
+            if tipo_visualizacao == "Gráfico Heatmap":
+                if fig:
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.error("Não foi possível gerar o gráfico de correlação")
+            else:
+                # Exibir tabela com valores limitados entre -1 e 1
+                matriz_exibicao = matriz_corr.copy()
+                matriz_exibicao = matriz_exibicao.clip(-1, 1)  # Limitar valores
+                st.dataframe(matriz_exibicao.round(3), use_container_width=True, height=400)
                 
-                if tipo_visualizacao == "Gráfico Heatmap":
-                    fig_corr = px.imshow(
-                        matriz_corr,
-                        title="Mapa de Calor de Correlação (Variáveis Numéricas - Pearson)",
-                        color_continuous_scale='RdBu_r',
-                        aspect="auto"
-                    )
-                    fig_corr.update_layout(height=500)
-                    st.plotly_chart(fig_corr, use_container_width=True)
-                else:
-                    st.dataframe(matriz_corr.round(3), use_container_width=True, height=400)
-            else:
-                st.warning("❌ É necessário pelo menos 2 colunas numéricas para a correlação Pearson")
+                # Botão para download da matriz
+                csv = matriz_exibicao.round(4).to_csv()
+                st.download_button(
+                    label="📥 Baixar Matriz de Correlação (CSV)",
+                    data=csv,
+                    file_name=f"matriz_correlacao_{metodo_selecionado.replace(' ', '_')}.csv",
+                    mime="text/csv"
+                )
         else:
-            # Usar os novos métodos
-            fig, matriz_corr = criar_mapa_calor_correlacao_completo(df, metodo_selecionado)
-            
-            if matriz_corr is not None:
-                if tipo_visualizacao == "Gráfico Heatmap":
-                    if fig:
-                        st.plotly_chart(fig, use_container_width=True)
-                    else:
-                        st.error("Não foi possível gerar o gráfico de correlação")
-                else:
-                    # Exibir tabela
-                    st.dataframe(matriz_corr.round(3), use_container_width=True, height=400)
-                    
-                    # Botão para download da matriz
-                    csv = matriz_corr.round(4).to_csv()
-                    st.download_button(
-                        label="📥 Baixar Matriz de Correlação (CSV)",
-                        data=csv,
-                        file_name=f"matriz_correlacao_{metodo_selecionado.replace(' ', '_')}.csv",
-                        mime="text/csv"
-                    )
-            else:
-                st.warning(f"❌ Não foi possível calcular a correlação usando {metodo_selecionado}")
+            st.warning(f"❌ Não foi possível calcular a correlação usando {metodo_selecionado}")
 
 def exibir_aba_numericas(resultados):
     """Exibir análise de colunas numéricas"""
