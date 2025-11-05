@@ -1123,9 +1123,9 @@ def exibir_aba_numericas(resultados):
                     else:
                         st.metric("Coeficiente de Variação (CV)", "Indefinido (média zero)")
                     
-                    # Curtose e Assimetria
-                    curtose = df[col].kurtosis()
-                    assimetria = df[col].skewness()
+                    # Curtose e Assimetria - CORREÇÃO: usar kurt() e skew() em vez de kurtosis() e skewness()
+                    curtose = df[col].kurt()
+                    assimetria = df[col].skew()
                     st.metric("Curtose", f"{curtose:.2f}")
                     st.metric("Assimetria", f"{assimetria:.2f}")
             
