@@ -435,7 +435,16 @@ class AnalisadorChatBot:
                 resumo_estatisticas += f"- **Mínimo**: {self.df[col].min():.2f}\n"
                 resumo_estatisticas += f"- **Máximo**: {self.df[col].max():.2f}\n"
                 resumo_estatisticas += f"- **Intervalo**: {self.df[col].max() - self.df[col].min():.2f}\n"
-                resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n\n"
+                resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
+
+                resumo_estatisticas += f"- **Percentil 05**: {self.df[col].quantile(0.05):.2f}\n"
+                resumo_estatisticas += f"- **Percentil 25**: {self.df[col].quantile(0.25):.2f}\n"
+                resumo_estatisticas += f"- **Percentil 75**: {self.df[col].quantile(0.75):.2f}\n"
+                resumo_estatisticas += f"- **Percentil 95**: {self.df[col].quantile(0.95):.2f}\n"
+                resumo_estatisticas += f"- **IQR**: {self.df[col].quantile(0.75) - self.df[col].quantile(0.25):.2f}\n"
+                resumo_estatisticas += f"- **Coeficiente de Variação**: {self.df[col].std() / self.df[col].mean() * 100 if self.df[col].mean() != 0 else 0:.2f}%\n"
+                resumo_estatisticas += f"- **Curtose**: {self.df[col].kurt():.2f}\n"
+                resumo_estatisticas += f"- **Assimetria**: {self.df[col].skew():.2f}\n\n"
         
         # Colunas categóricas
         colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns

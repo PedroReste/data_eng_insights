@@ -670,7 +670,7 @@ def criar_mapa_calor_correlacao_completo(df, metodo):
     if df is None or df.empty:
         st.warning("Nenhum dado disponível para análise de correlação")
         return None
-        
+    
     # Calcular matriz de correlação baseada no método
     matriz_corr = calcular_matriz_correlacao(df, metodo)
     
@@ -1084,7 +1084,8 @@ def exibir_aba_numericas(resultados):
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 📈 {col}")
             
-            # Estatísticas
+            # Seção 01: Estatísticas Gerais
+            st.markdown("##### 📊 Estatísticas Gerais")
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("Média", f"{df[col].mean():.2f}")
@@ -1096,6 +1097,37 @@ def exibir_aba_numericas(resultados):
                 st.metric("Máximo", f"{df[col].max():.2f}")
             
             st.metric("Valores Ausentes", f"{df[col].isnull().sum()}")
+            
+            # Seção 02: Estatísticas Avançadas
+            with st.expander("📈 Estatísticas Avançadas", expanded=False):
+                col3, col4 = st.columns(2)
+                
+                with col3:
+                    # Percentis
+                    st.metric("Percentil 5", f"{df[col].quantile(0.05):.2f}")
+                    st.metric("Percentil 25 (Q1)", f"{df[col].quantile(0.25):.2f}")
+                    st.metric("Percentil 75 (Q3)", f"{df[col].quantile(0.75):.2f}")
+                    st.metric("Percentil 95", f"{df[col].quantile(0.95):.2f}")
+                
+                with col4:
+                    # IQR, Coeficiente de Variação, Curtose, Assimetria
+                    iqr = df[col].quantile(0.75) - df[col].quantile(0.25)
+                    st.metric("IQR (Q3 - Q1)", f"{iqr:.2f}")
+                    
+                    # Coeficiente de Variação (CV)
+                    media = df[col].mean()
+                    desvio_padrao = df[col].std()
+                    if media != 0:
+                        cv = (desvio_padrao / media) * 100
+                        st.metric("Coeficiente de Variação (CV)", f"{cv:.2f}%")
+                    else:
+                        st.metric("Coeficiente de Variação (CV)", "Indefinido (média zero)")
+                    
+                    # Curtose e Assimetria
+                    curtose = df[col].kurtosis()
+                    assimetria = df[col].skewness()
+                    st.metric("Curtose", f"{curtose:.2f}")
+                    st.metric("Assimetria", f"{assimetria:.2f}")
             
             # Visualizações
             col_viz1, col_viz2 = st.columns(2)
