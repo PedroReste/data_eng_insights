@@ -1185,20 +1185,17 @@ def exibir_aba_categoricas(resultados):
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 🏷️ {col}")
             
-            # Estatísticas
+            # Estatísticas - Categorias Únicas e Valores Vazios na mesma linha
             contagem_unicos = df[col].nunique()
             contagem_ausentes = df[col].isnull().sum()
-            valores_principais = df[col].value_counts().head(3)
+            total_linhas = len(df)
             
-            col1, col2 = st.columns(2)
-            with col1:
+            # Layout com duas colunas para as métricas principais
+            col_met1, col_met2 = st.columns(2)
+            with col_met1:
                 st.metric("Categorias Únicas", contagem_unicos)
+            with col_met2:
                 st.metric("Valores Ausentes", contagem_ausentes)
-            
-            with col2:
-                st.markdown("**3 Categorias Principais:**")
-                for valor, contagem in valores_principais.items():
-                    st.write(f"- `{valor}`: {contagem} ocorrências")
             
             # Gráfico de barras com orientação condicional
             contagem_valores = df[col].value_counts().head(10)  # Apenas 10 principais
@@ -1239,6 +1236,34 @@ def exibir_aba_categoricas(resultados):
                 fig_barra.update_xaxes(tickangle=45)
             
             st.plotly_chart(fig_barra, use_container_width=True)
+            
+            # Tabela detalhada de todas as categorias
+            st.markdown("##### 📋 Distribuição Completa das Categorias")
+            
+            # Calcular a distribuição completa
+            distribuicao_completa = df[col].value_counts()
+            percentuais = (df[col].value_counts(normalize=True) * 100).round(2)
+            
+            # Criar DataFrame para a tabela
+            tabela_distribuicao = pd.DataFrame({
+                'Categoria': distribuicao_completa.index,
+                'Quantidade': distribuicao_completa.values,
+                'Percentual (%)': percentuais.values
+            })
+            
+            # Resetar índice para evitar mostrar o índice original
+            tabela_distribuicao = tabela_distribuicao.reset_index(drop=True)
+            
+            # Exibir tabela com formatação
+            st.dataframe(
+                tabela_distribuicao,
+                use_container_width=True,
+                height=min(400, 35 * len(tabela_distribuicao)),  # Altura dinâmica
+                hide_index=True
+            )
+            
+            # Adicionar informações resumidas
+            st.caption(f"**Total de categorias:** {contagem_unicos} | **Total de registros:** {total_linhas} | **Registros válidos:** {total_linhas - contagem_ausentes}")
             
             st.markdown('</div>', unsafe_allow_html=True)
 
