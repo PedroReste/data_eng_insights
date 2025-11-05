@@ -1,3 +1,4 @@
+# pt_01_analyzer.py
 import pandas as pd
 import requests
 import json
@@ -488,7 +489,7 @@ class AnalisadorChatBot:
         UTILIZE O BLOCO DE INSTRUÇÃO ABAIXO PARA GERAR OS RESULTADOS:
         {bloco_de_instrucao_para_analise}
 
-        VISÃO GERAL DO CONJUNTO DE Dados:
+        VISÃO GERAL DO CONJUNTO DE DADOS:
         - Formato: {self.df.shape}
         - Colunas: {list(self.df.columns)}
         - Tipos de dados: {dict(self.df.dtypes)}
@@ -647,7 +648,7 @@ class AnalisadorChatBot:
                 col_num = i % n_cols + 1
                 
                 # Para dados de data/hora, usar gráfico de linha com contagem de valores ao longo do tempo
-                contagem_datas = self.df[col].value_counts().sort_index()
+                contagem_datas = self.df[col].dt.date.value_counts().sort_index()
                 fig_dist_data.add_trace(
                     go.Scatter(x=contagem_datas.index, y=contagem_datas.values, mode='lines', name=col),
                     row=linha, col=col_num
@@ -658,337 +659,357 @@ class AnalisadorChatBot:
 
         return visualizacoes
 
-    def gerar_matriz_correlacao(self, metodo: str = 'pearson') -> go.Figure:
-        """Gerar matriz de correlação usando diferentes métodos"""
-        if self.df is None or self.df.empty:
-            return go.Figure()
-        
-        # Selecionar apenas colunas numéricas
-        colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        
-        if len(colunas_numericas) < 2:
-            # Criar figura vazia com mensagem
-            fig = go.Figure()
-            fig.add_annotation(
-                text="⚠️ Número insuficiente de colunas numéricas para correlação",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, xanchor='center', yanchor='middle',
-                showarrow=False,
-                font=dict(size=16)
-            )
-            fig.update_layout(
-                title=f"Matriz de Correlação ({metodo.title()})",
-                height=400
-            )
-            return fig
-        
-        # Calcular matriz de correlação baseada no método
-        if metodo == 'pearson':
-            matriz_corr = self.df[colunas_numericas].corr(method='pearson')
-            titulo = "Matriz de Correlação (Pearson)"
-        elif metodo == 'spearman':
-            matriz_corr = self.df[colunas_numericas].corr(method='spearman')
-            titulo = "Matriz de Correlação (Spearman)"
-        elif metodo == 'kendall':
-            matriz_corr = self.df[colunas_numericas].corr(method='kendall')
-            titulo = "Matriz de Correlação (Kendall Tau)"
-        else:
-            matriz_corr = self.df[colunas_numericas].corr(method='pearson')
-            titulo = "Matriz de Correlação (Pearson)"
-        
-        # Criar heatmap
-        fig = px.imshow(
-            matriz_corr,
-            x=colunas_numericas,
-            y=colunas_numericas,
-            color_continuous_scale='RdBu_r',
-            aspect="auto",
-            title=titulo
-        )
-        
-        # Adicionar anotações com valores
-        for i, linha in enumerate(matriz_corr.index):
-            for j, col in enumerate(matriz_corr.columns):
-                fig.add_annotation(
-                    x=j, y=i,
-                    text=f"{matriz_corr.iloc[i, j]:.2f}",
-                    showarrow=False,
-                    font=dict(color="white" if abs(matriz_corr.iloc[i, j]) > 0.5 else "black", size=10)
-                )
-        
-        fig.update_layout(height=600)
-        return fig
+    # ========== NOVOS MÉTODOS DE CORRELAÇÃO ==========
 
-    def calcular_cramers_v(self, col1: str, col2: str) -> float:
+    def calcular_cramers_v(self, x, y):
         """Calcular correlação de Cramér's V para variáveis categóricas"""
         try:
-            # Criar tabela de contingência
-            tabela_contingencia = pd.crosstab(self.df[col1], self.df[col2])
-            
-            # Calcular qui-quadrado
-            chi2, p, dof, esperado = chi2_contingency(tabela_contingencia)
-            
-            # Calcular Cramér's V
+            tabela_contingencia = pd.crosstab(x, y)
+            chi2 = chi2_contingency(tabela_contingencia)[0]
             n = tabela_contingencia.sum().sum()
-            min_dim = min(tabela_contingencia.shape) - 1
-            cramers_v = np.sqrt(chi2 / (n * min_dim))
-            
-            return cramers_v
+            phi2 = chi2 / n
+            r, k = tabela_contingencia.shape
+            phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+            rcorr = r - ((r-1)**2)/(n-1)
+            kcorr = k - ((k-1)**2)/(n-1)
+            return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
         except:
             return np.nan
 
-    def calcular_theils_u(self, col1: str, col2: str) -> float:
+    def calcular_theils_u(self, x, y):
         """Calcular Theil's U (incerteza) para variáveis categóricas"""
         try:
-            # Theil's U é assimétrico: U(x|y) != U(y|x)
-            # Vamos calcular U(col1|col2)
-            tabela_contingencia = pd.crosstab(self.df[col1], self.df[col2])
-            
-            # Calcular entropia condicional
-            total = tabela_contingencia.sum().sum()
+            # Theil's U é assimétrico, então calculamos U(x|y)
+            tabela_contingencia = pd.crosstab(x, y)
+            entropia_marginal_x = stats.entropy(tabela_contingencia.sum(axis=1))
             entropia_condicional = 0
+            total = tabela_contingencia.sum().sum()
             
             for j in tabela_contingencia.columns:
-                p_y = tabela_contingencia[j].sum() / total
-                for i in tabela_contingencia.index:
-                    p_xy = tabela_contingencia.loc[i, j] / total
-                    if p_xy > 0 and p_y > 0:
-                        entropia_condicional += p_xy * np.log(p_xy / p_y)
+                col_sum = tabela_contingencia[j].sum()
+                if col_sum > 0:
+                    entropia_col = stats.entropy(tabela_contingencia[j])
+                    entropia_condicional += (col_sum / total) * entropia_col
             
-            entropia_condicional = -entropia_condicional
-            
-            # Calcular entropia de col1
-            contagem_col1 = self.df[col1].value_counts()
-            entropia_col1 = 0
-            for count in contagem_col1:
-                p = count / total
-                entropia_col1 -= p * np.log(p)
-            
-            # Theil's U
-            if entropia_col1 > 0:
-                theils_u = 1 - (entropia_condicional / entropia_col1)
+            if entropia_marginal_x == 0:
+                return 1.0
             else:
-                theils_u = 0
-                
-            return theils_u
+                return (entropia_marginal_x - entropia_condicional) / entropia_marginal_x
         except:
             return np.nan
 
-    def calcular_phi(self, col1: str, col2: str) -> float:
+    def calcular_phi(self, x, y):
         """Calcular coeficiente Phi para variáveis binárias"""
         try:
-            # Verificar se ambas as colunas são binárias
-            if self.df[col1].nunique() != 2 or self.df[col2].nunique() != 2:
-                return np.nan
-            
-            tabela_contingencia = pd.crosstab(self.df[col1], self.df[col2])
-            
+            tabela_contingencia = pd.crosstab(x, y)
             if tabela_contingencia.shape != (2, 2):
                 return np.nan
             
-            a, b = tabela_contingencia.iloc[0, 0], tabela_contingencia.iloc[0, 1]
-            c, d = tabela_contingencia.iloc[1, 0], tabela_contingencia.iloc[1, 1]
-            
-            phi = (a * d - b * c) / np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
-            return phi
+            a, b, c, d = tabela_contingencia.iloc[0, 0], tabela_contingencia.iloc[0, 1], tabela_contingencia.iloc[1, 0], tabela_contingencia.iloc[1, 1]
+            return (a*d - b*c) / np.sqrt((a+b)*(c+d)*(a+c)*(b+d))
         except:
             return np.nan
 
-    def calcular_correlation_ratio(self, col_categorica: str, col_numerica: str) -> float:
+    def calcular_correlation_ratio(self, categorias, valores):
         """Calcular Correlation Ratio (eta) para relação categórica-numérica"""
         try:
-            # Agrupar por categoria e calcular variância
-            grupos = [grupo for _, grupo in self.df.groupby(col_categorica)[col_numerica]]
+            categorias_unicas = categorias.unique()
+            media_geral = valores.mean()
+            ssb = 0  # Soma dos quadrados entre grupos
+            sst = 0  # Soma total dos quadrados
             
-            if len(grupos) < 2:
+            for categoria in categorias_unicas:
+                mascara = categorias == categoria
+                valores_grupo = valores[mascara]
+                if len(valores_grupo) > 0:
+                    media_grupo = valores_grupo.mean()
+                    ssb += len(valores_grupo) * (media_grupo - media_geral) ** 2
+            
+            sst = ((valores - media_geral) ** 2).sum()
+            
+            if sst == 0:
                 return 0
-            
-            # Variância entre grupos
-            media_global = self.df[col_numerica].mean()
-            variancia_entre = sum(len(grupo) * (grupo.mean() - media_global)**2 for grupo in grupos) / len(self.df)
-            
-            # Variância total
-            variancia_total = self.df[col_numerica].var()
-            
-            if variancia_total > 0:
-                eta = np.sqrt(variancia_entre / variancia_total)
-            else:
-                eta = 0
-                
-            return eta
+            return np.sqrt(ssb / sst)
         except:
             return np.nan
 
-    def gerar_matriz_correlacao_avancada(self, metodo: str = 'pearson') -> tuple:
-        """Gerar matriz de correlação usando diferentes métodos avançados"""
-        if self.df is None or self.df.empty:
-            return go.Figure(), pd.DataFrame()
+    def obter_metodos_correlacao_disponiveis(self):
+        """Obter lista de métodos de correlação disponíveis baseado nos dados"""
+        metodos = ['pearson', 'spearman', 'kendall']
         
-        # Obter todas as colunas
-        todas_colunas = self.df.columns.tolist()
-        n_colunas = len(todas_colunas)
-        
-        if n_colunas < 2:
-            fig = go.Figure()
-            fig.add_annotation(
-                text="⚠️ Número insuficiente de colunas para análise de correlação",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5, xanchor='center', yanchor='middle',
-                showarrow=False,
-                font=dict(size=16)
-            )
-            fig.update_layout(
-                title=f"Matriz de Correlação ({metodo.title()})",
-                height=400
-            )
-            return fig, pd.DataFrame()
-        
-        # Inicializar matriz de correlação
-        matriz_corr = pd.DataFrame(np.zeros((n_colunas, n_colunas)), 
-                                 index=todas_colunas, columns=todas_colunas)
-        
-        # Preencher matriz baseada no método
-        for i, col1 in enumerate(todas_colunas):
-            for j, col2 in enumerate(todas_colunas):
-                if i == j:
-                    matriz_corr.iloc[i, j] = 1.0
-                    continue
-                
-                # Determinar tipos das colunas
-                tipo1 = self._obter_tipo_dado_simples(self.df[col1].dtype)
-                tipo2 = self._obter_tipo_dado_simples(self.df[col2].dtype)
-                
-                # Calcular correlação baseada nos tipos e método
-                if metodo == 'pearson':
-                    if tipo1 == "Numérica" and tipo2 == "Numérica":
-                        corr = self.df[col1].corr(self.df[col2], method='pearson')
-                    else:
-                        corr = np.nan
-                
-                elif metodo == 'spearman':
-                    if tipo1 == "Numérica" and tipo2 == "Numérica":
-                        corr = self.df[col1].corr(self.df[col2], method='spearman')
-                    else:
-                        # Spearman pode lidar com ordinais, mas vamos manter simples por enquanto
-                        corr = np.nan
-                
-                elif metodo == 'kendall':
-                    if tipo1 == "Numérica" and tipo2 == "Numérica":
-                        corr = self.df[col1].corr(self.df[col2], method='kendall')
-                    else:
-                        corr = np.nan
-                
-                elif metodo == 'cramers_v':
-                    if tipo1 == "Categórica" and tipo2 == "Categórica":
-                        corr = self.calcular_cramers_v(col1, col2)
-                    else:
-                        corr = np.nan
-                
-                elif metodo == 'theils_u':
-                    if tipo1 == "Categórica" and tipo2 == "Categórica":
-                        corr = self.calcular_theils_u(col1, col2)
-                    else:
-                        corr = np.nan
-                
-                elif metodo == 'phi':
-                    if (tipo1 == "Verdadeiro/Falso" or self.df[col1].nunique() == 2) and \
-                       (tipo2 == "Verdadeiro/Falso" or self.df[col2].nunique() == 2):
-                        corr = self.calcular_phi(col1, col2)
-                    else:
-                        corr = np.nan
-                
-                elif metodo == 'correlation_ratio':
-                    if (tipo1 == "Categórica" and tipo2 == "Numérica"):
-                        corr = self.calcular_correlation_ratio(col1, col2)
-                    elif (tipo2 == "Categórica" and tipo1 == "Numérica"):
-                        corr = self.calcular_correlation_ratio(col2, col1)
-                    else:
-                        corr = np.nan
-                
-                else:
-                    corr = np.nan
-                
-                matriz_corr.iloc[i, j] = corr
-        
-        # Criar heatmap
-        fig = px.imshow(
-            matriz_corr,
-            x=todas_colunas,
-            y=todas_colunas,
-            color_continuous_scale='RdBu_r',
-            aspect="auto",
-            title=f"Matriz de Correlação ({metodo.replace('_', ' ').title()})",
-            zmin=-1, zmax=1
-        )
-        
-        # Adicionar anotações com valores
-        for i, linha in enumerate(matriz_corr.index):
-            for j, col in enumerate(matriz_corr.columns):
-                valor = matriz_corr.iloc[i, j]
-                if not np.isnan(valor):
-                    fig.add_annotation(
-                        x=j, y=i,
-                        text=f"{valor:.2f}",
-                        showarrow=False,
-                        font=dict(color="white" if abs(valor) > 0.5 else "black", size=8)
-                    )
-        
-        fig.update_layout(height=600)
-        return fig, matriz_corr
-
-    def analisar_dados_com_ia(self, pergunta_usuario: str = "") -> str:
-        """Analisar dados usando IA via OpenRouter"""
         if self.df is None:
-            return "❌ Nenhum dado carregado. Por favor, carregue um conjunto de dados primeiro."
+            return metodos
+            
+        # Verificar se há colunas categóricas para métodos avançados
+        colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'bool']).columns
+        colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+        
+        if len(colunas_categoricas) >= 2:
+            metodos.extend(['cramers_v', 'theils_u'])
+        
+        # Verificar se há colunas booleanas para Phi
+        colunas_booleanas = self.df.select_dtypes(include='bool').columns
+        if len(colunas_booleanas) >= 2:
+            metodos.append('phi')
+        
+        # Verificar se há combinação de categóricas e numéricas para Correlation Ratio
+        if len(colunas_categoricas) >= 1 and len(colunas_numericas) >= 1:
+            metodos.append('correlation_ratio')
+        
+        return metodos
+
+    def gerar_matriz_correlacao(self, metodo='pearson'):
+        """Gerar matriz de correlação com diferentes métodos"""
+        if self.df is None or self.df.empty:
+            return None, None
+        
+        colunas = self.df.columns
+        n_colunas = len(colunas)
+        
+        # Métodos numéricos padrão
+        if metodo in ['pearson', 'spearman', 'kendall']:
+            colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            
+            if len(colunas_numericas) < 2:
+                return None, None
+            
+            df_numerico = self.df[colunas_numericas]
+            matriz_correlacao = df_numerico.corr(method=metodo)
+            
+            # Criar heatmap
+            fig = px.imshow(
+                matriz_correlacao,
+                x=matriz_correlacao.columns,
+                y=matriz_correlacao.index,
+                color_continuous_scale='RdBu_r',
+                aspect="auto",
+                title=f"Matriz de Correlação - {metodo.title()}",
+                zmin=-1, zmax=1
+            )
+            fig.update_layout(height=600)
+            
+            return fig, matriz_correlacao
+        
+        # Métodos avançados para todos os tipos de dados
+        else:
+            matriz_correlacao = pd.DataFrame(np.zeros((n_colunas, n_colunas)), 
+                                            index=colunas, columns=colunas)
+            
+            for i, col1 in enumerate(colunas):
+                for j, col2 in enumerate(colunas):
+                    if i == j:
+                        matriz_correlacao.iloc[i, j] = 1.0
+                        continue
+                    
+                    tipo1 = self.df[col1].dtype
+                    tipo2 = self.df[col2].dtype
+                    
+                    try:
+                        if metodo == 'cramers_v':
+                            # Para Cramér's V, ambas variáveis devem ser categóricas
+                            if (tipo1 in ['object', 'category', 'bool'] and 
+                                tipo2 in ['object', 'category', 'bool']):
+                                matriz_correlacao.iloc[i, j] = self.calcular_cramers_v(self.df[col1], self.df[col2])
+                            else:
+                                matriz_correlacao.iloc[i, j] = np.nan
+                        
+                        elif metodo == 'theils_u':
+                            # Para Theil's U, ambas variáveis devem ser categóricas
+                            if (tipo1 in ['object', 'category', 'bool'] and 
+                                tipo2 in ['object', 'category', 'bool']):
+                                matriz_correlacao.iloc[i, j] = self.calcular_theils_u(self.df[col1], self.df[col2])
+                            else:
+                                matriz_correlacao.iloc[i, j] = np.nan
+                        
+                        elif metodo == 'phi':
+                            # Para Phi, ambas variáveis devem ser binárias
+                            if (tipo1 == 'bool' and tipo2 == 'bool'):
+                                matriz_correlacao.iloc[i, j] = self.calcular_phi(self.df[col1], self.df[col2])
+                            else:
+                                matriz_correlacao.iloc[i, j] = np.nan
+                        
+                        elif metodo == 'correlation_ratio':
+                            # Para Correlation Ratio, uma categórica e uma numérica
+                            if ((tipo1 in ['object', 'category', 'bool'] and 
+                                 np.issubdtype(tipo2, np.number)) or
+                                (np.issubdtype(tipo1, np.number) and 
+                                 tipo2 in ['object', 'category', 'bool'])):
+                                
+                                if tipo1 in ['object', 'category', 'bool'] and np.issubdtype(tipo2, np.number):
+                                    cat_col, num_col = col1, col2
+                                else:
+                                    cat_col, num_col = col2, col1
+                                
+                                matriz_correlacao.iloc[i, j] = self.calcular_correlation_ratio(
+                                    self.df[cat_col], self.df[num_col]
+                                )
+                            else:
+                                matriz_correlacao.iloc[i, j] = np.nan
+                    
+                    except Exception:
+                        matriz_correlacao.iloc[i, j] = np.nan
+            
+            # Criar heatmap
+            fig = px.imshow(
+                matriz_correlacao,
+                x=matriz_correlacao.columns,
+                y=matriz_correlacao.index,
+                color_continuous_scale='RdBu_r',
+                aspect="auto",
+                title=f"Matriz de Associação - {metodo.replace('_', ' ').title()}",
+                zmin=0, zmax=1
+            )
+            fig.update_layout(height=600)
+            
+            return fig, matriz_correlacao
+         
+    def chamar_api_open_router(self, prompt: str) -> Optional[str]:
+        """Fazer chamada API para Open Router"""
+        payload = {
+            "model": "tngtech/deepseek-r1t2-chimera:free",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Você é um analista de dados especialista com forte conhecimento estatístico. Forneça análises detalhadas e precisas com interpretações práticas. Formate sua resposta em markdown bonito com cabeçalhos adequados, pontos de lista e ênfase. Seja minucioso e profissional."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.2,
+            "max_tokens": 4000,
+            "stream": False
+        }
         
         try:
-            # Gerar estatísticas descritivas
-            estatisticas = self.gerar_estatisticas_descritivas()
+            resposta = requests.post(self.url_base, headers=self.cabecalhos, json=payload, timeout=120)
+            resposta.raise_for_status()
             
-            # Criar prompt para IA
-            prompt = self.criar_prompt_analise(estatisticas)
+            resultado = resposta.json()
+            return resultado['choices'][0]['message']['content']
             
-            if pergunta_usuario:
-                prompt += f"\n\nPERGUNTA ESPECÍFICA DO USUÁRIO: {pergunta_usuario}"
-            
-            # Preparar dados para envio
-            dados_mensagem = {
-                "model": "google/gemini-2.0-flash-exp:free",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "temperature": 0.7,
-                "max_tokens": 4000
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Erro de API: {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Resposta: {e.response.text}")
+            return None
+
+    def analisar_conjunto_dados(self) -> Dict[str, Any]:
+        """Analisar o conjunto de dados atualmente carregado"""
+        if self.df is None:
+            return None
+        
+        print("🚀 Iniciando Análise de Dados...")
+        
+        # Gerar estatísticas descritivas
+        print("📈 Gerando estatísticas descritivas...")
+        resumo_estatisticas = self.gerar_estatisticas_descritivas()
+        
+        # Gerar visualizações
+        print("🎨 Criando visualizações...")
+        visualizacoes = self.gerar_visualizacoes()
+        
+        # Criar prompt de análise
+        prompt = self.criar_prompt_analise(resumo_estatisticas)
+        
+        # Chamar API
+        print("🤖 Chamando API para análise detalhada...")
+        resultado_analise = self.chamar_api_open_router(prompt)
+        
+        if resultado_analise:
+            resultados = {
+                'dataframe': self.df,
+                'estatisticas': resumo_estatisticas,
+                'analise_ia': resultado_analise,
+                'visualizacoes': visualizacoes
             }
             
-            print("🚀 Enviando solicitação para API OpenRouter...")
+            return resultados
+        else:
+            print("❌ Falha ao obter análise da API")
+            return None
+    
+    def analisar_arquivo(self, caminho_arquivo: str, nome_planilha: str = None, salvar_saida: bool = False, diretorio_saida: str = None) -> Dict[str, Any]:
+        """Método principal para analisar arquivo de dados (CSV, Excel, JSON)"""
+        
+        print("🚀 Iniciando Análise de Dados...")
+        
+        # Carregar dados
+        df = self.carregar_e_previsualizar_dados(caminho_arquivo, nome_planilha)
+        if df is None:
+            return None
+        
+        # Gerar estatísticas descritivas
+        print("📈 Gerando estatísticas descritivas...")
+        resumo_estatisticas = self.gerar_estatisticas_descritivas()
+        
+        # Gerar visualizações
+        print("🎨 Criando visualizações...")
+        visualizacoes = self.gerar_visualizacoes()
+        
+        # Criar prompt de análise
+        prompt = self.criar_prompt_analise(resumo_estatisticas)
+        
+        # Chamar API
+        print("🤖 Chamando API para análise detalhada...")
+        resultado_analise = self.chamar_api_open_router(prompt)
+        
+        if resultado_analise:
+            resultados = {
+                'dataframe': df,
+                'estatisticas': resumo_estatisticas,
+                'analise_ia': resultado_analise,
+                'visualizacoes': visualizacoes
+            }
             
-            # Fazer requisição para API
-            resposta = requests.post(self.url_base, headers=self.cabecalhos, json=dados_mensagem, timeout=120)
+            # Salvar resultados se solicitado
+            if salvar_saida:
+                self.salvar_resultados(resultados, caminho_arquivo, diretorio_saida)
             
-            if resposta.status_code == 200:
-                dados_resposta = resposta.json()
-                conteudo = dados_resposta['choices'][0]['message']['content']
-                print("✅ Resposta recebida com sucesso da API")
-                return conteudo
-            else:
-                erro_msg = f"❌ Erro na API: {resposta.status_code} - {resposta.text}"
-                print(erro_msg)
-                return erro_msg
-                
-        except requests.exceptions.Timeout:
-            erro_msg = "❌ Timeout: A requisição demorou muito para ser processada."
-            print(erro_msg)
-            return erro_msg
-        except Exception as e:
-            erro_msg = f"❌ Erro inesperado: {str(e)}"
-            print(erro_msg)
-            return erro_msg
+            return resultados
+        else:
+            print("❌ Falha ao obter análise da API")
+            return None
+    
+    def salvar_resultados(self, resultados: Dict[str, Any], caminho_arquivo_original: str, diretorio_saida: str = None):
+        """Salvar resultados da análise em arquivos TXT"""
+        nome_base = os.path.splitext(os.path.basename(caminho_arquivo_original))[0]
+        
+        if diretorio_saida:
+            os.makedirs(diretorio_saida, exist_ok=True)
+            caminho_base = os.path.join(diretorio_saida, nome_base)
+        else:
+            caminho_base = nome_base
+        
+        # Salvar estatísticas como markdown
+        with open(f"{caminho_base}_estatisticas.txt", "w", encoding="utf-8") as f:
+            f.write(resultados['estatisticas'])
+        
+        # Salvar análise IA como markdown
+        with open(f"{caminho_base}_analise_ia.txt", "w", encoding="utf-8") as f:
+            f.write(resultados['analise_ia'])
+        
+        # Salvar relatório combinado como markdown
+        relatorio_combinado = f"""# 📊 Relatório de Análise de Dados
 
-# Função auxiliar para uso em scripts não-Streamlit
-def criar_analisador():
-    """Função factory para criar instância do analisador"""
-    return AnalisadorChatBot()
+        ## Conjunto de Dados: {nome_base}
+
+        ## Estatísticas Descritivas
+
+        {resultados['estatisticas']}
+
+        ## Análise
+
+        {resultados['analise_ia']}
+
+        ---
+        *Relatório gerado automaticamente com Analisador de Dados IA*
+        """
+        with open(f"{caminho_base}_relatorio_completo.txt", "w", encoding="utf-8") as f:
+            f.write(relatorio_combinado)
+        
+        print(f"💾 Resultados salvos como arquivos Markdown:")
+        print(f"   - {caminho_base}_estatisticas.txt")
+        print(f"   - {caminho_base}_analise_ia.txt")
+        print(f"   - {caminho_base}_relatorio_completo.txt")
