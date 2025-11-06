@@ -743,11 +743,20 @@ def criar_scatterplot_interativo(df):
         st.info("⚠️ É necessário pelo menos 2 colunas para gerar gráficos de dispersão.")
         return None
     
-    # Inicializar estado da sessão para seleções
-    if 'scatter_x' not in st.session_state:
+    # NOVO: Inicializar estado da sessão para seleções de forma mais robusta
+    if (st.session_state.scatter_x is None or 
+        st.session_state.scatter_x not in todas_colunas):
         st.session_state.scatter_x = todas_colunas[0]
-    if 'scatter_y' not in st.session_state:
-        st.session_state.scatter_y = todas_colunas[1] if len(todas_colunas) > 1 else todas_colunas[0]
+    
+    if (st.session_state.scatter_y is None or 
+        st.session_state.scatter_y not in todas_colunas or
+        st.session_state.scatter_y == st.session_state.scatter_x):
+        # Escolher uma coluna diferente de scatter_x
+        outras_colunas = [col for col in todas_colunas if col != st.session_state.scatter_x]
+        if outras_colunas:
+            st.session_state.scatter_y = outras_colunas[0]
+        else:
+            st.session_state.scatter_y = st.session_state.scatter_x
     
     # Criar interface de seleção
     col1, col2 = st.columns(2)
@@ -762,7 +771,9 @@ def criar_scatterplot_interativo(df):
     
     with col2:
         opcoes_y = [col for col in todas_colunas if col != nova_selecao_x]
-        indice_y = opcoes_y.index(st.session_state.scatter_y) if st.session_state.scatter_y in opcoes_y else 0
+        indice_y = 0
+        if st.session_state.scatter_y in opcoes_y:
+            indice_y = opcoes_y.index(st.session_state.scatter_y)
         
         nova_selecao_y = st.selectbox(
             "Selecionar Variável Y:",
@@ -1519,6 +1530,11 @@ def main():
     # NOVO: Inicializar contexto do usuário
     if 'contexto_usuario' not in st.session_state:
         st.session_state.contexto_usuario = ""
+    # NOVO: Inicializar scatter plot state
+    if 'scatter_x' not in st.session_state:
+        st.session_state.scatter_x = None
+    if 'scatter_y' not in st.session_state:
+        st.session_state.scatter_y = None
     
     # Inicializar analisador
     if not inicializar_analisador():
@@ -1548,6 +1564,9 @@ def main():
                 st.session_state.planilhas_excel = []
                 # NOVO: Limpar contexto ao carregar novo arquivo
                 st.session_state.contexto_usuario = ""
+                # NOVO: Resetar scatter plot state quando novo arquivo é carregado
+                st.session_state.scatter_x = None
+                st.session_state.scatter_y = None
                 
                 # Processar o arquivo carregado
                 with st.spinner("🔄 Processando arquivo carregado..."):
@@ -1599,6 +1618,9 @@ def main():
                             df = pd.read_excel(arquivo_carregado, sheet_name=planilha_selecionada)
                             st.session_state.analisador.carregar_dados(df)
                             st.session_state.planilha_selecionada = planilha_selecionada
+                            # NOVO: Resetar scatter plot state quando nova planilha é carregada
+                            st.session_state.scatter_x = None
+                            st.session_state.scatter_y = None
                             st.success(f"✅ Planilha '{planilha_selecionada}' carregada com sucesso!")
                             st.rerun()
                 except Exception as e:
@@ -1641,6 +1663,8 @@ def main():
                 st.session_state.planilhas_excel = []
                 st.session_state.analisador.df = None
                 st.session_state.contexto_usuario = ""  # NOVO: Limpar contexto também
+                st.session_state.scatter_x = None  # NOVO: Limpar scatter state
+                st.session_state.scatter_y = None  # NOVO: Limpar scatter state
                 st.rerun()
     
     # Área de conteúdo principal
