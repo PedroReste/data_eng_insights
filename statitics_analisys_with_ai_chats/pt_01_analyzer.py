@@ -477,7 +477,7 @@ class AnalisadorChatBot:
         
         return resumo_estatisticas
     
-    def criar_prompt_analise(self, resumo_estatisticas: str) -> str:
+    def criar_prompt_analise(self, resumo_estatisticas: str, contexto_usuario: str = "") -> str:
         """Criar prompt detalhado para API com solicitação de formatação markdown"""
         if self.df is None:
             return "Nenhum dado disponível para análise"
@@ -485,12 +485,22 @@ class AnalisadorChatBot:
         diretorio_atual = os.path.dirname(os.path.abspath(__file__))
         caminho_instrucoes_analise = os.path.join(diretorio_atual, "pt_instrucoes_analise.md")
         caminho_instrucoes_insights = os.path.join(diretorio_atual, "pt_instrucoes_retorno_insights.md")
+        caminho_instrucoes_contexto_usuario = os.path.join(diretorio_atual, "pt_instrucoes_contexto_usuario.md")
 
         with open(caminho_instrucoes_analise, "r", encoding="utf-8") as f:
             bloco_de_instrucao_para_analise = f.read()
 
         with open(caminho_instrucoes_insights, "r", encoding="utf-8") as f:
             bloco_de_instrucao_retorno_insights = f.read()
+
+        with open(caminho_instrucoes_contexto_usuario, "r", encoding="utf-8") as f:
+            bloco_de_instrucao_contexto_usuario = f.read()
+
+        # NOVO: Tratar contexto vazio do usuário
+        if not contexto_usuario.strip():
+            input_de_contexto_usuario = "Nenhum contexto adicional inserido."
+        else:
+            input_de_contexto_usuario = contexto_usuario
 
         prompt = f"""
         UTILIZE O BLOCO DE INSTRUÇÃO ABAIXO PARA GERAR OS RESULTADOS:
@@ -503,6 +513,13 @@ class AnalisadorChatBot:
 
         ESTATÍSTICAS DESCRITIVAS:
         {resumo_estatisticas}
+
+        UTILIZE ESSE BLOCO DE INSTRUÇÃO PARA INTERPRETAR O INPUT FEITO PELO USUÁRIO:
+        {bloco_de_instrucao_contexto_usuario}
+
+        INICIO DO CONTEXTO DO USUÁRIO
+        {input_de_contexto_usuario}
+        TERMINO DO CONTEXTO DO USUÁRIO
 
         RETORNO ESPERADO DA ANÁLISE DO PROMPT ABAIXO:
         {bloco_de_instrucao_retorno_insights}
@@ -711,7 +728,7 @@ class AnalisadorChatBot:
                 print(f"Resposta: {e.response.text}")
             return None
 
-    def analisar_conjunto_dados(self) -> Dict[str, Any]:
+    def analisar_conjunto_dados(self, contexto_usuario: str = "") -> Dict[str, Any]:
         """Analisar o conjunto de dados atualmente carregado"""
         if self.df is None:
             return None
@@ -726,8 +743,8 @@ class AnalisadorChatBot:
         print("🎨 Criando visualizações...")
         visualizacoes = self.gerar_visualizacoes()
         
-        # Criar prompt de análise
-        prompt = self.criar_prompt_analise(resumo_estatisticas)
+        # Criar prompt de análise - MODIFICADO para incluir contexto
+        prompt = self.criar_prompt_analise(resumo_estatisticas, contexto_usuario)
         
         # Chamar API
         print("🤖 Chamando API para análise detalhada...")
@@ -744,7 +761,7 @@ class AnalisadorChatBot:
             return resultados
         else:
             print("❌ Falha ao obter análise da API")
-            return None
+        return None
     
     def analisar_arquivo(self, caminho_arquivo: str, nome_planilha: str = None, salvar_saida: bool = False, diretorio_saida: str = None) -> Dict[str, Any]:
         """Método principal para analisar arquivo de dados (CSV, Excel, JSON)"""

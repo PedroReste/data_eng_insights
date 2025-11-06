@@ -541,17 +541,61 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
     st.markdown('<h1 class="main-header">Analisador de Dados</h1>', unsafe_allow_html=True)
     
     if arquivo_carregado:
-        # Tela de boas-vindas com arquivo carregado (sem seção "Arquivo Pronto para Análise")
+        # Tela de boas-vindas com arquivo carregado - NOVA VERSÃO COM CAIXA DE TEXTO
         st.markdown("""
         <div class="welcome-card">
-            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Bem-vindo ao Analisador de Dados!</h2>
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Contexto para Análise</h2>
             <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
-            Ferramenta avançada com IA para análise abrangente de conjuntos de dados e geração de insights.
+            Forneça informações adicionais sobre seus dados para melhorar a análise (opcional).
             </p>
         </div>
         """, unsafe_allow_html=True)
+        
+        # NOVA SEÇÃO: Caixa de texto para contexto do usuário
+        st.markdown("### 💬 Contexto dos Dados (Opcional)")
+        st.markdown("""
+        <div class="card">
+            <p style="font-size: 0.9rem; margin: 0.5rem 0; line-height: 1.4;">
+            Forneça informações adicionais sobre seus dados para melhorar a análise. 
+            Por exemplo: de onde são os dados, qual o objetivo da análise, quais são as colunas mais importantes, etc.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Caixa de texto para o contexto do usuário
+        contexto_usuario = st.text_area(
+            "Descreva o contexto dos seus dados:",
+            placeholder="Exemplo: Estes dados são de vendas de uma loja de varejo no ano de 2023. Gostaria de entender os fatores que impactam as vendas e identificar oportunidades de crescimento.",
+            help="Fornecer contexto ajuda a IA a gerar insights mais relevantes.",
+            key="contexto_usuario_input"
+        )
+        
+        # Armazenar o contexto na sessão
+        st.session_state.contexto_usuario = contexto_usuario
+        
+        # CORREÇÃO: Recursos em um único cartão com layout melhorado
+        st.markdown("### ✨ Próximos Passos")
+        st.markdown("""
+        <div class="feature-card">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Verifique os Dados</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Confirme se os dados foram carregados corretamente na visualização acima</p>
+                </div>
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">🤖 Adicione Contexto</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Use o campo acima para descrever o contexto dos seus dados (opcional)</p>
+                </div>
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🚀 Inicie a Análise</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Clique em 'Analisar Conjunto de Dados' na barra lateral para iniciar</p>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
     else:
-        # Tela de boas-vindas padrão (sem arquivo carregado)
+        # Tela de boas-vindas padrão (sem arquivo carregado) - MANTIDA ORIGINAL
         st.markdown("""
         <div class="welcome-card">
             <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Bem-vindo ao Analisador de Dados!</h2>
@@ -560,47 +604,33 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
-    # CORREÇÃO: Recursos em um único cartão com layout melhorado
-    st.markdown("### ✨ Recursos do Aplicativo")
-    st.markdown("""
-    <div class="feature-card">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-            <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Suporte a Múltiplos Formatos</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Analise arquivos CSV, Excel (XLSX) e JSON com detecção automática de formato</p>
-            </div>
-            <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Análise Inteligente de Dados</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas</p>
-            </div>
-            <div style="padding: 0.5rem;">
-                <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 Insights com IA</h4>
-                <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos e inteligência de negócios</p>
+        
+        # CORREÇÃO: Recursos em um único cartão com layout melhorado
+        st.markdown("### ✨ Recursos do Aplicativo")
+        st.markdown("""
+        <div class="feature-card">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Suporte a Múltiplos Formatos</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Analise arquivos CSV, Excel (XLSX) e JSON com detecção automática de formato</p>
+                </div>
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Análise Inteligente de Dados</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas</p>
+                </div>
+                <div style="padding: 0.5rem;">
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 Insights com IA</h4>
+                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos e inteligência de negócios</p>
+                </div>
             </div>
         </div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # CORREÇÃO: Como Usar e Dicas lado a lado com layout melhorado
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("### 📋 Como Usar")
-        if arquivo_carregado:
-            # CORREÇÃO: Remover o cartão que mostra que o arquivo foi carregado com sucesso
-            st.markdown("""
-            <div class="card">
-                <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Selecione a planilha</strong> (se arquivo Excel) na barra lateral</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Clique em "Analisar Conjunto de Dados"</strong> na barra lateral para iniciar a análise</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - detecção automática de formato e análise</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Explore os resultados</strong> nas abas de Análise Exploratória e Insights</li>
-                    <li><strong>Baixe os relatórios</strong> para uso offline e documentação</li>
-                </ol>
-            </div>
-            """, unsafe_allow_html=True)
-        else:
+        """, unsafe_allow_html=True)
+        
+        # CORREÇÃO: Como Usar e Dicas lado a lado com layout melhorado
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 📋 Como Usar")
             st.markdown("""
             <div class="card">
                 <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
@@ -612,20 +642,20 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
                 </ol>
             </div>
             """, unsafe_allow_html=True)
-    
-    with col2:
-        # Dicas - Layout melhorado (removido "Formatos Suportados")
-        st.markdown("### 💡 Dicas para Melhores Resultados")
-        st.markdown("""
-        <div class="card">
-            <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                <li style="margin-bottom: 0.8rem;"><strong>Limpe os dados primeiro</strong> - Remova colunas desnecessárias antes de carregar</li>
-                <li style="margin-bottom: 0.8rem;"><strong>Trate valores ausentes</strong> - Resolva valores nulos quando possível</li>
-                <li style="margin-bottom: 0.8rem;"><strong>Cabeçalhos descritivos</strong> - Use nomes de colunas claros e significativos</li>
-                <li><strong>Otimização de tamanho</strong> - Arquivos abaixo de 200MB para desempenho ideal</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+        
+        with col2:
+            # Dicas - Layout melhorado (removido "Formatos Suportados")
+            st.markdown("### 💡 Dicas para Melhores Resultados")
+            st.markdown("""
+            <div class="card">
+                <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
+                    <li style="margin-bottom: 0.8rem;"><strong>Limpe os dados primeiro</strong> - Remova colunas desnecessárias antes de carregar</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Trate valores ausentes</strong> - Resolva valores nulos quando possível</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Cabeçalhos descritivos</strong> - Use nomes de colunas claros e significativos</li>
+                    <li><strong>Otimização de tamanho</strong> - Arquivos abaixo de 200MB para desempenho ideal</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
 
 def exibir_cartoes_tipos_coluna(analisador):
     """Exibir tipos de coluna como cartões em vez de gráfico de rosca"""
@@ -1486,6 +1516,8 @@ def main():
         st.session_state.planilha_selecionada = None
     if 'planilhas_excel' not in st.session_state:
         st.session_state.planilhas_excel = []
+    if 'contexto_usuario' not in st.session_state:
+        st.session_state.contexto_usuario = ""
     
     # Inicializar analisador
     if not inicializar_analisador():
@@ -1572,7 +1604,7 @@ def main():
         # Botão de análise
         st.markdown("---")
         analise_clicada = st.button(
-            "🚀 Analisar Conjunto de Dados",
+            "🚀 Analisar Dados",
             type="primary",
             use_container_width=True,
             disabled=not st.session_state.arquivo_carregado or st.session_state.analisador.df is None
@@ -1582,7 +1614,9 @@ def main():
             if st.session_state.analisador.df is not None:
                 with st.spinner("🤖 Analisando conjunto de dados com IA..."):
                     try:
-                        resultados = st.session_state.analisador.analisar_conjunto_dados()
+                        # NOVO: Passar o contexto do usuário para a análise
+                        contexto_usuario = st.session_state.get('contexto_usuario', '')
+                        resultados = st.session_state.analisador.analisar_conjunto_dados(contexto_usuario)
                         if resultados:
                             st.session_state.resultados_analise = resultados
                             st.success("✅ Análise concluída com sucesso!")
