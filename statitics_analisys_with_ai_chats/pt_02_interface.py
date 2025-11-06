@@ -1516,6 +1516,7 @@ def main():
         st.session_state.planilha_selecionada = None
     if 'planilhas_excel' not in st.session_state:
         st.session_state.planilhas_excel = []
+    # NOVO: Inicializar contexto do usuário
     if 'contexto_usuario' not in st.session_state:
         st.session_state.contexto_usuario = ""
     
@@ -1545,6 +1546,8 @@ def main():
                 st.session_state.resultados_analise = None
                 st.session_state.planilha_selecionada = None
                 st.session_state.planilhas_excel = []
+                # NOVO: Limpar contexto ao carregar novo arquivo
+                st.session_state.contexto_usuario = ""
                 
                 # Processar o arquivo carregado
                 with st.spinner("🔄 Processando arquivo carregado..."):
@@ -1579,7 +1582,7 @@ def main():
                         st.session_state.arquivo_carregado = False
                         st.session_state.arquivo_atual = None
             
-            # Seleção de planilha para arquivos Excel - CORREÇÃO: Condicional simplificada
+            # Seleção de planilha para arquivos Excel
             if (arquivo_carregado.name.endswith('.xlsx') and 
                 st.session_state.planilha_selecionada is None and
                 len(st.session_state.planilhas_excel) > 1):
@@ -1601,10 +1604,10 @@ def main():
                 except Exception as e:
                     st.error(f"❌ Erro ao ler arquivo Excel: {str(e)}")
         
-        # Botão de análise
+        # Botão de análise - MODIFICADO para usar contexto
         st.markdown("---")
         analise_clicada = st.button(
-            "🚀 Analisar Dados",
+            "🚀 Analisar Conjunto de Dados",
             type="primary",
             use_container_width=True,
             disabled=not st.session_state.arquivo_carregado or st.session_state.analisador.df is None
@@ -1637,9 +1640,10 @@ def main():
                 st.session_state.planilha_selecionada = None
                 st.session_state.planilhas_excel = []
                 st.session_state.analisador.df = None
+                st.session_state.contexto_usuario = ""  # NOVO: Limpar contexto também
                 st.rerun()
     
-    # Área de conteúdo principal - CORREÇÃO: Lógica de exibição corrigida
+    # Área de conteúdo principal
     if st.session_state.resultados_analise is not None:
         # Mostrar resultados da análise
         aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🤖 Insights IA"])
