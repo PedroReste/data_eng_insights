@@ -1,4 +1,4 @@
-# pt_01_analisador.py
+# pt_01_analyzer.py
 import pandas as pd
 import requests
 import json
@@ -8,7 +8,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
+from scipy.stats import chi2_contingency, spearmanr, kendalltau, pearsonr
+import scipy.stats as stats
 
 try:
     import streamlit as st
@@ -18,7 +20,6 @@ except ImportError:
 
 class AnalisadorChatBot:
     def __init__(self, chave_api: str = None):
-        # Prioridade: chave fornecida > Segredos do Streamlit > variável de ambiente > arquivo
         if chave_api is None:
             self.chave_api = self.obter_chave_api_segura()
         else:
@@ -35,83 +36,46 @@ class AnalisadorChatBot:
             "X-Title": "Analisador de Dados"
         }
         self.df = None
+        self._cache_estatisticas = None
+        self._cache_tipos = None
 
+    # === MÉTODOS DE CONFIGURAÇÃO DA API ===
     def obter_chave_api_segura(self) -> Optional[str]:
-        """
-        Obter chave API com segurança com prioridade:
-        1. Segredos do Streamlit (se em ambiente Streamlit)
-        2. Variável de Ambiente
-        3. Arquivo local (apenas para desenvolvimento)
-        """
-        print(f"🔍 Iniciando busca da chave API...")
-        print(f"🔍 STREAMLIT_DISPONIVEL: {STREAMLIT_DISPONIVEL}")
-        
-        # 1. Tentar Segredos do Streamlit
+        """Obter chave API com segurança"""
         if STREAMLIT_DISPONIVEL:
             try:
-                print("🔍 Verificando segredos do Streamlit...")
                 if hasattr(st, 'secrets') and 'OPENROUTER_API_KEY' in st.secrets:
                     chave_api = st.secrets['OPENROUTER_API_KEY']
-                    print(f"🔍 Chave encontrada nos segredos, comprimento: {len(chave_api) if chave_api else 0}")
                     if chave_api and chave_api.strip():
-                        print("✅ Chave API carregada dos Segredos do Streamlit")
                         return chave_api.strip()
-                else:
-                    print("❌ OPENROUTER_API_KEY não encontrada nos segredos do Streamlit")
-            except Exception as e:
-                print(f"⚠️ Segredos do Streamlit não acessíveis: {e}")
+            except Exception:
+                pass
         
-        # 2. Tentar Variável de Ambiente
         chave_env = os.getenv('OPENROUTER_API_KEY')
-        print(f"🔍 Verificação de variável de ambiente: {'Encontrada' if chave_env else 'Não encontrada'}")
         if chave_env and chave_env.strip():
-            print("✅ Chave API carregada da variável de ambiente")
             return chave_env.strip()
         
-        # 3. Tentar arquivo local (apenas para desenvolvimento)
-        chave_arquivo = self.ler_chave_api_do_arquivo()
-        print(f"🔍 Verificação de arquivo: {'Encontrada' if chave_arquivo else 'Não encontrada'}")
-        if chave_arquivo:
-            print("✅ Chave API carregada do arquivo local")
-            return chave_arquivo
-        
-        print("❌ Nenhuma chave API encontrada em nenhuma fonte")
-        return None
+        return self.ler_chave_api_do_arquivo()
 
     def ler_chave_api_do_arquivo(self, caminho_arquivo: str = None) -> Optional[str]:
-        """
-        Ler chave API do arquivo local (apenas para desenvolvimento)
-        """
+        """Ler chave API do arquivo local"""
         try:
             if caminho_arquivo is None:
                 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
                 caminho_arquivo = os.path.join(diretorio_atual, "chave_api.txt")
             
-            print(f"🔍 Procurando arquivo de chave API em: {caminho_arquivo}")
-            
             if not os.path.exists(caminho_arquivo):
-                print(f"❌ Arquivo de chave API não encontrado: {caminho_arquivo}")
-                # Tentar locais alternativos
-                caminhos_alternativos = [
-                    "chave_api.txt",
-                    "./chave_api.txt", 
-                    "../chave_api.txt",
-                ]
-                
+                caminhos_alternativos = ["chave_api.txt", "./chave_api.txt", "../chave_api.txt"]
                 for caminho_alt in caminhos_alternativos:
                     if os.path.exists(caminho_alt):
                         caminho_arquivo = caminho_alt
-                        print(f"✅ Arquivo de chave API encontrado em: {caminho_arquivo}")
                         break
                 else:
-                    print("❌ Arquivo de chave API não encontrado em locais comuns")
                     return None
             
             with open(caminho_arquivo, 'r', encoding='utf-8') as arquivo:
                 conteudo = arquivo.read().strip()
-                print(f"📄 Comprimento do conteúdo do arquivo de chave API: {len(conteudo)} caracteres")
                 
-                # Lidar com formatos possíveis diferentes
                 if conteudo.startswith('open_router:'):
                     chave = conteudo.split('open_router:')[1].strip()
                 elif ':' in conteudo:
@@ -119,150 +83,126 @@ class AnalisadorChatBot:
                 else:
                     chave = conteudo.strip()
                 
-                if chave:
-                    print(f"✅ Chave API carregada com sucesso (primeiros 5 caracteres): {chave[:5]}...")
-                    return chave
-                else:
-                    print("❌ Nenhuma chave API encontrada no arquivo")
-                    return None
+                return chave if chave else None
                     
-        except Exception as e:
-            print(f"❌ Erro ao ler arquivo de chave API: {e}")
+        except Exception:
             return None
 
+    # === MÉTODOS DE MANIPULAÇÃO DE DADOS ===
     def corrigir_tipos_incorretos(self, df: pd.DataFrame) -> pd.DataFrame:
-        """
-        Corrige apenas booleanos e datetime que foram identificados erroneamente
-        Inclui conversão de colunas numéricas com apenas 0 e 1 para booleanas
-        """
+        """Corrige tipos de dados automaticamente"""
         df = df.copy()
         n_amostra = max(1, int(len(df) * 0.05))
         df_amostra = df.sample(n=n_amostra, random_state=42) if len(df) > n_amostra else df
         
         for col in df.columns:
-            # 1. Corrigir datetime: se for object mas contém datas
             if df[col].dtype == 'object':
-                # Tentar converter para datetime
                 datetime_convertido = pd.to_datetime(df[col], errors='coerce')
-                if datetime_convertido.notna().mean() > 0.7:  # 70% de sucesso na conversão
+                if datetime_convertido.notna().mean() > 0.7:
                     df[col] = datetime_convertido
-                    continue  # Pular para próxima coluna se converteu para datetime
+                    continue
             
-            # 2. Corrigir booleanos: verificar TODOS os tipos de dados, incluindo numéricos
             valores_unicos = set(map(str, df_amostra[col].dropna().unique()))
             
-            # Verificar se são apenas 0 e 1 (em qualquer tipo de dado)
             if valores_unicos.issubset({'0', '1', '0.0', '1.0', 0, 1, 0.0, 1.0}):
-                # Converter para booleano
                 df[col] = df[col].astype(bool)
-                print(f"🔧 Coluna '{col}' convertida de {df[col].dtype} para booleana (valores: 0/1)")
             
-            # 3. Corrigir booleanos em colunas object com valores textuais
             elif df[col].dtype == 'object':
                 valores_texto = set(map(str.lower, map(str, df_amostra[col].dropna().unique())))
                 valores_booleanos = {'true', 'false', 'sim', 'não', 'yes', 'no', 'v', 'f', 's', 'n'}
                 
                 if valores_texto.issubset(valores_booleanos):
                     mapa_booleanos = {
-                        'true': True, 'false': False,
-                        'sim': True, 'não': False,
-                        'yes': True, 'no': False,
-                        '1': True, '0': False,
-                        'v': True, 'f': False,
-                        's': True, 'n': False
+                        'true': True, 'false': False, 'sim': True, 'não': False,
+                        'yes': True, 'no': False, '1': True, '0': False,
+                        'v': True, 'f': False, 's': True, 'n': False
                     }
                     df[col] = (df[col].astype(str)
                                 .str.strip()
                                 .str.lower()
                                 .map(mapa_booleanos)
                                 .astype('boolean'))
-                    print(f"🔧 Coluna '{col}' convertida de object para booleana")
         
         return df
 
     def carregar_dados(self, df: pd.DataFrame):
-        """Carregar DataFrame no analisador com correção automática de tipos"""
+        """Carregar DataFrame no analisador"""
         self.df = df
-        print(f"✅ Dados carregados com sucesso: {self.df.shape[0]} linhas, {self.df.shape[1]} colunas")
-        
-        # Aplicar correção de tipos automaticamente
         self.df = self.corrigir_tipos_incorretos(self.df)
-        print("🔧 Tipos de dados corrigidos automaticamente")
+        self._cache_estatisticas = None
+        self._cache_tipos = None
 
-    def obter_planilhas_excel(self, caminho_arquivo: str) -> List[str]:
-        """Obter lista de planilhas disponíveis em arquivo Excel"""
+    def detectar_formato_arquivo(self, caminho_arquivo: str) -> str:
+        """Detectar formato do arquivo"""
+        _, ext = os.path.splitext(caminho_arquivo)
+        ext = ext.lower()
+        
+        if ext == '.csv':
+            return 'csv'
+        elif ext in ['.xlsx', '.xls']:
+            return 'excel'
+        elif ext == '.json':
+            return 'json'
+        else:
+            try:
+                with open(caminho_arquivo, 'r', encoding='utf-8') as f:
+                    primeira_linha = f.readline().strip()
+                    if primeira_linha.startswith('{') or primeira_linha.startswith('['):
+                        return 'json'
+                    elif ',' in primeira_linha:
+                        return 'csv'
+            except:
+                pass
+            
+            return 'csv'
+
+    def carregar_e_previsualizar_dados(self, caminho_arquivo: str, nome_planilha: str = None) -> pd.DataFrame:
+        """Carregar arquivo CSV, Excel ou JSON"""
         try:
-            print(f"📑 Tentando ler arquivo Excel: {caminho_arquivo}")
+            formato_arquivo = self.detectar_formato_arquivo(caminho_arquivo)
             
-            # Verificar se o arquivo existe
-            if not os.path.exists(caminho_arquivo):
-                print(f"❌ Arquivo não existe: {caminho_arquivo}")
-                return []
-            
-            # Verificar tamanho do arquivo
-            tamanho_arquivo = os.path.getsize(caminho_arquivo)
-            print(f"📁 Tamanho do arquivo: {tamanho_arquivo} bytes")
-            
-            if tamanho_arquivo == 0:
-                print("❌ Arquivo está vazio")
-                return []
-            
-            # Tentar diferentes engines para leitura do Excel
-            engines_para_tentar = []
-            
-            # Determinar quais engines tentar baseado na extensão do arquivo
-            if caminho_arquivo.endswith('.xlsx'):
-                engines_para_tentar = ['openpyxl', 'xlrd']
-            elif caminho_arquivo.endswith('.xls'):
-                engines_para_tentar = ['xlrd', 'openpyxl']
+            if formato_arquivo == 'csv':
+                self.df = pd.read_csv(caminho_arquivo)
+            elif formato_arquivo == 'excel':
+                if nome_planilha:
+                    self.df = pd.read_excel(caminho_arquivo, sheet_name=nome_planilha)
+                else:
+                    self.df = pd.read_excel(caminho_arquivo)
+            elif formato_arquivo == 'json':
+                self.df = pd.read_json(caminho_arquivo)
             else:
-                engines_para_tentar = ['openpyxl', 'xlrd']
+                raise ValueError(f"Formato não suportado: {formato_arquivo}")
             
-            planilhas = []
-            engine_sucesso = None
+            self.df = self.corrigir_tipos_incorretos(self.df)
+            self._cache_estatisticas = None
+            self._cache_tipos = None
             
-            for engine in engines_para_tentar:
-                try:
-                    print(f"🔧 Tentando engine: {engine}")
-                    arquivo_excel = pd.ExcelFile(caminho_arquivo, engine=engine)
-                    planilhas = arquivo_excel.sheet_names
-                    engine_sucesso = engine
-                    print(f"✅ Arquivo Excel lido com sucesso com {engine}. Planilhas encontradas: {planilhas}")
-                    break
-                except ImportError as e:
-                    print(f"⚠️ Engine {engine} não disponível: {e}")
-                    continue
-                except Exception as e:
-                    print(f"⚠️ Erro com engine {engine}: {e}")
-                    continue
-            
-            if not planilhas and not engine_sucesso:
-                # Última tentativa sem engine específica
-                try:
-                    print("🔧 Tentando engine padrão")
-                    arquivo_excel = pd.ExcelFile(caminho_arquivo)
-                    planilhas = arquivo_excel.sheet_names
-                    print(f"✅ Arquivo Excel lido com sucesso com engine padrão. Planilhas encontradas: {planilhas}")
-                except Exception as e:
-                    print(f"❌ Falha ao ler arquivo Excel com qualquer engine: {e}")
-            
-            return planilhas
+            return self.df
             
         except Exception as e:
-            print(f"❌ Erro ao ler planilhas do Excel: {e}")
-            # Log adicional para debug
-            import traceback
-            print(f"🔍 Stack trace: {traceback.format_exc()}")
-            return []
+            if formato_arquivo == 'json':
+                try:
+                    with open(caminho_arquivo, 'r', encoding='utf-8') as f:
+                        dados = json.load(f)
+                    self.df = pd.json_normalize(dados)
+                    self.df = self.corrigir_tipos_incorretos(self.df)
+                    self._cache_estatisticas = None
+                    self._cache_tipos = None
+                    return self.df
+                except Exception:
+                    pass
+            return None
 
+    # === MÉTODOS DE ANÁLISE ESTATÍSTICA ===
     def obter_tipos_coluna_simples(self) -> Dict[str, List[str]]:
-        """Obter tipos de coluna simplificados agrupados por categoria"""
+        """Obter tipos de coluna simplificados (com cache)"""
+        if self._cache_tipos is not None:
+            return self._cache_tipos
+            
         if self.df is None:
             return {
-                'Numéricas': [],
-                'Categóricas': [],
-                'Verdadeiro/Falso': [],
-                'Data/Hora': []
+                'Numéricas': [], 'Categóricas': [], 
+                'Verdadeiro/Falso': [], 'Data/Hora': []
             }
         
         colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
@@ -270,12 +210,14 @@ class AnalisadorChatBot:
         colunas_booleanas = self.df.select_dtypes(include='bool').columns.tolist()
         colunas_data_hora = self.df.select_dtypes(include=['datetime64', 'timedelta64']).columns.tolist()
         
-        return {
+        self._cache_tipos = {
             'Numéricas': colunas_numericas,
             'Categóricas': colunas_categoricas,
             'Verdadeiro/Falso': colunas_booleanas,
             'Data/Hora': colunas_data_hora
         }
+        
+        return self._cache_tipos
 
     def obter_info_coluna_detalhada(self) -> pd.DataFrame:
         """Obter informações detalhadas sobre cada coluna"""
@@ -292,18 +234,15 @@ class AnalisadorChatBot:
             valores_unicos = self.df[col].nunique()
             
             info_colunas.append({
-                'Coluna': col,
-                'Tipo': tipo_col,
-                'Não Nulos': contagem_nao_nulos,
-                'Nulos': contagem_nulos,
-                '% Nulos': f"{percentual_nulos:.1f}%",
+                'Coluna': col, 'Tipo': tipo_col, 'Não Nulos': contagem_nao_nulos,
+                'Nulos': contagem_nulos, '% Nulos': f"{percentual_nulos:.1f}%",
                 'Valores Únicos': valores_unicos
             })
         
         return pd.DataFrame(info_colunas)
 
     def _obter_tipo_dado_simples(self, tipo_dado):
-        """Converter tipo de dado detalhado para categoria simplificada"""
+        """Converter tipo de dado para categoria simplificada"""
         if np.issubdtype(tipo_dado, np.number):
             return "Numérica"
         elif np.issubdtype(tipo_dado, np.bool_):
@@ -313,201 +252,133 @@ class AnalisadorChatBot:
         else:
             return "Categórica"
 
-    def detectar_formato_arquivo(self, caminho_arquivo: str) -> str:
-        """Detectar formato do arquivo baseado na extensão e conteúdo"""
-        _, ext = os.path.splitext(caminho_arquivo)
-        ext = ext.lower()
-        
-        if ext == '.csv':
-            return 'csv'
-        elif ext in ['.xlsx', '.xls']:
-            return 'excel'
-        elif ext == '.json':
-            return 'json'
-        else:
-            # Tentar detectar pelo conteúdo para arquivos sem extensão ou desconhecidos
-            try:
-                with open(caminho_arquivo, 'r', encoding='utf-8') as f:
-                    primeira_linha = f.readline().strip()
-                    # Verificar se é JSON
-                    if primeira_linha.startswith('{') or primeira_linha.startswith('['):
-                        return 'json'
-                    # Verificar se é CSV (separado por vírgula)
-                    elif ',' in primeira_linha:
-                        return 'csv'
-            except:
-                pass
-            
-            # Padrão para CSV para formatos desconhecidos
-            return 'csv'
-
-    def carregar_e_previsualizar_dados(self, caminho_arquivo: str, nome_planilha: str = None) -> pd.DataFrame:
-        """Carregar arquivo CSV, Excel ou JSON e retornar informações básicas"""
-        try:
-            formato_arquivo = self.detectar_formato_arquivo(caminho_arquivo)
-            print(f"📁 Formato de arquivo detectado: {formato_arquivo}")
-            
-            if formato_arquivo == 'csv':
-                self.df = pd.read_csv(caminho_arquivo)
-            elif formato_arquivo == 'excel':
-                if nome_planilha:
-                    self.df = pd.read_excel(caminho_arquivo, sheet_name=nome_planilha)
-                else:
-                    # Carregar primeira planilha por padrão
-                    self.df = pd.read_excel(caminho_arquivo)
-            elif formato_arquivo == 'json':
-                self.df = pd.read_json(caminho_arquivo)
-            else:
-                raise ValueError(f"Formato de arquivo não suportado: {formato_arquivo}")
-            
-            print(f"✅ Conjunto de dados carregado com sucesso: {self.df.shape[0]} linhas, {self.df.shape[1]} colunas")
-            print(f"📊 Tipos de dados: {dict(self.df.dtypes)}")
-            
-            # Aplicar correção de tipos automaticamente
-            self.df = self.corrigir_tipos_incorretos(self.df)
-            print("🔧 Tipos de dados corrigidos automaticamente")
-            
-            return self.df
-            
-        except Exception as e:
-            print(f"❌ Erro ao carregar arquivo {caminho_arquivo}: {e}")
-            # Tentar métodos alternativos de carregamento para JSON
-            if formato_arquivo == 'json':
-                try:
-                    print("🔄 Tentando método alternativo de carregamento JSON...")
-                    with open(caminho_arquivo, 'r', encoding='utf-8') as f:
-                        dados = json.load(f)
-                    self.df = pd.json_normalize(dados)
-                    print(f"✅ JSON carregado com sucesso com json_normalize: {self.df.shape}")
-                    
-                    # Aplicar correção de tipos também para JSON
-                    self.df = self.corrigir_tipos_incorretos(self.df)
-                    
-                    return self.df
-                except Exception as erro_json:
-                    print(f"❌ Carregamento alternativo JSON também falhou: {erro_json}")
-            return None
-
     def gerar_estatisticas_descritivas(self) -> str:
-        """Gerar estatísticas descritivas abrangentes em formato Markdown"""
+        """Gerar estatísticas descritivas abrangentes (com cache)"""
+        if self._cache_estatisticas is not None:
+            return self._cache_estatisticas
+            
         if self.df is None:
             return "## ❌ Nenhum dado carregado\n\nPor favor, carregue um conjunto de dados primeiro."
             
         resumo_estatisticas = "# 📊 Relatório de Estatísticas Descritivas\n\n"
         
-        # Visão Geral do Conjunto de Dados
+        # Visão Geral
         resumo_estatisticas += "## 📋 Visão Geral do Conjunto de Dados\n\n"
         resumo_estatisticas += f"- **Total de Linhas**: {self.df.shape[0]:,}\n"
         resumo_estatisticas += f"- **Total de Colunas**: {self.df.shape[1]}\n"
         resumo_estatisticas += f"- **Valores Ausentes**: {self.df.isnull().sum().sum()}\n"
         resumo_estatisticas += f"- **Linhas Duplicadas**: {self.df.duplicated().sum()}\n\n"
         
-        # Resumo de Tipos de Dados
+        # Resumo de Tipos
         resumo_estatisticas += "## 🔧 Resumo de Tipos de Dados\n\n"
+        tipos_simples = self.obter_tipos_coluna_simples()
         
-        # Contar por categoria em vez de iterar através de tipos de dados individuais
-        contagem_numericas = len(self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns)
-        contagem_categoricas = len(self.df.select_dtypes(include=['object', 'category', 'string']).columns)
-        contagem_booleanas = len(self.df.select_dtypes(include='bool').columns)
-        contagem_data_hora = len(self.df.select_dtypes(include=['datetime64', 'timedelta64']).columns)
-        
-        if contagem_numericas > 0:
-            resumo_estatisticas += f"- **Numéricas**: {contagem_numericas} colunas\n"
-        if contagem_categoricas > 0:
-            resumo_estatisticas += f"- **Categóricas**: {contagem_categoricas} colunas\n"
-        if contagem_booleanas > 0:
-            resumo_estatisticas += f"- **Verdadeiro/Falso**: {contagem_booleanas} colunas\n"
-        if contagem_data_hora > 0:
-            resumo_estatisticas += f"- **Data/Hora**: {contagem_data_hora} colunas\n"
-        
+        for tipo, colunas in tipos_simples.items():
+            if colunas:
+                resumo_estatisticas += f"- **{tipo}**: {len(colunas)} colunas\n"
         resumo_estatisticas += "\n"
         
         # Colunas numéricas
-        colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        if len(colunas_numericas) > 0:
+        if tipos_simples['Numéricas']:
             resumo_estatisticas += "## 🔢 Colunas Numéricas\n\n"
-            for col in colunas_numericas:
-                resumo_estatisticas += f"### 📈 {col}\n\n"
-                resumo_estatisticas += f"- **Média**: {self.df[col].mean():.2f}\n"
-                resumo_estatisticas += f"- **Mediana**: {self.df[col].median():.2f}\n"
-                resumo_estatisticas += f"- **Variância**: {self.df[col].var():.2f}\n"
-                resumo_estatisticas += f"- **Desvio Padrão**: {self.df[col].std():.2f}\n"
-                resumo_estatisticas += f"- **Mínimo**: {self.df[col].min():.2f}\n"
-                resumo_estatisticas += f"- **Máximo**: {self.df[col].max():.2f}\n"
-                resumo_estatisticas += f"- **Intervalo**: {self.df[col].max() - self.df[col].min():.2f}\n"
-                resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
-                resumo_estatisticas += f"- **Percentil 05**: {self.df[col].quantile(0.05):.2f}\n"
-                resumo_estatisticas += f"- **Percentil 25**: {self.df[col].quantile(0.25):.2f}\n"
-                resumo_estatisticas += f"- **Percentil 75**: {self.df[col].quantile(0.75):.2f}\n"
-                resumo_estatisticas += f"- **Percentil 95**: {self.df[col].quantile(0.95):.2f}\n"
-                resumo_estatisticas += f"- **IQR**: {self.df[col].quantile(0.75) - self.df[col].quantile(0.25):.2f}\n"
-                resumo_estatisticas += f"- **Coeficiente de Variação**: {self.df[col].std() / self.df[col].mean() * 100 if self.df[col].mean() != 0 else 0:.2f}%\n"
-                resumo_estatisticas += f"- **Curtose**: {self.df[col].kurt():.2f}\n"
-                resumo_estatisticas += f"- **Assimetria**: {self.df[col].skew():.2f}\n\n"
+            for col in tipos_simples['Numéricas']:
+                resumo_estatisticas += self._gerar_estatisticas_numericas(col)
         
         # Colunas categóricas
-        colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns
-        if len(colunas_categoricas) > 0:
+        if tipos_simples['Categóricas']:
             resumo_estatisticas += "## 📝 Colunas Categóricas\n\n"
-            for col in colunas_categoricas:
-                resumo_estatisticas += f"### 🏷️ {col}\n\n"
-                resumo_estatisticas += f"- **Valores Únicos**: {self.df[col].nunique()}\n"
-                resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
-                resumo_estatisticas += f"- **3 Valores Principais**:\n"
-                valores_principais = self.df[col].value_counts().head(3)
-                for valor, contagem in valores_principais.items():
-                    resumo_estatisticas += f"  - `{valor}`: {contagem} ocorrências\n"
-                resumo_estatisticas += "\n"
+            for col in tipos_simples['Categóricas']:
+                resumo_estatisticas += self._gerar_estatisticas_categoricas(col)
         
         # Colunas booleanas
-        colunas_booleanas = self.df.select_dtypes(include='bool').columns
-        if len(colunas_booleanas) > 0:
+        if tipos_simples['Verdadeiro/Falso']:
             resumo_estatisticas += "## ✅ Colunas Verdadeiro/Falso\n\n"
-            for col in colunas_booleanas:
-                resumo_estatisticas += f"### 🔘 {col}\n\n"
-                contagem_valores = self.df[col].value_counts()
-                percentual = self.df[col].value_counts(normalize=True) * 100
-                resumo_estatisticas += f"- **Distribuição**:\n"
-                for val, contagem in contagem_valores.items():
-                    resumo_estatisticas += f"  - `{val}`: {contagem} ({percentual[val]:.1f}%)\n"
-                resumo_estatisticas += f"- **Variância**: {self.df[col].var():.2f}\n"
-                resumo_estatisticas += f"- **Desvio Padrão**: {self.df[col].std():.2f}\n"
-                resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n\n"
+            for col in tipos_simples['Verdadeiro/Falso']:
+                resumo_estatisticas += self._gerar_estatisticas_booleanas(col)
         
+        self._cache_estatisticas = resumo_estatisticas
         return resumo_estatisticas
-    
+
+    def _gerar_estatisticas_numericas(self, col: str) -> str:
+        """Gerar estatísticas para coluna numérica"""
+        estatisticas = f"### 📈 {col}\n\n"
+        estatisticas += f"- **Média**: {self.df[col].mean():.2f}\n"
+        estatisticas += f"- **Mediana**: {self.df[col].median():.2f}\n"
+        estatisticas += f"- **Variância**: {self.df[col].var():.2f}\n"
+        estatisticas += f"- **Desvio Padrão**: {self.df[col].std():.2f}\n"
+        estatisticas += f"- **Mínimo**: {self.df[col].min():.2f}\n"
+        estatisticas += f"- **Máximo**: {self.df[col].max():.2f}\n"
+        estatisticas += f"- **Intervalo**: {self.df[col].max() - self.df[col].min():.2f}\n"
+        estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
+        estatisticas += f"- **Percentil 05**: {self.df[col].quantile(0.05):.2f}\n"
+        estatisticas += f"- **Percentil 25**: {self.df[col].quantile(0.25):.2f}\n"
+        estatisticas += f"- **Percentil 75**: {self.df[col].quantile(0.75):.2f}\n"
+        estatisticas += f"- **Percentil 95**: {self.df[col].quantile(0.95):.2f}\n"
+        estatisticas += f"- **IQR**: {self.df[col].quantile(0.75) - self.df[col].quantile(0.25):.2f}\n"
+        
+        media = self.df[col].mean()
+        if media != 0:
+            cv = (self.df[col].std() / media) * 100
+            estatisticas += f"- **Coeficiente de Variação**: {cv:.2f}%\n"
+        
+        estatisticas += f"- **Curtose**: {self.df[col].kurt():.2f}\n"
+        estatisticas += f"- **Assimetria**: {self.df[col].skew():.2f}\n\n"
+        
+        return estatisticas
+
+    def _gerar_estatisticas_categoricas(self, col: str) -> str:
+        """Gerar estatísticas para coluna categórica"""
+        estatisticas = f"### 🏷️ {col}\n\n"
+        estatisticas += f"- **Valores Únicos**: {self.df[col].nunique()}\n"
+        estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
+        estatisticas += f"- **3 Valores Principais**:\n"
+        
+        valores_principais = self.df[col].value_counts().head(3)
+        for valor, contagem in valores_principais.items():
+            estatisticas += f"  - `{valor}`: {contagem} ocorrências\n"
+        estatisticas += "\n"
+        
+        return estatisticas
+
+    def _gerar_estatisticas_booleanas(self, col: str) -> str:
+        """Gerar estatísticas para coluna booleana"""
+        estatisticas = f"### 🔘 {col}\n\n"
+        contagem_valores = self.df[col].value_counts()
+        percentual = self.df[col].value_counts(normalize=True) * 100
+        
+        estatisticas += f"- **Distribuição**:\n"
+        for val, contagem in contagem_valores.items():
+            estatisticas += f"  - `{val}`: {contagem} ({percentual[val]:.1f}%)\n"
+        
+        estatisticas += f"- **Variância**: {self.df[col].var():.2f}\n"
+        estatisticas += f"- **Desvio Padrão**: {self.df[col].std():.2f}\n"
+        estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n\n"
+        
+        return estatisticas
+
+    # === MÉTODOS DE ANÁLISE COM IA ===
     def criar_prompt_analise(self, resumo_estatisticas: str, contexto_usuario: str = "") -> str:
-        """Criar prompt detalhado para API - VERSÃO OTIMIZADA"""
+        """Criar prompt detalhado para API"""
         if self.df is None:
             return "Nenhum dado disponível para análise"
 
-        # ✅ CARREGAR INSTRUÇÕES DE FORMA MAIS EFICIENTE
         try:
             diretorio_atual = os.path.dirname(os.path.abspath(__file__))
             
-            # Ler apenas as instruções essenciais
             caminho_instrucoes_analise = os.path.join(diretorio_atual, "pt_instrucoes_analise.md")
             with open(caminho_instrucoes_analise, "r", encoding="utf-8") as f:
                 bloco_de_instrucao_para_analise = f.read()
             
-            # Incluir instruções de retorno apenas se necessário
             caminho_instrucoes_insights = os.path.join(diretorio_atual, "pt_instrucoes_retorno_insights.md")
             with open(caminho_instrucoes_insights, "r", encoding="utf-8") as f:
                 bloco_de_instrucao_retorno_insights = f.read()
                 
-        except Exception as e:
-            print(f"⚠️ Erro ao carregar instruções: {e}")
-            # Usar instruções padrão em caso de erro
+        except Exception:
             bloco_de_instrucao_para_analise = "Analise os dados fornecidos de forma detalhada e profissional."
             bloco_de_instrucao_retorno_insights = "Forneça insights acionáveis e recomendações baseadas nos dados."
 
-        # ✅ RESUMIR CONTEXTO DO USUÁRIO
-        if not contexto_usuario.strip():
-            input_de_contexto_usuario = "Nenhum contexto adicional fornecido pelo usuário."
-        else:
-            input_de_contexto_usuario = contexto_usuario[:500]  # Limitar a 500 caracteres
+        input_de_contexto_usuario = contexto_usuario[:500] if contexto_usuario.strip() else "Nenhum contexto adicional fornecido pelo usuário."
 
-        # ✅ COMPACTAR INFORMAÇÕES DO DATAFRAME
         info_dataframe = f"""
         FORMATO DO DATASET: {self.df.shape[0]} linhas × {self.df.shape[1]} colunas
         COLUNAS: {', '.join(self.df.columns.tolist())}
@@ -533,188 +404,11 @@ class AnalisadorChatBot:
         IMPORTANTE: Seja conciso mas completo. Priorize insights acionáveis.
         """
         
-        # ✅ LIMITAR TAMANHO DO PROMPT
         if len(prompt) > 12000:
-            print("⚠️ Prompt muito longo, compactando...")
-            # Manter estatísticas mas reduzir detalhes excessivos
             prompt = prompt[:12000] + "\n\n[Continuação cortada por limite de tamanho]"
         
         return prompt
 
-    def analisar_conjunto_dados(self, contexto_usuario: str = "") -> Dict[str, Any]:
-        """Analisar o conjunto de dados atualmente carregado - VERSÃO OTIMIZADA"""
-        if self.df is None:
-            return None
-        
-        print("🚀 Iniciando Análise de Dados...")
-        inicio_tempo = time.time()
-        
-        # ✅ PRIMEIRO: Gerar estatísticas descritivas (necessárias para o prompt)
-        print("📈 Gerando estatísticas descritivas...")
-        resumo_estatisticas = self.gerar_estatisticas_descritivas()
-        
-        # ✅ SEGUNDO: Criar prompt e chamar API IMEDIATAMENTE
-        print("🤖 Chamando API para análise detalhada...")
-        prompt = self.criar_prompt_analise(resumo_estatisticas, contexto_usuario)
-        resultado_analise = self.chamar_api_open_router(prompt)
-        
-        # ✅ TERCEIRO: Gerar visualizações ENQUANTO espera pela IA
-        print("🎨 Criando visualizações em paralelo...")
-        visualizacoes = self.gerar_visualizacoes()
-        
-        tempo_decorrido = time.time() - inicio_tempo
-        
-        if resultado_analise:
-            resultados = {
-                'dataframe': self.df,
-                'estatisticas': resumo_estatisticas,
-                'analise_ia': resultado_analise,
-                'visualizacoes': visualizacoes,
-                'tempo_analise': tempo_decorrido
-            }
-            
-            print(f"✅ Análise concluída em {tempo_decorrido:.2f} segundos")
-            return resultados
-        else:
-            print(f"❌ Falha ao obter análise da API (tempo: {tempo_decorrido:.2f}s)")
-        return None
-
-    def gerar_visualizacoes(self) -> Dict[str, go.Figure]:
-        """Gerar visualizações interativas para o conjunto de dados - VERSÃO OTIMIZADA"""
-        if self.df is None or self.df.empty:
-            return {}
-        
-        visualizacoes = {}
-        
-        # ✅ USAR AMOSTRA PARA DATASETS GRANDES
-        amostra_df = self.df
-        if len(self.df) > 1000:
-            amostra_df = self.df.sample(1000, random_state=42)
-            print("📊 Usando amostra de 1000 registros para visualizações")
-        
-        # ✅ LIMITAR NÚMERO DE COLUNAS POR GRÁFICO
-        max_colunas_por_grafico = 10
-        
-        try:
-            # Gráfico de pizza de tipos de dados (mantido, mas mais rápido)
-            def categorizar_tipo_dado(tipo_dado):
-                if np.issubdtype(tipo_dado, np.number):
-                    return "Numérica"
-                elif np.issubdtype(tipo_dado, np.bool_):
-                    return "Booleana"
-                elif np.issubdtype(tipo_dado, np.datetime64) or np.issubdtype(tipo_dado, np.timedelta64):
-                    return "Data/Hora"
-                else:
-                    return "Categórica"
-            
-            contagem_tipos = self.df.dtypes.apply(categorizar_tipo_dado).value_counts()
-            
-            if len(contagem_tipos) > 0:
-                fig_tipos = px.pie(
-                    values=contagem_tipos.values,
-                    names=contagem_tipos.index,
-                    title="Distribuição de Tipos de Dados",
-                    color_discrete_sequence=px.colors.qualitative.Set3
-                )
-                fig_tipos.update_traces(textposition='inside', textinfo='percent+label')
-                fig_tipos.update_layout(height=400, showlegend=False)
-                visualizacoes['tipos_dados'] = fig_tipos
-            
-            # ✅ GRÁFICO DE DADOS AUSENTES OTIMIZADO
-            dados_ausentes = self.df.isnull().sum()
-            dados_ausentes = dados_ausentes[dados_ausentes > 0]
-            if len(dados_ausentes) > 0:
-                # Limitar a 15 colunas para não sobrecarregar
-                dados_ausentes = dados_ausentes.head(15)
-                fig_ausentes = px.bar(
-                    x=dados_ausentes.values,
-                    y=dados_ausentes.index,
-                    orientation='h',
-                    title="Valores Ausentes por Coluna (Top 15)",
-                    color=dados_ausentes.values,
-                    color_continuous_scale='Viridis'
-                )
-                fig_ausentes.update_layout(height=400, xaxis_title="Contagem de Valores Ausentes", yaxis_title="Colunas")
-                visualizacoes['dados_ausentes'] = fig_ausentes
-            
-            # ✅ DISTRIBUIÇÕES NUMÉRICAS OTIMIZADAS
-            colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-            if len(colunas_numericas) > 0:
-                # Limitar a 6 colunas para performance
-                colunas_para_grafico = colunas_numericas[:6]
-                n_cols = min(3, len(colunas_para_grafico))
-                n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
-                
-                fig_dist = make_subplots(
-                    rows=n_linhas, cols=n_cols,
-                    subplot_titles=colunas_para_grafico,
-                    horizontal_spacing=0.1,
-                    vertical_spacing=0.15
-                )
-                
-                for i, col in enumerate(colunas_para_grafico):
-                    linha = i // n_cols + 1
-                    col_num = i % n_cols + 1
-                    
-                    fig_dist.add_trace(
-                        go.Histogram(x=amostra_df[col], name=col, nbinsx=20),
-                        row=linha, col=col_num
-                    )
-                
-                fig_dist.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Numéricas (Amostra)", showlegend=False)
-                visualizacoes['distribuicoes_numericas'] = fig_dist
-            
-            # ✅ DISTRIBUIÇÕES CATEGÓRICAS OTIMIZADAS
-            colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns
-            if len(colunas_categoricas) > 0:
-                # Limitar a 6 colunas
-                colunas_para_grafico = colunas_categoricas[:6]
-                n_cols = min(3, len(colunas_para_grafico))
-                n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
-
-                fig_dist_cat = make_subplots(
-                    rows=n_linhas, cols=n_cols,
-                    subplot_titles=colunas_para_grafico,
-                    horizontal_spacing=0.1,
-                    vertical_spacing=0.15
-                )
-                
-                for i, col in enumerate(colunas_para_grafico):
-                    linha = i // n_cols + 1
-                    col_num = i % n_cols + 1
-                    
-                    # Para dados categóricos, usar amostra e limitar categorias
-                    contagem_valores = amostra_df[col].value_counts().head(8)  # Apenas 8 valores principais
-                    fig_dist_cat.add_trace(
-                        go.Bar(x=contagem_valores.index, y=contagem_valores.values, name=col),
-                        row=linha, col=col_num
-                    )
-                    # Rotacionar labels para melhor visualização
-                    fig_dist_cat.update_xaxes(tickangle=45, row=linha, col=col_num)
-                
-                fig_dist_cat.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Categóricas (Amostra)", showlegend=False)
-                visualizacoes['distribuicoes_categoricas'] = fig_dist_cat
-
-            # ✅ MAPA DE CALOR DE CORRELAÇÃO OTIMIZADO
-            colunas_numericas_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-            if len(colunas_numericas_corr) > 1:
-                # Usar amostra para correlação
-                matriz_corr = amostra_df[colunas_numericas_corr].corr()
-                fig_corr = px.imshow(
-                    matriz_corr,
-                    title="Mapa de Calor de Correlação (Amostra)",
-                    color_continuous_scale='RdBu_r',
-                    aspect="auto"
-                )
-                fig_corr.update_layout(height=500)
-                visualizacoes['mapa_calor_correlacao'] = fig_corr
-            
-        except Exception as e:
-            print(f"⚠️ Erro ao gerar visualizações: {e}")
-            # Continuar mesmo com erro em uma visualização
-        
-        return visualizacoes
-         
     def chamar_api_open_router(self, prompt: str) -> Optional[str]:
         """Fazer chamada API para Open Router"""
         payload = {
@@ -743,90 +437,491 @@ class AnalisadorChatBot:
             
         except requests.exceptions.RequestException as e:
             print(f"❌ Erro de API: {e}")
-            if hasattr(e, 'response') and e.response is not None:
-                print(f"Resposta: {e.response.text}")
             return None
-  
-    def analisar_arquivo(self, caminho_arquivo: str, nome_planilha: str = None, salvar_saida: bool = False, diretorio_saida: str = None) -> Dict[str, Any]:
-        """Método principal para analisar arquivo de dados (CSV, Excel, JSON)"""
-        
-        print("🚀 Iniciando Análise de Dados...")
-        
-        # Carregar dados
-        df = self.carregar_e_previsualizar_dados(caminho_arquivo, nome_planilha)
-        if df is None:
+
+    def analisar_conjunto_dados(self, contexto_usuario: str = "") -> Dict[str, Any]:
+        """Analisar o conjunto de dados atualmente carregado"""
+        if self.df is None:
             return None
         
-        # Gerar estatísticas descritivas
-        print("📈 Gerando estatísticas descritivas...")
+        inicio_tempo = time.time()
+        
         resumo_estatisticas = self.gerar_estatisticas_descritivas()
-        
-        # Gerar visualizações
-        print("🎨 Criando visualizações...")
+        prompt = self.criar_prompt_analise(resumo_estatisticas, contexto_usuario)
+        resultado_analise = self.chamar_api_open_router(prompt)
         visualizacoes = self.gerar_visualizacoes()
         
-        # Criar prompt de análise
-        prompt = self.criar_prompt_analise(resumo_estatisticas)
-        
-        # Chamar API
-        print("🤖 Chamando API para análise detalhada...")
-        resultado_analise = self.chamar_api_open_router(prompt)
+        tempo_decorrido = time.time() - inicio_tempo
         
         if resultado_analise:
-            resultados = {
-                'dataframe': df,
+            return {
+                'dataframe': self.df,
                 'estatisticas': resumo_estatisticas,
                 'analise_ia': resultado_analise,
-                'visualizacoes': visualizacoes
+                'visualizacoes': visualizacoes,
+                'tempo_analise': tempo_decorrido
             }
+        
+        return None
+
+    # === MÉTODOS DE VISUALIZAÇÃO ===
+    def gerar_visualizacoes(self) -> Dict[str, go.Figure]:
+        """Gerar visualizações interativas para o conjunto de dados"""
+        if self.df is None or self.df.empty:
+            return {}
+        
+        visualizacoes = {}
+        amostra_df = self.df.sample(1000, random_state=42) if len(self.df) > 1000 else self.df
+        
+        try:
+            # Gráfico de tipos de dados
+            def categorizar_tipo_dado(tipo_dado):
+                if np.issubdtype(tipo_dado, np.number):
+                    return "Numérica"
+                elif np.issubdtype(tipo_dado, np.bool_):
+                    return "Booleana"
+                elif np.issubdtype(tipo_dado, np.datetime64) or np.issubdtype(tipo_dado, np.timedelta64):
+                    return "Data/Hora"
+                else:
+                    return "Categórica"
             
-            # Salvar resultados se solicitado
-            if salvar_saida:
-                self.salvar_resultados(resultados, caminho_arquivo, diretorio_saida)
+            contagem_tipos = self.df.dtypes.apply(categorizar_tipo_dado).value_counts()
             
-            return resultados
-        else:
-            print("❌ Falha ao obter análise da API")
-            return None
-    
-    def salvar_resultados(self, resultados: Dict[str, Any], caminho_arquivo_original: str, diretorio_saida: str = None):
-        """Salvar resultados da análise em arquivos TXT"""
-        nome_base = os.path.splitext(os.path.basename(caminho_arquivo_original))[0]
+            if len(contagem_tipos) > 0:
+                fig_tipos = px.pie(
+                    values=contagem_tipos.values,
+                    names=contagem_tipos.index,
+                    title="Distribuição de Tipos de Dados",
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                fig_tipos.update_traces(textposition='inside', textinfo='percent+label')
+                fig_tipos.update_layout(height=400, showlegend=False)
+                visualizacoes['tipos_dados'] = fig_tipos
+            
+            # Gráfico de dados ausentes
+            dados_ausentes = self.df.isnull().sum()
+            dados_ausentes = dados_ausentes[dados_ausentes > 0].head(15)
+            if len(dados_ausentes) > 0:
+                fig_ausentes = px.bar(
+                    x=dados_ausentes.values,
+                    y=dados_ausentes.index,
+                    orientation='h',
+                    title="Valores Ausentes por Coluna (Top 15)",
+                    color=dados_ausentes.values,
+                    color_continuous_scale='Viridis'
+                )
+                fig_ausentes.update_layout(height=400, xaxis_title="Contagem de Valores Ausentes", yaxis_title="Colunas")
+                visualizacoes['dados_ausentes'] = fig_ausentes
+            
+            # Distribuições numéricas
+            colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            if len(colunas_numericas) > 0:
+                visualizacoes.update(self._gerar_distribuicoes_numericas(amostra_df, colunas_numericas))
+            
+            # Distribuições categóricas
+            colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns
+            if len(colunas_categoricas) > 0:
+                visualizacoes.update(self._gerar_distribuicoes_categoricas(amostra_df, colunas_categoricas))
+
+            # Mapa de calor de correlação
+            colunas_numericas_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            if len(colunas_numericas_corr) > 1:
+                visualizacoes.update(self._gerar_mapa_calor_correlacao(amostra_df, colunas_numericas_corr))
+            
+        except Exception as e:
+            print(f"⚠️ Erro ao gerar visualizações: {e}")
         
-        if diretorio_saida:
-            os.makedirs(diretorio_saida, exist_ok=True)
-            caminho_base = os.path.join(diretorio_saida, nome_base)
-        else:
-            caminho_base = nome_base
+        return visualizacoes
+
+    def _gerar_distribuicoes_numericas(self, amostra_df: pd.DataFrame, colunas_numericas: List[str]) -> Dict[str, go.Figure]:
+        """Gerar distribuições para colunas numéricas"""
+        colunas_para_grafico = colunas_numericas[:6]
+        n_cols = min(3, len(colunas_para_grafico))
+        n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
         
-        # Salvar estatísticas como markdown
-        with open(f"{caminho_base}_estatisticas.txt", "w", encoding="utf-8") as f:
-            f.write(resultados['estatisticas'])
+        fig_dist = make_subplots(
+            rows=n_linhas, cols=n_cols,
+            subplot_titles=colunas_para_grafico,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.15
+        )
         
-        # Salvar análise IA como markdown
-        with open(f"{caminho_base}_analise_ia.txt", "w", encoding="utf-8") as f:
-            f.write(resultados['analise_ia'])
+        for i, col in enumerate(colunas_para_grafico):
+            linha = i // n_cols + 1
+            col_num = i % n_cols + 1
+            
+            fig_dist.add_trace(
+                go.Histogram(x=amostra_df[col], name=col, nbinsx=20),
+                row=linha, col=col_num
+            )
         
-        # Salvar relatório combinado como markdown
-        relatorio_combinado = f"""# 📊 Relatório de Análise de Dados
-
-        ## Conjunto de Dados: {nome_base}
-
-        ## Estatísticas Descritivas
-
-        {resultados['estatisticas']}
-
-        ## Análise
-
-        {resultados['analise_ia']}
-
-        ---
-        *Relatório gerado automaticamente com Analisador de Dados IA*
-        """
-        with open(f"{caminho_base}_relatorio_completo.txt", "w", encoding="utf-8") as f:
-            f.write(relatorio_combinado)
+        fig_dist.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Numéricas (Amostra)", showlegend=False)
         
-        print(f"💾 Resultados salvos como arquivos Markdown:")
-        print(f"   - {caminho_base}_estatisticas.txt")
-        print(f"   - {caminho_base}_analise_ia.txt")
-        print(f"   - {caminho_base}_relatorio_completo.txt")
+        return {'distribuicoes_numericas': fig_dist}
+
+    def _gerar_distribuicoes_categoricas(self, amostra_df: pd.DataFrame, colunas_categoricas: List[str]) -> Dict[str, go.Figure]:
+        """Gerar distribuições para colunas categóricas"""
+        colunas_para_grafico = colunas_categoricas[:6]
+        n_cols = min(3, len(colunas_para_grafico))
+        n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
+
+        fig_dist_cat = make_subplots(
+            rows=n_linhas, cols=n_cols,
+            subplot_titles=colunas_para_grafico,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.15
+        )
+        
+        for i, col in enumerate(colunas_para_grafico):
+            linha = i // n_cols + 1
+            col_num = i % n_cols + 1
+            
+            contagem_valores = amostra_df[col].value_counts().head(8)
+            fig_dist_cat.add_trace(
+                go.Bar(x=contagem_valores.index, y=contagem_valores.values, name=col),
+                row=linha, col=col_num
+            )
+            fig_dist_cat.update_xaxes(tickangle=45, row=linha, col=col_num)
+        
+        fig_dist_cat.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Categóricas (Amostra)", showlegend=False)
+        
+        return {'distribuicoes_categoricas': fig_dist_cat}
+
+    def _gerar_mapa_calor_correlacao(self, amostra_df: pd.DataFrame, colunas_numericas_corr: List[str]) -> Dict[str, go.Figure]:
+        """Gerar mapa de calor de correlação"""
+        matriz_corr = amostra_df[colunas_numericas_corr].corr()
+        fig_corr = px.imshow(
+            matriz_corr,
+            title="Mapa de Calor de Correlação (Amostra)",
+            color_continuous_scale='RdBu_r',
+            aspect="auto"
+        )
+        fig_corr.update_layout(height=500)
+        
+        return {'mapa_calor_correlacao': fig_corr}
+
+    # === MÉTODOS DE CORRELAÇÃO ===
+    @staticmethod
+    def cramers_v(x, y) -> float:
+        """Calcula Cramér's V para duas variáveis categóricas"""
+        try:
+            mask = ~x.isna() & ~y.isna()
+            x_clean = x[mask]
+            y_clean = y[mask]
+            
+            if len(x_clean) == 0 or len(y_clean) == 0:
+                return np.nan
+                
+            confusion_matrix = pd.crosstab(x_clean, y_clean)
+            chi2 = chi2_contingency(confusion_matrix)[0]
+            n = confusion_matrix.sum().sum()
+            
+            if n == 0:
+                return np.nan
+                
+            phi2 = chi2 / n
+            r, k = confusion_matrix.shape
+            phi2corr = max(0, phi2 - ((k-1)*(r-1))/(n-1))
+            rcorr = r - ((r-1)**2)/(n-1)
+            kcorr = k - ((k-1)**2)/(n-1)
+            return np.sqrt(phi2corr / min((kcorr-1), (rcorr-1)))
+        except:
+            return np.nan
+
+    @staticmethod
+    def theils_u(x, y) -> float:
+        """Calcula Theil's U para duas variáveis categóricas"""
+        try:
+            if x.name == y.name:
+                return 1.0
+            
+            mask = ~x.isna() & ~y.isna()
+            x_clean = x[mask]
+            y_clean = y[mask]
+            
+            if len(x_clean) == 0 or len(y_clean) == 0:
+                return np.nan
+            
+            x_clean = x_clean.reset_index(drop=True)
+            y_clean = y_clean.reset_index(drop=True)
+            
+            conditional_entropy = 0
+            for value in x_clean.unique():
+                mask_value = x_clean == value
+                y_subset = y_clean[mask_value.values]
+                prob = len(y_subset) / len(x_clean)
+                if prob > 0 and len(y_subset) > 0:
+                    value_counts = y_subset.value_counts(normalize=True)
+                    value_counts = value_counts[value_counts > 0]
+                    if len(value_counts) > 0:
+                        entropy = -np.sum(value_counts * np.log2(value_counts))
+                        conditional_entropy += prob * entropy
+            
+            y_value_counts = y_clean.value_counts(normalize=True)
+            y_value_counts = y_value_counts[y_value_counts > 0]
+            if len(y_value_counts) == 0:
+                return 1.0
+                
+            y_entropy = -np.sum(y_value_counts * np.log2(y_value_counts))
+            
+            if y_entropy == 0:
+                return 1.0
+            
+            return (y_entropy - conditional_entropy) / y_entropy
+        except Exception as e:
+            return np.nan
+
+    @staticmethod
+    def phi_coefficient(x, y) -> float:
+        """Calcula coeficiente Phi para duas variáveis binárias"""
+        try:
+            mask = ~x.isna() & ~y.isna()
+            x_clean = x[mask]
+            y_clean = y[mask]
+            
+            if len(x_clean) == 0 or len(y_clean) == 0:
+                return np.nan
+                
+            confusion_matrix = pd.crosstab(x_clean, y_clean)
+            if confusion_matrix.shape != (2, 2):
+                return np.nan
+            
+            a, b = confusion_matrix.iloc[0, 0], confusion_matrix.iloc[0, 1]
+            c, d = confusion_matrix.iloc[1, 0], confusion_matrix.iloc[1, 1]
+            
+            numerator = a * d - b * c
+            denominator = np.sqrt((a + b) * (c + d) * (a + c) * (b + d))
+            
+            return numerator / denominator if denominator != 0 else 0
+        except:
+            return np.nan
+
+    @staticmethod
+    def correlation_ratio(categories, values) -> float:
+        """Calcula Correlation Ratio (eta) entre categórica e numérica"""
+        try:
+            mask = ~categories.isna() & ~values.isna()
+            categories_clean = categories[mask]
+            values_clean = values[mask]
+            
+            if len(categories_clean) == 0 or len(values_clean) == 0:
+                return np.nan
+            
+            categories_clean = categories_clean.reset_index(drop=True)
+            values_clean = values_clean.reset_index(drop=True)
+            
+            categories_coded = pd.Categorical(categories_clean)
+            overall_mean = values_clean.mean()
+            
+            if np.isnan(overall_mean):
+                return np.nan
+            
+            between_variance = 0
+            for category in categories_coded.categories:
+                mask_category = categories_coded == category
+                group_values = values_clean[mask_category.values]
+                if len(group_values) > 0:
+                    group_mean = group_values.mean()
+                    if not np.isnan(group_mean):
+                        between_variance += len(group_values) * (group_mean - overall_mean) ** 2
+            
+            between_variance /= len(values_clean)
+            total_variance = values_clean.var()
+            
+            if total_variance == 0:
+                return 0
+                
+            return np.sqrt(between_variance / total_variance)
+        except Exception as e:
+            return np.nan
+
+    def calcular_matriz_correlacao(self, metodo: str) -> pd.DataFrame:
+        """Calcula matriz de correlação baseada no método selecionado"""
+        if self.df is None:
+            return pd.DataFrame()
+            
+        colunas = self.df.columns
+        n = len(colunas)
+        matriz = pd.DataFrame(np.zeros((n, n)), columns=colunas, index=colunas)
+        
+        for i, col1 in enumerate(colunas):
+            for j, col2 in enumerate(colunas):
+                if i == j:
+                    matriz.iloc[i, j] = 1.0
+                    continue
+                    
+                try:
+                    if metodo == "Automático":
+                        df_codificado = self.df.copy()
+                        
+                        for col in df_codificado.select_dtypes(include=['object', 'category']).columns:
+                            df_codificado[col] = pd.factorize(df_codificado[col])[0]
+                        
+                        for col in df_codificado.select_dtypes(include='bool').columns:
+                            df_codificado[col] = df_codificado[col].astype(int)
+                        
+                        if len(df_codificado) > 1:
+                            corr_matrix = df_codificado.corr()
+                            matriz.iloc[i, j] = corr_matrix.loc[col1, col2]
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Pearson":
+                        if pd.api.types.is_numeric_dtype(self.df[col1]) and pd.api.types.is_numeric_dtype(self.df[col2]):
+                            mask = ~self.df[col1].isna() & ~self.df[col2].isna()
+                            if mask.sum() > 1:
+                                x = self.df.loc[mask, col1]
+                                y = self.df.loc[mask, col2]
+                                corr, _ = pearsonr(x, y)
+                                matriz.iloc[i, j] = corr
+                            else:
+                                matriz.iloc[i, j] = np.nan
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Spearman":
+                        if pd.api.types.is_numeric_dtype(self.df[col1]) and pd.api.types.is_numeric_dtype(self.df[col2]):
+                            mask = ~self.df[col1].isna() & ~self.df[col2].isna()
+                            if mask.sum() > 1:
+                                x = self.df.loc[mask, col1]
+                                y = self.df.loc[mask, col2]
+                                corr, _ = spearmanr(x, y)
+                                matriz.iloc[i, j] = corr
+                            else:
+                                matriz.iloc[i, j] = np.nan
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Kendall Tau":
+                        if pd.api.types.is_numeric_dtype(self.df[col1]) and pd.api.types.is_numeric_dtype(self.df[col2]):
+                            mask = ~self.df[col1].isna() & ~self.df[col2].isna()
+                            if mask.sum() > 1:
+                                x = self.df.loc[mask, col1]
+                                y = self.df.loc[mask, col2]
+                                corr, _ = kendalltau(x, y)
+                                matriz.iloc[i, j] = corr
+                            else:
+                                matriz.iloc[i, j] = np.nan
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Cramers V":
+                        if (pd.api.types.is_object_dtype(self.df[col1]) or pd.api.types.is_categorical_dtype(self.df[col1])) and \
+                           (pd.api.types.is_object_dtype(self.df[col2]) or pd.api.types.is_categorical_dtype(self.df[col2])):
+                            matriz.iloc[i, j] = self.cramers_v(self.df[col1], self.df[col2])
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Theils U":
+                        if (pd.api.types.is_object_dtype(self.df[col1]) or pd.api.types.is_categorical_dtype(self.df[col1])) and \
+                           (pd.api.types.is_object_dtype(self.df[col2]) or pd.api.types.is_categorical_dtype(self.df[col2])):
+                            matriz.iloc[i, j] = self.theils_u(self.df[col1], self.df[col2])
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Phi":
+                        if (pd.api.types.is_object_dtype(self.df[col1]) or pd.api.types.is_categorical_dtype(self.df[col1])) and \
+                           (pd.api.types.is_object_dtype(self.df[col2]) or pd.api.types.is_categorical_dtype(self.df[col2])):
+                            matriz.iloc[i, j] = self.phi_coefficient(self.df[col1], self.df[col2])
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                    elif metodo == "Correlation Ratio":
+                        if (pd.api.types.is_object_dtype(self.df[col1]) or pd.api.types.is_categorical_dtype(self.df[col1])) and \
+                           pd.api.types.is_numeric_dtype(self.df[col2]):
+                            matriz.iloc[i, j] = self.correlation_ratio(self.df[col1], self.df[col2])
+                        elif (pd.api.types.is_object_dtype(self.df[col2]) or pd.api.types.is_categorical_dtype(self.df[col2])) and \
+                             pd.api.types.is_numeric_dtype(self.df[col1]):
+                            matriz.iloc[i, j] = self.correlation_ratio(self.df[col2], self.df[col1])
+                        else:
+                            matriz.iloc[i, j] = np.nan
+                            
+                except (ValueError, TypeError, ZeroDivisionError):
+                    matriz.iloc[i, j] = np.nan
+                
+        return matriz
+
+    def criar_mapa_calor_correlacao_completo(self, metodo: str) -> Tuple[Optional[go.Figure], Optional[pd.DataFrame]]:
+        """Criar mapa de calor de correlação para todas as variáveis"""
+        if self.df is None or self.df.empty:
+            return None, None
+            
+        matriz_corr = self.calcular_matriz_correlacao(metodo)
+        
+        try:
+            valores = matriz_corr.values
+            valores = np.clip(valores, -1, 1)
+            matriz_corr_clipped = pd.DataFrame(valores, 
+                                             index=matriz_corr.index, 
+                                             columns=matriz_corr.columns)
+            
+            fig = px.imshow(
+                matriz_corr_clipped,
+                title=f"Matriz de Correlação - {metodo}",
+                color_continuous_scale='RdBu_r',
+                aspect="auto",
+                range_color=[-1, 1],
+                labels=dict(color="Correlação"),
+                zmin=-1,
+                zmax=1
+            )
+            
+            fig.update_layout(
+                height=600,
+                paper_bgcolor='rgba(0,0,0,0)',
+                font=dict(color='white'),
+                coloraxis_colorbar=dict(
+                    title="Correlação",
+                    tickvals=[-1, -0.5, 0, 0.5, 1],
+                    ticktext=["-1.0", "-0.5", "0.0", "0.5", "1.0"]
+                )
+            )
+            
+            return fig, matriz_corr
+        except Exception as e:
+            return None, matriz_corr
+
+    # === MÉTODOS AUXILIARES ===
+    def obter_planilhas_excel(self, caminho_arquivo: str) -> List[str]:
+        """Obter lista de planilhas disponíveis em arquivo Excel"""
+        try:
+            if not os.path.exists(caminho_arquivo):
+                return []
+            
+            tamanho_arquivo = os.path.getsize(caminho_arquivo)
+            if tamanho_arquivo == 0:
+                return []
+            
+            engines_para_tentar = []
+            if caminho_arquivo.endswith('.xlsx'):
+                engines_para_tentar = ['openpyxl', 'xlrd']
+            elif caminho_arquivo.endswith('.xls'):
+                engines_para_tentar = ['xlrd', 'openpyxl']
+            else:
+                engines_para_tentar = ['openpyxl', 'xlrd']
+            
+            planilhas = []
+            engine_sucesso = None
+            
+            for engine in engines_para_tentar:
+                try:
+                    arquivo_excel = pd.ExcelFile(caminho_arquivo, engine=engine)
+                    planilhas = arquivo_excel.sheet_names
+                    engine_sucesso = engine
+                    break
+                except ImportError:
+                    continue
+                except Exception:
+                    continue
+            
+            if not planilhas and not engine_sucesso:
+                try:
+                    arquivo_excel = pd.ExcelFile(caminho_arquivo)
+                    planilhas = arquivo_excel.sheet_names
+                except Exception:
+                    pass
+            
+            return planilhas
+            
+        except Exception:
+            return []
