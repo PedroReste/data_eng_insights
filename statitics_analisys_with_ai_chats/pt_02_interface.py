@@ -654,7 +654,6 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
         # Armazenar o contexto na sessão
         st.session_state.contexto_usuario = contexto_usuario
         
-        # CORREÇÃO: Recursos em um único cartão com layout melhorado
         st.markdown("### ✨ Próximos Passos")
         st.markdown("""
         <div class="feature-card">
@@ -664,7 +663,7 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
                     <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Confirme se os dados foram carregados corretamente na visualização acima</p>
                 </div>
                 <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">🤖 Adicione Contexto</h4>
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">🔎 Adicione Contexto</h4>
                     <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Use o campo acima para descrever o contexto dos seus dados (opcional)</p>
                 </div>
                 <div style="padding: 0.5rem;">
@@ -686,7 +685,6 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
         </div>
         """, unsafe_allow_html=True)
         
-        # CORREÇÃO: Recursos em um único cartão com layout melhorado
         st.markdown("### ✨ Recursos do Aplicativo")
         st.markdown("""
         <div class="feature-card">
@@ -700,14 +698,13 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
                     <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas</p>
                 </div>
                 <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🤖 Insights com IA</h4>
+                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🔎 Insights Gerados</h4>
                     <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos e inteligência de negócios</p>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        # CORREÇÃO: Como Usar e Dicas lado a lado com layout melhorado
         col1, col2 = st.columns(2)
         
         with col1:
@@ -824,7 +821,6 @@ def criar_scatterplot_interativo(df):
         st.info("⚠️ É necessário pelo menos 2 colunas para gerar gráficos de dispersão.")
         return None
     
-    # NOVO: Inicializar estado da sessão para seleções de forma mais robusta
     if (st.session_state.scatter_x is None or 
         st.session_state.scatter_x not in todas_colunas):
         st.session_state.scatter_x = todas_colunas[0]
@@ -1245,7 +1241,6 @@ def exibir_aba_numericas(resultados):
                     else:
                         st.metric("Coeficiente de Variação (CV)", "Indefinido (média zero)")
                     
-                    # Curtose e Assimetria - CORREÇÃO: usar kurt() e skew() em vez de kurtosis() e skewness()
                     curtose = df[col].kurt()
                     assimetria = df[col].skew()
                     st.metric("Curtose", f"{curtose:.2f}")
@@ -1520,9 +1515,8 @@ def exibir_aba_data_hora(resultados):
 
 def exibir_insights_ia(resultados):
     """Exibir análise da IA com seções estruturadas"""
-    st.markdown('<div class="section-header">🤖 Insights Gerados</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">🔎 Insights Gerados</div>', unsafe_allow_html=True)
     
-    # NOVO: Exibir tempo de análise
     if 'tempo_analise' in resultados:
         st.markdown(f"""
         <div class="card" style="border-left: 4px solid #2ecc71;">
@@ -1605,7 +1599,6 @@ def exibir_insights_ia(resultados):
 
 def main():
     """Função principal do aplicativo"""
-    # Inicializar estado da sessão
     if 'analisador' not in st.session_state:
         st.session_state.analisador = None
     if 'resultados_analise' not in st.session_state:
@@ -1618,10 +1611,8 @@ def main():
         st.session_state.planilha_selecionada = None
     if 'planilhas_excel' not in st.session_state:
         st.session_state.planilhas_excel = []
-    # NOVO: Inicializar contexto do usuário
     if 'contexto_usuario' not in st.session_state:
         st.session_state.contexto_usuario = ""
-    # NOVO: Inicializar scatter plot state
     if 'scatter_x' not in st.session_state:
         st.session_state.scatter_x = None
     if 'scatter_y' not in st.session_state:
@@ -1653,9 +1644,7 @@ def main():
                 st.session_state.resultados_analise = None
                 st.session_state.planilha_selecionada = None
                 st.session_state.planilhas_excel = []
-                # NOVO: Limpar contexto ao carregar novo arquivo
                 st.session_state.contexto_usuario = ""
-                # NOVO: Resetar scatter plot state quando novo arquivo é carregado
                 st.session_state.scatter_x = None
                 st.session_state.scatter_y = None
                 
@@ -1709,7 +1698,6 @@ def main():
                             df = pd.read_excel(arquivo_carregado, sheet_name=planilha_selecionada)
                             st.session_state.analisador.carregar_dados(df)
                             st.session_state.planilha_selecionada = planilha_selecionada
-                            # NOVO: Resetar scatter plot state quando nova planilha é carregada
                             st.session_state.scatter_x = None
                             st.session_state.scatter_y = None
                             st.success(f"✅ Planilha '{planilha_selecionada}' carregada com sucesso!")
@@ -1717,10 +1705,9 @@ def main():
                 except Exception as e:
                     st.error(f"❌ Erro ao ler arquivo Excel: {str(e)}")
         
-        # Botão de análise - MODIFICADO para usar contexto
         st.markdown("---")
         analise_clicada = st.button(
-            "🚀 Analisar Conjunto de Dados",
+            "🚀 Analisar Dados",
             type="primary",
             use_container_width=True,
             disabled=not st.session_state.arquivo_carregado or st.session_state.analisador.df is None
@@ -1728,48 +1715,48 @@ def main():
         
         if analise_clicada:
             if st.session_state.analisador.df is not None:
-                # NOVO: Criar placeholder para o timer
-                timer_placeholder = st.empty()
+                # ✅ FEEDBACK VISUAL MELHORADO
+                progress_bar = st.progress(0)
+                status_text = st.empty()
                 
-                with st.spinner("🤖 Analisando conjunto de dados com IA..."):
+                def atualizar_progresso(fase, progresso):
+                    status_text.text(f"⏳ {fase}...")
+                    progress_bar.progress(progresso)
+                
+                with st.spinner("🔎 Iniciando análise completa..."):
                     try:
-                        inicio_tempo = time.time()
+                        atualizar_progresso("Preparando dados", 10)
+                        time.sleep(0.5)  # Pequeno delay para feedback suave
                         
-                        # Atualizar timer em tempo real
-                        while True:
-                            tempo_decorrido = time.time() - inicio_tempo
-                            timer_placeholder.markdown(f"""
-                            <div class="card" style="border-left: 4px solid #f39c12;">
-                                <p style="font-size: 1rem; margin: 0.5rem 0; color: #f39c12;">
-                                    ⏱️ <strong>Tempo decorrido:</strong> {tempo_decorrido:.1f} segundos
-                                </p>
-                            </div>
-                            """, unsafe_allow_html=True)
-                            
-                            # Verificar se a análise terminou (não é perfeito, mas funciona)
-                            if 'resultados_analise' in st.session_state and st.session_state.resultados_analise is not None:
-                                break
-                            time.sleep(0.5)
+                        atualizar_progresso("Gerando estatísticas", 30)
+                        time.sleep(0.3)
                         
+                        # Obter contexto uma vez
                         contexto_usuario = st.session_state.get('contexto_usuario', '')
+                        
+                        atualizar_progresso("Solicitando análise da IA", 60)
                         resultados = st.session_state.analisador.analisar_conjunto_dados(contexto_usuario)
                         
-                        # Limpar placeholder do timer
-                        timer_placeholder.empty()
+                        atualizar_progresso("Processando resultados", 90)
                         
                         if resultados:
                             st.session_state.resultados_analise = resultados
+                            atualizar_progresso("Análise concluída", 100)
                             st.success("✅ Análise concluída com sucesso!")
+                            time.sleep(1)
                             st.rerun()
                         else:
                             st.error("❌ Análise falhou. Por favor, verifique seus dados e tente novamente.")
+                            
                     except Exception as e:
-                        timer_placeholder.empty()
                         st.error(f"❌ Erro durante a análise: {str(e)}")
+                
+                # Limpar barra de progresso
+                progress_bar.empty()
+                status_text.empty()
             else:
                 st.error("❌ Por favor, carregue e carregue um arquivo de dados primeiro.")
         
-        # Botão limpar análise
         if st.session_state.resultados_analise:
             if st.button("🗑️ Limpar Análise", type="secondary", use_container_width=True):
                 st.session_state.resultados_analise = None
@@ -1778,28 +1765,20 @@ def main():
                 st.session_state.planilha_selecionada = None
                 st.session_state.planilhas_excel = []
                 st.session_state.analisador.df = None
-                st.session_state.contexto_usuario = ""  # NOVO: Limpar contexto também
-                st.session_state.scatter_x = None  # NOVO: Limpar scatter state
-                st.session_state.scatter_y = None  # NOVO: Limpar scatter state
+                st.session_state.contexto_usuario = ""
+                st.session_state.scatter_x = None
+                st.session_state.scatter_y = None
                 st.rerun()
     
-    # Área de conteúdo principal
     if st.session_state.resultados_analise is not None:
-        # Mostrar resultados da análise
-        aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🤖 Insights IA"])
-        
+        aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🔎 Insights IA"])
         with aba1:
             exibir_analise_exploratoria(st.session_state.resultados_analise)
-        
         with aba2:
             exibir_insights_ia(st.session_state.resultados_analise)
-    
     elif st.session_state.arquivo_carregado and st.session_state.arquivo_atual is not None:
-        # Mostrar tela de boas-vindas com arquivo carregado (mas sem análise ainda)
         exibir_tela_boas_vindas(arquivo_carregado=st.session_state.arquivo_atual)
-    
     else:
-        # Exibir tela de boas-vindas padrão
         exibir_tela_boas_vindas()
 
 if __name__ == "__main__":

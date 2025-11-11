@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 import numpy as np
 from typing import Dict, Any, Optional, List
 
-# Importar streamlit no nível superior, mas lidar com o caso quando não estiver disponível
 try:
     import streamlit as st
     STREAMLIT_DISPONIVEL = True
@@ -478,221 +477,241 @@ class AnalisadorChatBot:
         return resumo_estatisticas
     
     def criar_prompt_analise(self, resumo_estatisticas: str, contexto_usuario: str = "") -> str:
-        """Criar prompt detalhado para API com solicitação de formatação markdown"""
+        """Criar prompt detalhado para API - VERSÃO OTIMIZADA"""
         if self.df is None:
             return "Nenhum dado disponível para análise"
 
-        diretorio_atual = os.path.dirname(os.path.abspath(__file__))
-        caminho_instrucoes_analise = os.path.join(diretorio_atual, "pt_instrucoes_analise.md")
-        caminho_instrucoes_insights = os.path.join(diretorio_atual, "pt_instrucoes_retorno_insights.md")
-        caminho_instrucoes_contexto_usuario = os.path.join(diretorio_atual, "pt_instrucoes_contexto_usuario.md")
+        # ✅ CARREGAR INSTRUÇÕES DE FORMA MAIS EFICIENTE
+        try:
+            diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+            
+            # Ler apenas as instruções essenciais
+            caminho_instrucoes_analise = os.path.join(diretorio_atual, "pt_instrucoes_analise.md")
+            with open(caminho_instrucoes_analise, "r", encoding="utf-8") as f:
+                bloco_de_instrucao_para_analise = f.read()
+            
+            # Incluir instruções de retorno apenas se necessário
+            caminho_instrucoes_insights = os.path.join(diretorio_atual, "pt_instrucoes_retorno_insights.md")
+            with open(caminho_instrucoes_insights, "r", encoding="utf-8") as f:
+                bloco_de_instrucao_retorno_insights = f.read()
+                
+        except Exception as e:
+            print(f"⚠️ Erro ao carregar instruções: {e}")
+            # Usar instruções padrão em caso de erro
+            bloco_de_instrucao_para_analise = "Analise os dados fornecidos de forma detalhada e profissional."
+            bloco_de_instrucao_retorno_insights = "Forneça insights acionáveis e recomendações baseadas nos dados."
 
-        with open(caminho_instrucoes_analise, "r", encoding="utf-8") as f:
-            bloco_de_instrucao_para_analise = f.read()
-
-        with open(caminho_instrucoes_insights, "r", encoding="utf-8") as f:
-            bloco_de_instrucao_retorno_insights = f.read()
-
-        with open(caminho_instrucoes_contexto_usuario, "r", encoding="utf-8") as f:
-            bloco_de_instrucao_contexto_usuario = f.read()
-
-        # NOVO: Tratar contexto vazio do usuário
+        # ✅ RESUMIR CONTEXTO DO USUÁRIO
         if not contexto_usuario.strip():
-            input_de_contexto_usuario = "Nenhum contexto adicional inserido."
+            input_de_contexto_usuario = "Nenhum contexto adicional fornecido pelo usuário."
         else:
-            input_de_contexto_usuario = contexto_usuario
+            input_de_contexto_usuario = contexto_usuario[:500]  # Limitar a 500 caracteres
+
+        # ✅ COMPACTAR INFORMAÇÕES DO DATAFRAME
+        info_dataframe = f"""
+        FORMATO DO DATASET: {self.df.shape[0]} linhas × {self.df.shape[1]} colunas
+        COLUNAS: {', '.join(self.df.columns.tolist())}
+        TIPOS PRINCIPAIS: {dict(self.df.dtypes.value_counts())}
+        """
 
         prompt = f"""
-        UTILIZE O BLOCO DE INSTRUÇÃO ABAIXO PARA GERAR OS RESULTADOS:
+        INSTRUÇÕES PARA ANÁLISE:
         {bloco_de_instrucao_para_analise}
 
-        VISÃO GERAL DO CONJUNTO DE DADOS:
-        - Formato: {self.df.shape}
-        - Colunas: {list(self.df.columns)}
-        - Tipos de dados: {dict(self.df.dtypes)}
+        INFORMAÇÕES DO DATASET:
+        {info_dataframe}
 
-        ESTATÍSTICAS DESCRITIVAS:
+        CONTEXTO DO USUÁRIO:
+        {input_de_contexto_usuario}
+
+        ESTATÍSTICAS DETALHADAS:
         {resumo_estatisticas}
 
-        UTILIZE ESSE BLOCO DE INSTRUÇÃO PARA INTERPRETAR O INPUT FEITO PELO USUÁRIO:
-        {bloco_de_instrucao_contexto_usuario}
-
-        INICIO DO CONTEXTO DO USUÁRIO
-        {input_de_contexto_usuario}
-        TERMINO DO CONTEXTO DO USUÁRIO
-
-        RETORNO ESPERADO DA ANÁLISE DO PROMPT ABAIXO:
+        FORMATO DA RESPOSTA:
         {bloco_de_instrucao_retorno_insights}
+
+        IMPORTANTE: Seja conciso mas completo. Priorize insights acionáveis.
         """
         
+        # ✅ LIMITAR TAMANHO DO PROMPT
+        if len(prompt) > 12000:
+            print("⚠️ Prompt muito longo, compactando...")
+            # Manter estatísticas mas reduzir detalhes excessivos
+            prompt = prompt[:12000] + "\n\n[Continuação cortada por limite de tamanho]"
+        
         return prompt
-    
+
+    def analisar_conjunto_dados(self, contexto_usuario: str = "") -> Dict[str, Any]:
+        """Analisar o conjunto de dados atualmente carregado - VERSÃO OTIMIZADA"""
+        if self.df is None:
+            return None
+        
+        print("🚀 Iniciando Análise de Dados...")
+        inicio_tempo = time.time()
+        
+        # ✅ PRIMEIRO: Gerar estatísticas descritivas (necessárias para o prompt)
+        print("📈 Gerando estatísticas descritivas...")
+        resumo_estatisticas = self.gerar_estatisticas_descritivas()
+        
+        # ✅ SEGUNDO: Criar prompt e chamar API IMEDIATAMENTE
+        print("🤖 Chamando API para análise detalhada...")
+        prompt = self.criar_prompt_analise(resumo_estatisticas, contexto_usuario)
+        resultado_analise = self.chamar_api_open_router(prompt)
+        
+        # ✅ TERCEIRO: Gerar visualizações ENQUANTO espera pela IA
+        print("🎨 Criando visualizações em paralelo...")
+        visualizacoes = self.gerar_visualizacoes()
+        
+        tempo_decorrido = time.time() - inicio_tempo
+        
+        if resultado_analise:
+            resultados = {
+                'dataframe': self.df,
+                'estatisticas': resumo_estatisticas,
+                'analise_ia': resultado_analise,
+                'visualizacoes': visualizacoes,
+                'tempo_analise': tempo_decorrido
+            }
+            
+            print(f"✅ Análise concluída em {tempo_decorrido:.2f} segundos")
+            return resultados
+        else:
+            print(f"❌ Falha ao obter análise da API (tempo: {tempo_decorrido:.2f}s)")
+        return None
+
     def gerar_visualizacoes(self) -> Dict[str, go.Figure]:
-        """Gerar visualizações interativas para o conjunto de dados"""
+        """Gerar visualizações interativas para o conjunto de dados - VERSÃO OTIMIZADA"""
         if self.df is None or self.df.empty:
             return {}
         
         visualizacoes = {}
         
-        # Gráfico de pizza de tipos de dados
-        def categorizar_tipo_dado(tipo_dado):
-            if np.issubdtype(tipo_dado, np.number):
-                return "Numérica"
-            elif np.issubdtype(tipo_dado, np.bool_):
-                return "Booleana"
-            elif np.issubdtype(tipo_dado, np.datetime64) or np.issubdtype(tipo_dado, np.timedelta64):
-                return "Data/Hora"
-            else:
-                return "Categórica"
+        # ✅ USAR AMOSTRA PARA DATASETS GRANDES
+        amostra_df = self.df
+        if len(self.df) > 1000:
+            amostra_df = self.df.sample(1000, random_state=42)
+            print("📊 Usando amostra de 1000 registros para visualizações")
         
-        contagem_tipos = self.df.dtypes.apply(categorizar_tipo_dado).value_counts()
+        # ✅ LIMITAR NÚMERO DE COLUNAS POR GRÁFICO
+        max_colunas_por_grafico = 10
         
-        if len(contagem_tipos) > 0:
-            fig_tipos = px.pie(
-                values=contagem_tipos.values,
-                names=contagem_tipos.index,
-                title="Distribuição de Tipos de Dados",
-                color_discrete_sequence=px.colors.qualitative.Set3
-            )
-            fig_tipos.update_traces(textposition='inside', textinfo='percent+label')
-            fig_tipos.update_layout(height=400, showlegend=False)
-            visualizacoes['tipos_dados'] = fig_tipos
-        
-        # Gráfico de barras de dados ausentes
-        dados_ausentes = self.df.isnull().sum()
-        dados_ausentes = dados_ausentes[dados_ausentes > 0]
-        if len(dados_ausentes) > 0:
-            fig_ausentes = px.bar(
-                x=dados_ausentes.values,
-                y=dados_ausentes.index,
-                orientation='h',
-                title="Valores Ausentes por Coluna",
-                color=dados_ausentes.values,
-                color_continuous_scale='Viridis'
-            )
-            fig_ausentes.update_layout(height=400, xaxis_title="Contagem de Valores Ausentes", yaxis_title="Colunas")
-            visualizacoes['dados_ausentes'] = fig_ausentes
-        
-        # Distribuições de colunas numéricas
-        colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        if len(colunas_numericas) > 0:
-            n_cols = min(3, len(colunas_numericas))
-            n_linhas = (len(colunas_numericas) + n_cols - 1) // n_cols
+        try:
+            # Gráfico de pizza de tipos de dados (mantido, mas mais rápido)
+            def categorizar_tipo_dado(tipo_dado):
+                if np.issubdtype(tipo_dado, np.number):
+                    return "Numérica"
+                elif np.issubdtype(tipo_dado, np.bool_):
+                    return "Booleana"
+                elif np.issubdtype(tipo_dado, np.datetime64) or np.issubdtype(tipo_dado, np.timedelta64):
+                    return "Data/Hora"
+                else:
+                    return "Categórica"
             
-            fig_dist = make_subplots(
-                rows=n_linhas, cols=n_cols,
-                subplot_titles=colunas_numericas[:n_linhas*n_cols],
-                horizontal_spacing=0.1,
-                vertical_spacing=0.15
-            )
+            contagem_tipos = self.df.dtypes.apply(categorizar_tipo_dado).value_counts()
             
-            for i, col in enumerate(colunas_numericas[:n_linhas*n_cols]):
-                linha = i // n_cols + 1
-                col_num = i % n_cols + 1
-                
-                fig_dist.add_trace(
-                    go.Histogram(x=self.df[col], name=col, nbinsx=20),
-                    row=linha, col=col_num
+            if len(contagem_tipos) > 0:
+                fig_tipos = px.pie(
+                    values=contagem_tipos.values,
+                    names=contagem_tipos.index,
+                    title="Distribuição de Tipos de Dados",
+                    color_discrete_sequence=px.colors.qualitative.Set3
                 )
+                fig_tipos.update_traces(textposition='inside', textinfo='percent+label')
+                fig_tipos.update_layout(height=400, showlegend=False)
+                visualizacoes['tipos_dados'] = fig_tipos
             
-            fig_dist.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Numéricas", showlegend=False)
-            visualizacoes['distribuicoes_numericas'] = fig_dist
-        
-        # Distribuições de colunas categóricas
-        colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns
-        if len(colunas_categoricas) > 0:
-            n_cols = min(3, len(colunas_categoricas))
-            n_linhas = (len(colunas_categoricas) + n_cols - 1) // n_cols
-
-            fig_dist_cat = make_subplots(
-                rows=n_linhas, cols=n_cols,
-                subplot_titles=colunas_categoricas[:n_linhas*n_cols],
-                horizontal_spacing=0.1,
-                vertical_spacing=0.15
-            )
-            
-            for i, col in enumerate(colunas_categoricas[:n_linhas*n_cols]):
-                linha = i // n_cols + 1
-                col_num = i % n_cols + 1
-                
-                # Para dados categóricos, usar gráfico de barras com contagem de valores
-                contagem_valores = self.df[col].value_counts().head(10)  # Apenas 10 valores principais
-                fig_dist_cat.add_trace(
-                    go.Bar(x=contagem_valores.index, y=contagem_valores.values, name=col),
-                    row=linha, col=col_num
+            # ✅ GRÁFICO DE DADOS AUSENTES OTIMIZADO
+            dados_ausentes = self.df.isnull().sum()
+            dados_ausentes = dados_ausentes[dados_ausentes > 0]
+            if len(dados_ausentes) > 0:
+                # Limitar a 15 colunas para não sobrecarregar
+                dados_ausentes = dados_ausentes.head(15)
+                fig_ausentes = px.bar(
+                    x=dados_ausentes.values,
+                    y=dados_ausentes.index,
+                    orientation='h',
+                    title="Valores Ausentes por Coluna (Top 15)",
+                    color=dados_ausentes.values,
+                    color_continuous_scale='Viridis'
                 )
+                fig_ausentes.update_layout(height=400, xaxis_title="Contagem de Valores Ausentes", yaxis_title="Colunas")
+                visualizacoes['dados_ausentes'] = fig_ausentes
             
-            fig_dist_cat.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Categóricas", showlegend=False)
-            visualizacoes['distribuicoes_categoricas'] = fig_dist_cat
-
-        # Distribuições de colunas booleanas
-        colunas_booleanas = self.df.select_dtypes(include='bool').columns
-        if len(colunas_booleanas) > 0:
-            n_cols = min(3, len(colunas_booleanas))
-            n_linhas = (len(colunas_booleanas) + n_cols - 1) // n_cols
-
-            fig_dist_bool = make_subplots(
-                rows=n_linhas, cols=n_cols,
-                subplot_titles=colunas_booleanas[:n_linhas*n_cols],
-                horizontal_spacing=0.1,
-                vertical_spacing=0.15,
-                specs=[[{"type": "pie"} for _ in range(n_cols)] for _ in range(n_linhas)]
-            )
-            
-            for i, col in enumerate(colunas_booleanas[:n_linhas*n_cols]):
-                linha = i // n_cols + 1
-                col_num = i % n_cols + 1
+            # ✅ DISTRIBUIÇÕES NUMÉRICAS OTIMIZADAS
+            colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            if len(colunas_numericas) > 0:
+                # Limitar a 6 colunas para performance
+                colunas_para_grafico = colunas_numericas[:6]
+                n_cols = min(3, len(colunas_para_grafico))
+                n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
                 
-                # Para dados booleanos, usar gráfico de pizza
-                contagem_valores = self.df[col].value_counts()
-                fig_dist_bool.add_trace(
-                    go.Pie(labels=[str(rotulo) for rotulo in contagem_valores.index], 
-                          values=contagem_valores.values, name=col),
-                    row=linha, col=col_num
+                fig_dist = make_subplots(
+                    rows=n_linhas, cols=n_cols,
+                    subplot_titles=colunas_para_grafico,
+                    horizontal_spacing=0.1,
+                    vertical_spacing=0.15
                 )
-            
-            fig_dist_bool.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Booleanas", showlegend=False)
-            visualizacoes['distribuicoes_booleanas'] = fig_dist_bool
-
-        # Distribuições de colunas data/hora
-        colunas_data_hora = self.df.select_dtypes(include=['datetime64']).columns
-        if len(colunas_data_hora) > 0:
-            n_cols = min(3, len(colunas_data_hora))
-            n_linhas = (len(colunas_data_hora) + n_cols - 1) // n_cols
-
-            fig_dist_data = make_subplots(
-                rows=n_linhas, cols=n_cols,
-                subplot_titles=colunas_data_hora[:n_linhas*n_cols],
-                horizontal_spacing=0.1,
-                vertical_spacing=0.15
-            )
-            
-            for i, col in enumerate(colunas_data_hora[:n_linhas*n_cols]):
-                linha = i // n_cols + 1
-                col_num = i % n_cols + 1
                 
-                # Para dados de data/hora, usar gráfico de linha com contagem de valores ao longo do tempo
-                contagem_datas = self.df[col].value_counts().sort_index()
-                fig_dist_data.add_trace(
-                    go.Scatter(x=contagem_datas.index, y=contagem_datas.values, mode='lines', name=col),
-                    row=linha, col=col_num
-                )
+                for i, col in enumerate(colunas_para_grafico):
+                    linha = i // n_cols + 1
+                    col_num = i % n_cols + 1
+                    
+                    fig_dist.add_trace(
+                        go.Histogram(x=amostra_df[col], name=col, nbinsx=20),
+                        row=linha, col=col_num
+                    )
+                
+                fig_dist.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Numéricas (Amostra)", showlegend=False)
+                visualizacoes['distribuicoes_numericas'] = fig_dist
             
-            fig_dist_data.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Data/Hora", showlegend=False)
-            visualizacoes['distribuicoes_data_hora'] = fig_dist_data
+            # ✅ DISTRIBUIÇÕES CATEGÓRICAS OTIMIZADAS
+            colunas_categoricas = self.df.select_dtypes(include=['object', 'category', 'string']).columns
+            if len(colunas_categoricas) > 0:
+                # Limitar a 6 colunas
+                colunas_para_grafico = colunas_categoricas[:6]
+                n_cols = min(3, len(colunas_para_grafico))
+                n_linhas = (len(colunas_para_grafico) + n_cols - 1) // n_cols
 
-        # Mapa de calor de correlação apenas para dados numéricos
-        colunas_numericas_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
-        if len(colunas_numericas_corr) > 1:
-            matriz_corr = self.df[colunas_numericas_corr].corr()
-            fig_corr = px.imshow(
-                matriz_corr,
-                title="Mapa de Calor de Correlação (Variáveis Numéricas)",
-                color_continuous_scale='RdBu_r',
-                aspect="auto"
-            )
-            fig_corr.update_layout(height=500)
-            visualizacoes['mapa_calor_correlacao'] = fig_corr
+                fig_dist_cat = make_subplots(
+                    rows=n_linhas, cols=n_cols,
+                    subplot_titles=colunas_para_grafico,
+                    horizontal_spacing=0.1,
+                    vertical_spacing=0.15
+                )
+                
+                for i, col in enumerate(colunas_para_grafico):
+                    linha = i // n_cols + 1
+                    col_num = i % n_cols + 1
+                    
+                    # Para dados categóricos, usar amostra e limitar categorias
+                    contagem_valores = amostra_df[col].value_counts().head(8)  # Apenas 8 valores principais
+                    fig_dist_cat.add_trace(
+                        go.Bar(x=contagem_valores.index, y=contagem_valores.values, name=col),
+                        row=linha, col=col_num
+                    )
+                    # Rotacionar labels para melhor visualização
+                    fig_dist_cat.update_xaxes(tickangle=45, row=linha, col=col_num)
+                
+                fig_dist_cat.update_layout(height=300*n_linhas, title_text="Distribuições de Variáveis Categóricas (Amostra)", showlegend=False)
+                visualizacoes['distribuicoes_categoricas'] = fig_dist_cat
+
+            # ✅ MAPA DE CALOR DE CORRELAÇÃO OTIMIZADO
+            colunas_numericas_corr = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns
+            if len(colunas_numericas_corr) > 1:
+                # Usar amostra para correlação
+                matriz_corr = amostra_df[colunas_numericas_corr].corr()
+                fig_corr = px.imshow(
+                    matriz_corr,
+                    title="Mapa de Calor de Correlação (Amostra)",
+                    color_continuous_scale='RdBu_r',
+                    aspect="auto"
+                )
+                fig_corr.update_layout(height=500)
+                visualizacoes['mapa_calor_correlacao'] = fig_corr
+            
+        except Exception as e:
+            print(f"⚠️ Erro ao gerar visualizações: {e}")
+            # Continuar mesmo com erro em uma visualização
         
         return visualizacoes
          
@@ -727,47 +746,7 @@ class AnalisadorChatBot:
             if hasattr(e, 'response') and e.response is not None:
                 print(f"Resposta: {e.response.text}")
             return None
-
-    def analisar_conjunto_dados(self, contexto_usuario: str = "") -> Dict[str, Any]:
-        """Analisar o conjunto de dados atualmente carregado"""
-        if self.df is None:
-            return None
-        
-        print("🚀 Iniciando Análise de Dados...")
-        inicio_tempo = time.time()  # Iniciar contagem de tempo
-        
-        # Gerar estatísticas descritivas
-        print("📈 Gerando estatísticas descritivas...")
-        resumo_estatisticas = self.gerar_estatisticas_descritivas()
-        
-        # Gerar visualizações
-        print("🎨 Criando visualizações...")
-        visualizacoes = self.gerar_visualizacoes()
-        
-        # Criar prompt de análise - MODIFICADO para incluir contexto
-        prompt = self.criar_prompt_analise(resumo_estatisticas, contexto_usuario)
-        
-        # Chamar API
-        print("🤖 Chamando API para análise detalhada...")
-        resultado_analise = self.chamar_api_open_router(prompt)
-        
-        tempo_decorrido = time.time() - inicio_tempo  # Calcular tempo decorrido
-        
-        if resultado_analise:
-            resultados = {
-                'dataframe': self.df,
-                'estatisticas': resumo_estatisticas,
-                'analise_ia': resultado_analise,
-                'visualizacoes': visualizacoes,
-                'tempo_analise': tempo_decorrido  # Adicionar tempo de análise aos resultados
-            }
-            
-            print(f"✅ Análise concluída em {tempo_decorrido:.2f} segundos")
-            return resultados
-        else:
-            print(f"❌ Falha ao obter análise da API (tempo: {tempo_decorrido:.2f}s)")
-        return None
-    
+  
     def analisar_arquivo(self, caminho_arquivo: str, nome_planilha: str = None, salvar_saida: bool = False, diretorio_saida: str = None) -> Dict[str, Any]:
         """Método principal para analisar arquivo de dados (CSV, Excel, JSON)"""
         
