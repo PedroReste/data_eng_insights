@@ -21,13 +21,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS para tema escuro (mantido igual)
+# CSS PARA TEMA ESCURO - VERSÃO FORTALECIDA
 st.markdown("""
 <style>
+    /* Estilos base reforçados */
     .stApp {
-        background-color: #0e1117;
-        color: #fafafa;
+        background-color: #0e1117 !important;
+        color: #fafafa !important;
     }
+    
+    /* Header principal */
     .main-header {
         font-size: 2.5rem;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -37,8 +40,297 @@ st.markdown("""
         margin-bottom: 1rem;
         font-weight: 800;
         padding: 0.5rem;
+        border: 2px solid #3498db;
+        border-radius: 15px;
+        padding: 1rem;
+        margin: 1rem 0;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
     }
-    /* ... (todo o resto do CSS mantido igual) */
+    
+    /* Headers de seção */
+    .section-header {
+        font-size: 1.5rem;
+        color: #ffffff;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 0.5rem;
+        margin: 2rem 0 1rem 0;
+        font-weight: 700;
+        background: linear-gradient(90deg, rgba(52, 152, 219, 0.2), transparent);
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 5px solid #3498db;
+    }
+    
+    .subsection-header {
+        font-size: 1.2rem;
+        color: #ffffff;
+        margin: 1.5rem 0 1rem 0;
+        font-weight: 600;
+        background: linear-gradient(90deg, #3498db, transparent);
+        padding: 0.8rem 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #2ecc71;
+    }
+    
+    /* Cards principais - VISUAL FORTALECIDA */
+    .card {
+        background: #1e2130;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        border-left: 5px solid #3498db;
+        border-right: 1px solid #3498db;
+        border-top: 1px solid #3498db;
+        border-bottom: 1px solid #3498db;
+        color: #ffffff;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(52, 152, 219, 0.3);
+    }
+    
+    /* Cartões de estatística */
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        margin: 0.5rem;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        transition: transform 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(102, 126, 234, 0.4);
+    }
+    
+    /* Cartões de tipo */
+    .type-card {
+        background: linear-gradient(135deg, #2d3256 0%, #1e2130 100%);
+        border-radius: 12px;
+        padding: 1.5rem;
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        margin: 0.5rem;
+        border: 2px solid #3498db;
+        transition: all 0.3s ease;
+    }
+    
+    .type-card:hover {
+        border-color: #2ecc71;
+        box-shadow: 0 6px 12px rgba(52, 152, 219, 0.3);
+    }
+    
+    /* Métricas */
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+    }
+    
+    .metric-label {
+        font-size: 1rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+    
+    /* Cards especiais */
+    .welcome-card {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        border: 2px solid #3498db;
+    }
+    
+    .feature-card {
+        background: #1e2130;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 5px solid #2ecc71;
+        border-right: 1px solid #2ecc71;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s ease;
+    }
+    
+    .feature-card:hover {
+        transform: translateX(5px);
+    }
+    
+    .upload-card {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 2rem 0;
+        border: 3px dashed #3498db;
+        text-align: center;
+    }
+    
+    /* Cards de análise */
+    .analysis-card {
+        background: #1e2130;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 5px solid #e74c3c;
+        border-right: 1px solid #e74c3c;
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+    }
+    
+    .analysis-card:hover {
+        border-left-color: #ff6b6b;
+        box-shadow: 0 8px 16px rgba(231, 76, 60, 0.2);
+    }
+    
+    /* Seções de insight */
+    .insight-section {
+        background: #2d3256;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 5px solid #f39c12;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        border-right: 1px solid #f39c12;
+    }
+    
+    /* Botões */
+    .download-btn {
+        background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+        color: white;
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin: 0.5rem;
+        text-decoration: none;
+        display: inline-block;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .download-btn:hover {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+        text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Tabs - estilização reforçada */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #1e2130;
+        padding: 12px;
+        border-radius: 15px;
+        margin-bottom: 1.5rem;
+        border: 2px solid #3498db;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 60px;
+        white-space: pre-wrap;
+        background-color: #2d3256;
+        border-radius: 10px;
+        gap: 8px;
+        padding: 12px 20px;
+        font-weight: 700;
+        font-size: 1rem;
+        border: 2px solid #3498db;
+        transition: all 0.3s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #3498db;
+        color: white;
+        transform: translateY(-3px);
+        box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #3498db !important;
+        color: white !important;
+        border: 2px solid #3498db !important;
+        box-shadow: 0 6px 15px rgba(52, 152, 219, 0.5);
+        transform: translateY(-2px);
+    }
+
+    /* Dataframes - ocultar índice */
+    .dataframe thead th:first-child {
+        display: none;
+    }
+    .dataframe tbody th {
+        display: none;
+    }
+    
+    /* Badges e elementos menores */
+    .format-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.4rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 0.3rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Seções de sucesso */
+    .upload-success-section {
+        background: linear-gradient(135deg, #1e2130 0%, #2d3256 100%);
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 2rem 0;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+        border: 2px solid #2ecc71;
+    }
+    
+    /* Container para gráficos */
+    .chart-container {
+        background: #1e2130;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border: 1px solid #3498db;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* Mensagens de status */
+    .success-message {
+        background: linear-gradient(135deg, rgba(46, 204, 113, 0.2), transparent);
+        border-left: 4px solid #2ecc71;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .warning-message {
+        background: linear-gradient(135deg, rgba(243, 156, 18, 0.2), transparent);
+        border-left: 4px solid #f39c12;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .error-message {
+        background: linear-gradient(135deg, rgba(231, 76, 60, 0.2), transparent);
+        border-left: 4px solid #e74c3c;
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -56,15 +348,17 @@ def inicializar_analisador():
         return False
 
 def criar_cartao_estatistica(valor, rotulo, icone="📊", cor="#667eea"):
+    """Criar cartão de estatística com visual melhorado"""
     return f"""
     <div class="stat-card" style="background: linear-gradient(135deg, {cor} 0%, #764ba2 100%);">
-        <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">{icone}</div>
+        <div style="font-size: 2rem; margin-bottom: 0.5rem;">{icone}</div>
         <div class="metric-value">{valor}</div>
         <div class="metric-label">{rotulo}</div>
     </div>
     """
 
 def criar_cartao_tipo(valor, rotulo, cor="#3498db"):
+    """Criar cartão de tipo com visual melhorado"""
     return f"""
     <div class="type-card" style="border-color: {cor};">
         <div class="metric-value">{valor}</div>
@@ -77,15 +371,39 @@ def obter_link_download(conteudo, nome_arquivo, texto):
     b64 = base64.b64encode(conteudo.encode()).decode()
     return f'<a href="data:file/txt;base64,{b64}" download="{nome_arquivo}" class="download-btn">{texto}</a>'
 
+def criar_container_visual(titulo, conteudo, tipo="card"):
+    """Criar container visual consistente"""
+    if tipo == "card":
+        return f"""
+        <div class="card">
+            <h3>{titulo}</h3>
+            {conteudo}
+        </div>
+        """
+    elif tipo == "analysis":
+        return f"""
+        <div class="analysis-card">
+            <h3>{titulo}</h3>
+            {conteudo}
+        </div>
+        """
+    elif tipo == "feature":
+        return f"""
+        <div class="feature-card">
+            <h3>{titulo}</h3>
+            {conteudo}
+        </div>
+        """
+
 def exibir_tela_boas_vindas(arquivo_carregado=None):
     """Exibir tela de boas-vindas com informações do aplicativo"""
-    st.markdown('<h1 class="main-header">Analisador de Dados</h1>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-header">Analisador de Dados com IA</h1>', unsafe_allow_html=True)
     
     if arquivo_carregado:
         st.markdown("""
         <div class="welcome-card">
-            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Contexto para Análise</h2>
-            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1.5rem; font-size: 1.8rem;">🎯 Contexto para Análise</h2>
+            <p style="font-size: 1.1rem; text-align: center; margin-bottom: 1.5rem; line-height: 1.6;">
             Forneça informações adicionais sobre seus dados para melhorar a análise (opcional).
             </p>
         </div>
@@ -94,8 +412,8 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
         st.markdown("### 💬 Contexto dos Dados (Opcional)")
         st.markdown("""
         <div class="card">
-            <p style="font-size: 0.9rem; margin: 0.5rem 0; line-height: 1.4;">
-            Forneça informações adicionais sobre seus dados para melhorar a análise. 
+            <p style="font-size: 1rem; margin: 0.8rem 0; line-height: 1.5;">
+            <strong>Dica:</strong> Forneça informações adicionais sobre seus dados para melhorar a análise. 
             Por exemplo: de onde são os dados, qual o objetivo da análise, quais são as colunas mais importantes, etc.
             </p>
         </div>
@@ -105,73 +423,89 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
             "Descreva o contexto dos seus dados:",
             placeholder="Exemplo: Estes dados são de vendas de uma loja de varejo no ano de 2023. Gostaria de entender os fatores que impactam as vendas e identificar oportunidades de crescimento.",
             help="Fornecer contexto ajuda a IA a gerar insights mais relevantes.",
-            key="contexto_usuario_input"
+            key="contexto_usuario_input",
+            height=100
         )
         
         st.session_state.contexto_usuario = contexto_usuario
         
         st.markdown("### ✨ Próximos Passos")
-        st.markdown("""
-        <div class="feature-card">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Verifique os Dados</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Confirme se os dados foram carregados corretamente na visualização acima</p>
-                </div>
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">🔎 Adicione Contexto</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Use o campo acima para descrever o contexto dos seus dados (opcional)</p>
-                </div>
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🚀 Inicie a Análise</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Clique em 'Analisar Conjunto de Dados' na barra lateral para iniciar</p>
-                </div>
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #3498db;">📊 Verifique os Dados</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">Confirme se os dados foram carregados corretamente</p>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #2ecc71;">🔎 Adicione Contexto</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">Use o campo acima para descrever o contexto</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #e74c3c;">🚀 Inicie a Análise</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">Clique em 'Analisar Dados' na barra lateral</p>
+            </div>
+            """, unsafe_allow_html=True)
         
     else:
         st.markdown("""
         <div class="welcome-card">
-            <h2 style="color: #3498db; text-align: center; margin-bottom: 1rem; font-size: 1.5rem;">🎯 Bem-vindo ao Analisador de Dados!</h2>
-            <p style="font-size: 1rem; text-align: center; margin-bottom: 1rem;">
-            Ferramenta avançada com IA para análise abrangente de conjuntos de dados e geração de insights.
+            <h2 style="color: #3498db; text-align: center; margin-bottom: 1.5rem; font-size: 1.8rem;">🎯 Bem-vindo ao Analisador de Dados com IA!</h2>
+            <p style="font-size: 1.1rem; text-align: center; margin-bottom: 1.5rem; line-height: 1.6;">
+            Ferramenta avançada com Inteligência Artificial para análise abrangente de conjuntos de dados e geração de insights inteligentes.
             </p>
         </div>
         """, unsafe_allow_html=True)
         
         st.markdown("### ✨ Recursos do Aplicativo")
-        st.markdown("""
-        <div class="feature-card">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #3498db;">📊 Suporte a Múltiplos Formatos</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Analise arquivos CSV, Excel (XLSX) e JSON com detecção automática de formato</p>
-                </div>
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #2ecc71;">📈 Análise Inteligente de Dados</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Relatórios estatísticos abrangentes e perfilamento de dados com métricas detalhadas</p>
-                </div>
-                <div style="padding: 0.5rem;">
-                    <h4 style="margin: 0.5rem 0; font-size: 1rem; color: #e74c3c;">🔎 Insights Gerados</h4>
-                    <p style="font-size: 0.9rem; margin: 0; line-height: 1.4;">Análise com LLM para descobrir padrões ocultos e inteligência de negócios</p>
-                </div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
         
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #3498db;">📊 Suporte a Múltiplos Formatos</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">CSV, Excel (XLSX) e JSON com detecção automática</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #2ecc71;">📈 Análise Inteligente</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">Relatórios estatísticos e perfilamento detalhado</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col3:
+            st.markdown("""
+            <div class="feature-card">
+                <h4 style="margin: 0.5rem 0; font-size: 1.1rem; color: #e74c3c;">🔎 Insights com IA</h4>
+                <p style="font-size: 0.95rem; margin: 0; line-height: 1.4;">Análise com LLM para padrões ocultos</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("### 📋 Como Usar")
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### 📋 Como Usar")
             st.markdown("""
             <div class="card">
-                <ol style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Carregue seu arquivo de dados</strong> - formato CSV, Excel (XLSX) ou JSON</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Selecione a planilha</strong> (se arquivo Excel) na barra lateral</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Clique em "Analisar Conjunto de Dados"</strong> para iniciar o processo de análise</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Aguarde o processamento</strong> - detecção automática de formato e análise</li>
-                    <li><strong>Explore os resultados</strong> nas abas de análise e baixe os relatórios</li>
+                <ol style="font-size: 1rem; margin: 0.8rem 0; padding-left: 1.5rem; line-height: 1.6;">
+                    <li style="margin-bottom: 1rem;"><strong>Carregue seu arquivo</strong> - CSV, Excel ou JSON</li>
+                    <li style="margin-bottom: 1rem;"><strong>Selecione a planilha</strong> (se Excel) na barra lateral</li>
+                    <li style="margin-bottom: 1rem;"><strong>Clique em "Analisar Dados"</strong> para iniciar</li>
+                    <li style="margin-bottom: 1rem;"><strong>Aguarde o processamento</strong> automático</li>
+                    <li><strong>Explore os resultados</strong> nas abas de análise</li>
                 </ol>
             </div>
             """, unsafe_allow_html=True)
@@ -180,27 +514,27 @@ def exibir_tela_boas_vindas(arquivo_carregado=None):
             st.markdown("### 💡 Dicas para Melhores Resultados")
             st.markdown("""
             <div class="card">
-                <ul style="font-size: 0.9rem; margin: 0.5rem 0; padding-left: 1.2rem; line-height: 1.6;">
-                    <li style="margin-bottom: 0.8rem;"><strong>Limpe os dados primeiro</strong> - Remova colunas desnecessárias antes de carregar</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Trate valores ausentes</strong> - Resolva valores nulos quando possível</li>
-                    <li style="margin-bottom: 0.8rem;"><strong>Cabeçalhos descritivos</strong> - Use nomes de colunas claros e significativos</li>
-                    <li><strong>Otimização de tamanho</strong> - Arquivos abaixo de 200MB para desempenho ideal</li>
+                <ul style="font-size: 1rem; margin: 0.8rem 0; padding-left: 1.5rem; line-height: 1.6;">
+                    <li style="margin-bottom: 1rem;"><strong>Limpe os dados primeiro</strong> - Colunas desnecessárias</li>
+                    <li style="margin-bottom: 1rem;"><strong>Trate valores ausentes</strong> - Resolva valores nulos</li>
+                    <li style="margin-bottom: 1rem;"><strong>Cabeçalhos descritivos</strong> - Nomes claros e significativos</li>
+                    <li><strong>Otimização de tamanho</strong> - Arquivos abaixo de 200MB</li>
                 </ul>
             </div>
             """, unsafe_allow_html=True)
 
 def exibir_cartoes_tipos_coluna(analisador):
-    """Exibir tipos de coluna como cartões"""
+    """Exibir tipos de coluna como cartões com visual melhorado"""
     if analisador is None or analisador.df is None:
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(criar_cartao_tipo(0, "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
+            st.markdown(criar_cartao_tipo("0", "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
         with col2:
-            st.markdown(criar_cartao_tipo(0, "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
+            st.markdown(criar_cartao_tipo("0", "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
         with col3:
-            st.markdown(criar_cartao_tipo(0, "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
+            st.markdown(criar_cartao_tipo("0", "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
         with col4:
-            st.markdown(criar_cartao_tipo(0, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
+            st.markdown(criar_cartao_tipo("0", "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
         return
     
     tipos_simples = analisador.obter_tipos_coluna_simples()
@@ -213,16 +547,234 @@ def exibir_cartoes_tipos_coluna(analisador):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown(criar_cartao_tipo(contagem_numericas, "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(str(contagem_numericas), "Colunas Numéricas", "#3498db"), unsafe_allow_html=True)
     
     with col2:
-        st.markdown(criar_cartao_tipo(contagem_categoricas, "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(str(contagem_categoricas), "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
     
     with col3:
-        st.markdown(criar_cartao_tipo(contagem_booleanas, "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(str(contagem_booleanas), "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
     
     with col4:
-        st.markdown(criar_cartao_tipo(contagem_data_hora, "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(str(contagem_data_hora), "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
+
+# ... (mantenha as outras funções como criar_scatterplot_interativo, exibir_analise_exploratoria, etc.)
+
+# A PARTE CRÍTICA: CORRIGINDO O ERRO NA FUNÇÃO exibir_aba_visao_geral
+def exibir_aba_visao_geral(resultados):
+    """Exibir conteúdo da aba de visão geral - CORRIGIDA"""
+    df = resultados['dataframe']
+    analisador = st.session_state.analisador
+    
+    # Primeiras 10 linhas vs Últimas 10 linhas
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("#### 📋 Primeiras 10 Linhas")
+        st.markdown("""
+        <div class="card">
+            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+            Visualização das primeiras linhas do dataset
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        df_primeiras = df.head(10)
+        st.dataframe(df_primeiras, use_container_width=True, height=350, hide_index=True)
+    
+    with col2:
+        st.markdown("#### 📋 Últimas 10 Linhas")
+        st.markdown("""
+        <div class="card">
+            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+            Visualização das últimas linhas do dataset
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        df_ultimas = df.tail(10)
+        st.dataframe(df_ultimas, use_container_width=True, height=350, hide_index=True)
+    
+    # Informações das Colunas vs Linhas Duplicadas
+    col3, col4 = st.columns(2)
+    
+    with col3:
+        st.markdown("#### 🔧 Informações das Colunas")
+        st.markdown("""
+        <div class="card">
+            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+            Detalhes sobre tipos de dados e valores
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        info_coluna = analisador.obter_info_coluna_detalhada()
+        st.dataframe(info_coluna, use_container_width=True, height=350, hide_index=True)
+    
+    with col4:
+        st.markdown("#### 🔍 Linhas Duplicadas")
+        st.markdown("""
+        <div class="card">
+            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+            Identificação de registros duplicados
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        linhas_duplicadas = df[df.duplicated(keep=False)]
+        
+        if len(linhas_duplicadas) > 0:
+            st.dataframe(linhas_duplicadas, use_container_width=True, height=350, hide_index=True)
+        else:
+            st.markdown("""
+            <div class="success-message">
+                <p style="margin: 0; font-weight: 600;">✅ Não existem linhas duplicadas no arquivo</p>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # Gráfico de dados vazios por variável
+    st.markdown("### 📊 Volume de Dados Vazios por Variável")
+    st.markdown("""
+    <div class="card">
+        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+        Distribuição de valores ausentes no dataset
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    dados_vazios = df.isnull().sum()
+    dados_vazios = dados_vazios[dados_vazios > 0]
+    
+    if len(dados_vazios) > 0:
+        fig_vazios = px.bar(
+            x=dados_vazios.values,
+            y=dados_vazios.index,
+            orientation='h',
+            title="Volume de Dados Vazios por Variável",
+            color_discrete_sequence=['#3498db'],
+            labels={'x': 'Quantidade de Valores Vazios', 'y': 'Variáveis'}
+        )
+        
+        fig_vazios.update_layout(
+            height=400,
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font=dict(color='white'),
+            showlegend=False
+        )
+        
+        total_linhas = len(df)
+        for i, (col, valor) in enumerate(zip(dados_vazios.index, dados_vazios.values)):
+            percentual = (valor / total_linhas) * 100
+            fig_vazios.add_annotation(
+                x=valor,
+                y=col,
+                text=f"{percentual:.1f}%",
+                showarrow=False,
+                xshift=30,
+                font=dict(color='white', size=10)
+            )
+        
+        st.plotly_chart(fig_vazios, use_container_width=True)
+    else:
+        st.markdown("""
+        <div class="success-message">
+            <p style="margin: 0; font-weight: 600;">✅ Não existem dados vazios no arquivo</p>
+            <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem;">Todas as colunas estão completamente preenchidas</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Gráfico de dispersão interativo
+    st.markdown("### 📈 Gráfico de Dispersão Interativo")
+    st.markdown("""
+    <div class="card">
+        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+        Explore relações entre diferentes variáveis
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    fig_scatter = criar_scatterplot_interativo(df)
+    if fig_scatter:
+        st.plotly_chart(fig_scatter, use_container_width=True)
+    
+    # CORREÇÃO DO ERRO: Análise de Correlação
+    st.markdown("### 🔗 Análise de Correlação - Múltiplos Métodos")
+    st.markdown("""
+    <div class="card">
+        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
+        Explore relações entre variáveis usando diferentes métodos
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    metodos_correlacao = [
+        "Automático", "Pearson", "Spearman", "Kendall Tau",
+        "Cramers V", "Theils U", "Phi", "Correlation Ratio"
+    ]
+    
+    col_metodo, col_viz = st.columns([1, 2])
+    
+    with col_metodo:
+        metodo_selecionado = st.selectbox(
+            "Selecione o Método de Correlação:",
+            options=metodos_correlacao,
+            index=0,
+            help="Escolha o método de correlação apropriado para seus dados"
+        )
+        
+        info_metodos = {
+            "Automático": "Correlação de Pearson com codificação automática para todas as variáveis",
+            "Pearson": "Correlação linear entre variáveis numéricas",
+            "Spearman": "Correlação de postos para relações monotônicas",
+            "Kendall Tau": "Correlação de postos mais robusta a outliers",
+            "Cramers V": "Associação entre variáveis categóricas (0-1)",
+            "Theils U": "Associação assimétrica entre categóricas (0-1)",
+            "Phi": "Associação entre variáveis binárias (-1 a +1)",
+            "Correlation Ratio": "Relação entre categórica e numérica (0-1)"
+        }
+        
+        st.markdown(f"""
+        <div class="card">
+            <h4 style="margin-top: 0;">ℹ️ {metodo_selecionado}</h4>
+            <p style="font-size: 0.9rem; margin: 0;">{info_metodos[metodo_selecionado]}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        tipo_visualizacao = st.radio(
+            "Tipo de Visualização:",
+            ["Gráfico Heatmap", "Tabela de Valores"],
+            horizontal=True
+        )
+    
+    with col_viz:
+        # CORREÇÃO: Usar o método do analisador corretamente
+        try:
+            fig, matriz_corr = analisador.criar_mapa_calor_correlacao_completo(metodo_selecionado)
+            
+            if matriz_corr is not None:
+                if tipo_visualizacao == "Gráfico Heatmap":
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                    else:
+                        st.error("Não foi possível gerar o gráfico de correlação")
+                else:
+                    matriz_exibicao = matriz_corr.copy()
+                    matriz_exibicao = matriz_exibicao.clip(-1, 1)
+                    st.dataframe(matriz_exibicao.round(3), use_container_width=True, height=400)
+                    
+                    csv = matriz_exibicao.round(4).to_csv()
+                    st.download_button(
+                        label="📥 Baixar Matriz de Correlação (CSV)",
+                        data=csv,
+                        file_name=f"matriz_correlacao_{metodo_selecionado.replace(' ', '_')}.csv",
+                        mime="text/csv"
+                    )
+            else:
+                st.warning(f"❌ Não foi possível calcular a correlação usando {metodo_selecionado}")
+        except Exception as e:
+            st.error(f"❌ Erro ao calcular correlação: {str(e)}")
+            st.info("Tente selecionar um método diferente ou verificar os tipos de dados")
+
+# ... (mantenha as outras funções como exibir_aba_numericas, exibir_aba_categoricas, etc.)
+
+# A FUNÇÃO criar_scatterplot_interativo deve ser mantida igual da versão anterior
 
 def criar_scatterplot_interativo(df):
     """Criar gráfico de dispersão interativo otimizado para todos os tipos de variáveis"""
@@ -364,16 +916,18 @@ def criar_scatterplot_interativo(df):
         st.error(f"Erro ao criar gráfico: {str(e)}")
         return None
 
-# === FUNÇÕES DE EXIBIÇÃO DE ANÁLISE ===
 def exibir_analise_exploratoria(resultados):
     """Exibir análise exploratória de dados com abas"""
     st.markdown('<div class="section-header">📊 Análise Exploratória de Dados</div>', unsafe_allow_html=True)
     
+    # Botão de download do relatório
     if 'analise_ia' in resultados and 'estatisticas' in resultados:
         relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
         st.markdown(obter_link_download(relatorio_combinado, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
     
     df = resultados['dataframe']
+    
+    # Cartões de métricas principais
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
         st.markdown(criar_cartao_estatistica(f"{df.shape[0]:,}", "Total de Linhas", "📈", "#2ecc71"), unsafe_allow_html=True)
@@ -387,9 +941,11 @@ def exibir_analise_exploratoria(resultados):
         total_celulas = df.shape[0] * df.shape[1]
         st.markdown(criar_cartao_estatistica(f"{total_celulas:,}", "Total de Células", "🔢", "#9b59b6"), unsafe_allow_html=True)
     
+    # Cartões de tipos de coluna
     analisador = st.session_state.analisador
     exibir_cartoes_tipos_coluna(analisador)
     
+    # Criar abas baseadas nos tipos de dados disponíveis
     nomes_abas = ["Visão Geral"]
     tipos_simples = analisador.obter_tipos_coluna_simples()
     
@@ -402,11 +958,14 @@ def exibir_analise_exploratoria(resultados):
     if tipos_simples['Data/Hora']:
         nomes_abas.append("Colunas Data/Hora")
     
+    # Criar as abas
     abas = st.tabs(nomes_abas)
     
+    # Aba Visão Geral
     with abas[0]:
         exibir_aba_visao_geral(resultados)
     
+    # Abas específicas por tipo de dados
     if tipos_simples['Numéricas']:
         indice_aba = nomes_abas.index("Colunas Numéricas")
         with abas[indice_aba]:
@@ -427,143 +986,93 @@ def exibir_analise_exploratoria(resultados):
         with abas[indice_aba]:
             exibir_aba_data_hora(resultados)
 
-def exibir_aba_visao_geral(resultados):
-    """Exibir conteúdo da aba de visão geral"""
-    df = resultados['dataframe']
-    analisador = st.session_state.analisador
+def exibir_insights_ia(resultados):
+    """Exibir análise da IA com seções estruturadas"""
+    st.markdown('<div class="section-header">🔎 Insights Gerados por IA</div>', unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
+    # Informações de tempo de análise
+    if 'tempo_analise' in resultados:
+        st.markdown(f"""
+        <div class="card" style="border-left: 4px solid #2ecc71;">
+            <p style="font-size: 1rem; margin: 0.5rem 0; color: #2ecc71;">
+                ⏱️ <strong>Tempo de análise:</strong> {resultados['tempo_analise']:.2f} segundos
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
     
-    with col1:
-        st.markdown("#### Primeiras 10 Linhas")
-        df_primeiras = df.head(10)
-        st.dataframe(df_primeiras, use_container_width=True, height=350, hide_index=True)
+    # Botão de download
+    if 'analise_ia' in resultados and 'estatisticas' in resultados:
+        relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
+        st.markdown(obter_link_download(relatorio_combinado, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
     
-    with col2:
-        st.markdown("#### Últimas 10 Linhas")
-        df_ultimas = df.tail(10)
-        st.dataframe(df_ultimas, use_container_width=True, height=350, hide_index=True)
+    # Verificar se há análise IA disponível
+    if 'analise_ia' not in resultados or not resultados['analise_ia']:
+        st.error("❌ Nenhuma análise IA disponível. Por favor, execute a análise primeiro.")
+        return
     
-    col3, col4 = st.columns(2)
+    texto_analise = resultados['analise_ia']
     
-    with col3:
-        st.markdown("#### Informações das Colunas")
-        info_coluna = analisador.obter_info_coluna_detalhada()
-        st.dataframe(info_coluna, use_container_width=True, height=350, hide_index=True)
+    # Extrair seções da análise IA
+    secoes = {
+        'Resumo Executivo': '',
+        'Análise Estatística Detalhada': '',
+        'Identificação de Padrões': '',
+        'Implicações para Negócios/Pesquisa': '',
+        'Recomendações': ''
+    }
     
-    with col4:
-        st.markdown("#### Linhas Duplicadas")
-        linhas_duplicadas = df[df.duplicated(keep=False)]
+    secao_atual = None
+    linhas = texto_analise.split('\n')
+    
+    for linha in linhas:
+        linha_limpa = linha.strip()
         
-        if len(linhas_duplicadas) > 0:
-            st.dataframe(linhas_duplicadas, use_container_width=True, height=350, hide_index=True)
-        else:
-            st.success("✅ Não existem linhas duplicadas no arquivo")
-    
-    st.markdown("### 📊 Volume de Dados Vazios por Variável")
-    
-    dados_vazios = df.isnull().sum()
-    dados_vazios = dados_vazios[dados_vazios > 0]
-    
-    if len(dados_vazios) > 0:
-        fig_vazios = px.bar(
-            x=dados_vazios.values,
-            y=dados_vazios.index,
-            orientation='h',
-            title="Volume de Dados Vazios por Variável",
-            color_discrete_sequence=['#3498db'],
-            labels={'x': 'Quantidade de Valores Vazios', 'y': 'Variáveis'}
-        )
+        # Detectar início de nova seção
+        if any(cabecalho in linha_limpa.lower() for cabecalho in ['resumo executivo', 'resumo']):
+            secao_atual = 'Resumo Executivo'
+            continue
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['análise estatística detalhada', 'análise estatística']):
+            secao_atual = 'Análise Estatística Detalhada'
+            continue
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['identificação de padrões', 'análise de padrões', 'padrões']):
+            secao_atual = 'Identificação de Padrões'
+            continue
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['implicações para negócios/pesquisa', 'implicações', 'implicações de negócios', 'implicações de pesquisa']):
+            secao_atual = 'Implicações para Negócios/Pesquisa'
+            continue
+        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['recomendações', 'sugestões', 'próximos passos']):
+            secao_atual = 'Recomendações'
+            continue
         
-        fig_vazios.update_layout(
-            height=400,
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white'),
-            showlegend=False
-        )
-        
-        total_linhas = len(df)
-        for i, (col, valor) in enumerate(zip(dados_vazios.index, dados_vazios.values)):
-            percentual = (valor / total_linhas) * 100
-            fig_vazios.add_annotation(
-                x=valor,
-                y=col,
-                text=f"{percentual:.1f}%",
-                showarrow=False,
-                xshift=30,
-                font=dict(color='white', size=10)
-            )
-        
-        st.plotly_chart(fig_vazios, use_container_width=True)
-    else:
-        st.success("✅ Não existem dados vazios no arquivo")
+        # Pular linhas vazias no início das seções
+        if secao_atual and not linha_limpa and not secoes[secao_atual]:
+            continue
+            
+        # Adicionar conteúdo à seção atual
+        if secao_atual and linha_limpa:
+            secoes[secao_atual] += linha + '\n'
     
-    st.markdown("### 📈 Gráfico de Dispersão Interativo")
-    fig_scatter = criar_scatterplot_interativo(df)
-    if fig_scatter:
-        st.plotly_chart(fig_scatter, use_container_width=True)
+    # Exibir cada seção encontrada
+    secao_exibida = False
+    for nome_secao, conteudo_secao in secoes.items():
+        if conteudo_secao.strip():
+            secao_exibida = True
+            st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
+            st.markdown(f"### 🎯 {nome_secao}")
+            st.markdown(conteudo_secao)
+            st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown("### 🔗 Análise de Correlação - Múltiplos Métodos")
-    
-    metodos_correlacao = [
-        "Automático", "Pearson", "Spearman", "Kendall Tau",
-        "Cramers V", "Theils U", "Phi", "Correlation Ratio"
-    ]
-    
-    col_metodo, col_viz = st.columns([1, 2])
-    
-    with col_metodo:
-        metodo_selecionado = st.selectbox(
-            "Selecione o Método de Correlação:",
-            options=metodos_correlacao,
-            index=0,
-            help="Escolha o método de correlação apropriado para seus dados"
-        )
-        
-        info_metodos = {
-            "Automático": "Correlação de Pearson com codificação automática para todas as variáveis",
-            "Pearson": "Correlação linear entre variáveis numéricas",
-            "Spearman": "Correlação de postos para relações monotônicas",
-            "Kendall Tau": "Correlação de postos mais robusta a outliers",
-            "Cramers V": "Associação entre variáveis categóricas (0-1)",
-            "Theils U": "Associação assimétrica entre categóricas (0-1)",
-            "Phi": "Associação entre variáveis binárias (-1 a +1)",
-            "Correlation Ratio": "Relação entre categórica e numérica (0-1)"
-        }
-        
-        st.info(f"**{metodo_selecionado}**: {info_metodos[metodo_selecionado]}")
-        
-        tipo_visualizacao = st.radio(
-            "Tipo de Visualização:",
-            ["Gráfico Heatmap", "Tabela de Valores"],
-            horizontal=True
-        )
-    
-    with col_viz:
-        analisador = st.session_state.analisador
-        fig, matriz_corr = analisador.criar_mapa_calor_correlacao_completo(metodo_selecionado)
-        
-        if matriz_corr is not None:
-            if tipo_visualizacao == "Gráfico Heatmap":
-                if fig:
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.error("Não foi possível gerar o gráfico de correlação")
-            else:
-                matriz_exibicao = matriz_corr.copy()
-                matriz_exibicao = matriz_exibicao.clip(-1, 1)
-                st.dataframe(matriz_exibicao.round(3), use_container_width=True, height=400)
-                
-                csv = matriz_exibicao.round(4).to_csv()
-                st.download_button(
-                    label="📥 Baixar Matriz de Correlação (CSV)",
-                    data=csv,
-                    file_name=f"matriz_correlacao_{metodo_selecionado.replace(' ', '_')}.csv",
-                    mime="text/csv"
-                )
-        else:
-            st.warning(f"❌ Não foi possível calcular a correlação usando {metodo_selecionado}")
+    # Fallback: se nenhuma seção foi extraída, mostrar a análise completa
+    if not secao_exibida:
+        st.markdown("""
+        <div class="insight-section">
+            <h3>📋 Análise Completa</h3>
+            <p style="color: #bbb; font-size: 0.9rem;">
+            A análise IA não pôde ser dividida em seções específicas. Aqui está a análise completa:
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="card" style="background: #2d3256; padding: 1.5rem; border-radius: 10px;">{texto_analise}</div>', unsafe_allow_html=True)
 
 def exibir_aba_numericas(resultados):
     """Exibir análise de colunas numéricas"""
@@ -575,6 +1084,7 @@ def exibir_aba_numericas(resultados):
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 📈 {col}")
             
+            # Estatísticas Gerais
             st.markdown("##### 📊 Estatísticas Gerais")
             col1, col2 = st.columns(2)
             with col1:
@@ -588,6 +1098,7 @@ def exibir_aba_numericas(resultados):
             
             st.metric("Valores Ausentes", f"{df[col].isnull().sum()}")
             
+            # Estatísticas Avançadas
             with st.expander("📈 Estatísticas Avançadas", expanded=False):
                 col3, col4 = st.columns(2)
                 
@@ -607,15 +1118,17 @@ def exibir_aba_numericas(resultados):
                         cv = (desvio_padrao / media) * 100
                         st.metric("Coeficiente de Variação (CV)", f"{cv:.2f}%")
                     else:
-                        st.metric("Coeficiente de Variação (CV)", "Indefinido (média zero)")
+                        st.metric("Coeficiente de Variação (CV)", "Indefinido")
                     
                     curtose = df[col].kurt()
                     assimetria = df[col].skew()
                     st.metric("Curtose", f"{curtose:.2f}")
                     st.metric("Assimetria", f"{assimetria:.2f}")
             
+            # Visualizações
             col_viz1, col_viz2 = st.columns(2)
             with col_viz1:
+                # Gráfico de área (distribuição)
                 dados_grafico = df[col].dropna()
                 if len(dados_grafico) > 0:
                     valores_hist, bordas_bin = np.histogram(dados_grafico, bins=50)
@@ -645,6 +1158,7 @@ def exibir_aba_numericas(resultados):
                     st.plotly_chart(fig_area, use_container_width=True)
             
             with col_viz2:
+                # Box plot
                 fig_box = px.box(df, y=col, title=f"Box Plot - {col}")
                 fig_box.update_traces(marker_color='#e74c3c')
                 fig_box.update_layout(
@@ -667,6 +1181,7 @@ def exibir_aba_categoricas(resultados):
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 🏷️ {col}")
             
+            # Estatísticas básicas
             contagem_unicos = df[col].nunique()
             contagem_ausentes = df[col].isnull().sum()
             
@@ -676,9 +1191,11 @@ def exibir_aba_categoricas(resultados):
             with col_met2:
                 st.metric("Valores Ausentes", contagem_ausentes)
             
+            # Gráfico de barras
             contagem_valores = df[col].value_counts().head(10)
             
             if len(contagem_valores) <= 5:
+                # Horizontal para poucas categorias
                 fig_barra = px.bar(
                     x=contagem_valores.values,
                     y=contagem_valores.index,
@@ -695,6 +1212,7 @@ def exibir_aba_categoricas(resultados):
                     showlegend=False
                 )
             else:
+                # Vertical para muitas categorias
                 fig_barra = px.bar(
                     x=contagem_valores.index,
                     y=contagem_valores.values,
@@ -713,6 +1231,7 @@ def exibir_aba_categoricas(resultados):
             
             st.plotly_chart(fig_barra, use_container_width=True)
             
+            # Tabela detalhada
             st.markdown("##### 📋 Distribuição Completa das Categorias")
             
             distribuicao_completa = df[col].value_counts()
@@ -761,6 +1280,7 @@ def exibir_aba_booleanas(resultados):
                     )
             
             with col2:
+                # Gráfico de rosca
                 cores = {'True': 'rgba(46, 204, 113, 0.8)', 'False': 'rgba(231, 76, 60, 0.8)'}
                 sequencia_cores = [cores.get(str(rotulo), '#3498db') for rotulo in contagem_valores.index]
 
@@ -791,6 +1311,8 @@ def exibir_aba_booleanas(resultados):
                     )
                 )
                 st.plotly_chart(fig_rosca, use_container_width=True)
+            
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def exibir_aba_data_hora(resultados):
     """Exibir análise de colunas data/hora"""
@@ -802,10 +1324,12 @@ def exibir_aba_data_hora(resultados):
             st.markdown(f'<div class="analysis-card">', unsafe_allow_html=True)
             st.markdown(f"#### 📅 {col}")
             
+            # Estatísticas básicas
             data_min = df[col].min()
             data_max = df[col].max()
             intervalo_data = data_max - data_min
             
+            # Data mais frequente
             contagem_datas = df[col].value_counts()
             data_mais_frequente = contagem_datas.index[0] if len(contagem_datas) > 0 else None
             contagem_mais_frequente = contagem_datas.iloc[0] if len(contagem_datas) > 0 else 0
@@ -821,6 +1345,7 @@ def exibir_aba_data_hora(resultados):
                     st.metric("Data Mais Frequente", data_mais_frequente.strftime('%Y-%m-%d'))
                     st.metric("Frequência", contagem_mais_frequente)
             
+            # Gráfico de linha temporal
             dados_timeline = df[col].value_counts().sort_index()
             fig_timeline = px.line(
                 x=dados_timeline.index,
@@ -839,86 +1364,9 @@ def exibir_aba_data_hora(resultados):
             
             st.markdown('</div>', unsafe_allow_html=True)
 
-def exibir_insights_ia(resultados):
-    """Exibir análise da IA com seções estruturadas"""
-    st.markdown('<div class="section-header">🔎 Insights Gerados</div>', unsafe_allow_html=True)
-    
-    if 'tempo_analise' in resultados:
-        st.markdown(f"""
-        <div class="card" style="border-left: 4px solid #2ecc71;">
-            <p style="font-size: 1rem; margin: 0.5rem 0; color: #2ecc71;">
-                ⏱️ <strong>Tempo de análise:</strong> {resultados['tempo_analise']:.2f} segundos
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    if 'analise_ia' in resultados and 'estatisticas' in resultados:
-        relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
-        st.markdown(obter_link_download(relatorio_combinado, "relatorio_analise_completo.txt", "📥 Baixar Relatório Completo (TXT)"), unsafe_allow_html=True)
-    
-    if 'analise_ia' not in resultados or not resultados['analise_ia']:
-        st.error("Nenhuma análise IA disponível. Por favor, execute a análise primeiro.")
-        return
-    
-    texto_analise = resultados['analise_ia']
-    
-    secoes = {
-        'Resumo Executivo': '',
-        'Análise Estatística Detalhada': '',
-        'Identificação de Padrões': '',
-        'Implicações para Negócios/Pesquisa': '',
-        'Recomendações': ''
-    }
-    
-    secao_atual = None
-    linhas = texto_analise.split('\n')
-    
-    for linha in linhas:
-        linha_limpa = linha.strip()
-        
-        if any(cabecalho in linha_limpa.lower() for cabecalho in ['resumo executivo', 'resumo']):
-            secao_atual = 'Resumo Executivo'
-            continue
-        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['análise estatística detalhada', 'análise estatística']):
-            secao_atual = 'Análise Estatística Detalhada'
-            continue
-        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['identificação de padrões', 'análise de padrões', 'padrões']):
-            secao_atual = 'Identificação de Padrões'
-            continue
-        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['implicações para negócios/pesquisa', 'implicações', 'implicações de negócios', 'implicações de pesquisa']):
-            secao_atual = 'Implicações para Negócios/Pesquisa'
-            continue
-        elif any(cabecalho in linha_limpa.lower() for cabecalho in ['recomendações', 'sugestões', 'próximos passos']):
-            secao_atual = 'Recomendações'
-            continue
-        
-        if secao_atual and not linha_limpa and not secoes[secao_atual]:
-            continue
-            
-        if secao_atual and linha_limpa:
-            secoes[secao_atual] += linha + '\n'
-    
-    secao_exibida = False
-    for nome_secao, conteudo_secao in secoes.items():
-        if conteudo_secao.strip():
-            secao_exibida = True
-            st.markdown(f'<div class="insight-section">', unsafe_allow_html=True)
-            st.markdown(f"### {nome_secao}")
-            st.markdown(conteudo_secao)
-            st.markdown('</div>', unsafe_allow_html=True)
-    
-    if not secao_exibida:
-        st.markdown("""
-        <div class="insight-section">
-            <h3>Análise Completa</h3>
-            <p>A análise IA não pôde ser analisada em seções específicas. Aqui está a análise completa:</p>
-        </div>
-        """, unsafe_allow_html=True)
-        st.markdown(f'<div class="card">{texto_analise}</div>', unsafe_allow_html=True)
-
-# === FUNÇÃO PRINCIPAL ===
 def main():
     """Função principal do aplicativo"""
+    # Inicializar variáveis de sessão
     if 'analisador' not in st.session_state:
         st.session_state.analisador = None
     if 'resultados_analise' not in st.session_state:
@@ -941,6 +1389,7 @@ def main():
     if not inicializar_analisador():
         return
     
+    # Barra lateral (mantida igual)
     with st.sidebar:
         st.markdown("## ⚙️ Configuração")
         
@@ -950,6 +1399,9 @@ def main():
             help="Carregue arquivos CSV, Excel (XLSX) ou JSON"
         )
         
+        # ... (restante do código da sidebar mantido igual)
+        
+        # O código do upload e processamento de arquivos permanece igual
         if arquivo_carregado is not None:
             if (st.session_state.arquivo_atual is None or 
                 st.session_state.arquivo_atual.name != arquivo_carregado.name):
@@ -1065,7 +1517,7 @@ def main():
                 progress_bar.empty()
                 status_text.empty()
             else:
-                st.error("❌ Por favor, carregue e carregue um arquivo de dados primeiro.")
+                st.error("❌ Por favor, carregue um arquivo de dados primeiro.")
         
         if st.session_state.resultados_analise:
             if st.button("🗑️ Limpar Análise", type="secondary", use_container_width=True):
@@ -1080,6 +1532,7 @@ def main():
                 st.session_state.scatter_y = None
                 st.rerun()
     
+    # Conteúdo principal
     if st.session_state.resultados_analise is not None:
         aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🔎 Insights IA"])
         with aba1:
