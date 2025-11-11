@@ -195,11 +195,9 @@ st.markdown("""
     .insight-section {
         background: #2d3256;
         border-radius: 12px;
-        padding: 1.5rem;
+        padding: 1rem;
         margin: 1rem 0;
-        border-left: 5px solid #f39c12;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        border-right: 1px solid #f39c12;
     }
     
     /* Botões */
@@ -928,16 +926,6 @@ def exibir_insights_ia(resultados):
     """Exibir análise da IA com seções estruturadas"""
     st.markdown('<div class="section-header">🔎 Insights Gerados por IA</div>', unsafe_allow_html=True)
     
-    # Informações de tempo de análise
-    if 'tempo_analise' in resultados:
-        st.markdown(f"""
-        <div class="card" style="border-left: 4px solid #2ecc71;">
-            <p style="font-size: 1rem; margin: 0.5rem 0; color: #2ecc71;">
-                ⏱️ <strong>Tempo de análise:</strong> {resultados['tempo_analise']:.2f} segundos
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-    
     # Botão de download
     if 'analise_ia' in resultados and 'estatisticas' in resultados:
         relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
@@ -1334,12 +1322,9 @@ def main():
         arquivo_carregado = st.file_uploader(
             "📁 Carregar Arquivo de Dados",
             type=['csv', 'xlsx', 'json'],
-            help="Carregue arquivos CSV, Excel (XLSX) ou JSON"
+            help="Carregue arquivos CSV, Excel ou JSON"
         )
         
-        # ... (restante do código da sidebar mantido igual)
-        
-        # O código do upload e processamento de arquivos permanece igual
         if arquivo_carregado is not None:
             if (st.session_state.arquivo_atual is None or 
                 st.session_state.arquivo_atual.name != arquivo_carregado.name):
@@ -1469,7 +1454,36 @@ def main():
                 st.session_state.scatter_x = None
                 st.session_state.scatter_y = None
                 st.rerun()
-    
+
+        if st.session_state.resultados_analise and 'tempo_analise' in st.session_state.resultados_analise:
+            tempo = st.session_state.resultados_analise['tempo_analise']
+            st.markdown(f"""
+            <div style="
+                background: rgba(46, 204, 113, 0.1);
+                border: 1px solid #2ecc71;
+                border-radius: 10px;
+                padding: 0.8rem;
+                margin: 0.5rem 0;
+                text-align: center;
+            ">
+                <p style="
+                    margin: 0;
+                    color: #2ecc71;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                ">
+                    ⏱️ <strong>{tempo:.1f}s</strong>
+                </p>
+                <p style="
+                    margin: 0.2rem 0 0 0;
+                    color: #95a5a6;
+                    font-size: 0.8rem;
+                ">
+                    Tempo de análise
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+
     # Conteúdo principal
     if st.session_state.resultados_analise is not None:
         aba1, aba2 = st.tabs(["📊 Análise Exploratória de Dados", "🔎 Insights IA"])
