@@ -291,9 +291,9 @@ class AnalisadorChatBot:
                 resumo_estatisticas += self._gerar_estatisticas_categoricas(col)
         
         # Colunas booleanas
-        if tipos_simples['V/F']:
+        if tipos_simples['Verdadeiro/Falso']:
             resumo_estatisticas += "## ✅ Colunas V/F\n\n"
-            for col in tipos_simples['V/F']:
+            for col in tipos_simples['Verdadeiro/Falso']:
                 resumo_estatisticas += self._gerar_estatisticas_booleanas(col)
         
         self._cache_estatisticas = resumo_estatisticas
