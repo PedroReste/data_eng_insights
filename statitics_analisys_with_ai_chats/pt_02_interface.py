@@ -528,7 +528,7 @@ def exibir_cartoes_tipos_coluna(analisador):
         with col2:
             st.markdown(criar_cartao_tipo("0", "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
         with col3:
-            st.markdown(criar_cartao_tipo("0", "Colunas V/F", "#2ecc71"), unsafe_allow_html=True)
+            st.markdown(criar_cartao_tipo("0", "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
         with col4:
             st.markdown(criar_cartao_tipo("0", "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
         return
@@ -537,7 +537,7 @@ def exibir_cartoes_tipos_coluna(analisador):
     
     contagem_numericas = len(tipos_simples.get('Numéricas', []))
     contagem_categoricas = len(tipos_simples.get('Categóricas', []))
-    contagem_booleanas = len(tipos_simples.get('V/F', []))
+    contagem_booleanas = len(tipos_simples.get('Verdadeiro/Falso', []))
     contagem_data_hora = len(tipos_simples.get('Data/Hora', []))
     
     col1, col2, col3, col4 = st.columns(4)
@@ -549,7 +549,7 @@ def exibir_cartoes_tipos_coluna(analisador):
         st.markdown(criar_cartao_tipo(str(contagem_categoricas), "Colunas Categóricas", "#e74c3c"), unsafe_allow_html=True)
     
     with col3:
-        st.markdown(criar_cartao_tipo(str(contagem_booleanas), "Colunas V/F", "#2ecc71"), unsafe_allow_html=True)
+        st.markdown(criar_cartao_tipo(str(contagem_booleanas), "Colunas Verdadeiro/Falso", "#2ecc71"), unsafe_allow_html=True)
     
     with col4:
         st.markdown(criar_cartao_tipo(str(contagem_data_hora), "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
@@ -889,8 +889,8 @@ def exibir_analise_exploratoria(resultados):
         nomes_abas.append("Colunas Numéricas")
     if tipos_simples['Categóricas']:
         nomes_abas.append("Colunas Categóricas")
-    if tipos_simples['V/F']:
-        nomes_abas.append("Colunas V/F")
+    if tipos_simples['Verdadeiro/Falso']:
+        nomes_abas.append("Colunas Verdadeiro/Falso")
     if tipos_simples['Data/Hora']:
         nomes_abas.append("Colunas Data/Hora")
     
@@ -912,8 +912,8 @@ def exibir_analise_exploratoria(resultados):
         with abas[indice_aba]:
             exibir_aba_categoricas(resultados)
     
-    if tipos_simples['V/F']:
-        indice_aba = nomes_abas.index("Colunas V/F")
+    if tipos_simples['Verdadeiro/Falso']:
+        indice_aba = nomes_abas.index("Colunas Verdadeiro/Falso")
         with abas[indice_aba]:
             exibir_aba_booleanas(resultados)
     
@@ -1322,7 +1322,7 @@ def main():
         arquivo_carregado = st.file_uploader(
             "📁 Carregar Arquivo de Dados",
             type=['csv', 'xlsx', 'json'],
-            help="Carregue arquivos CSV, Excel ou JSON"
+            help="Carregue arquivos CSV, Excel (XLSX) ou JSON"
         )
         
         if arquivo_carregado is not None:
