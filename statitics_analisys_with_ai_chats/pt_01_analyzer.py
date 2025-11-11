@@ -202,7 +202,7 @@ class AnalisadorChatBot:
         if self.df is None:
             return {
                 'Numéricas': [], 'Categóricas': [], 
-                'V/F': [], 'Data/Hora': []
+                'Verdadeiro/Falso': [], 'Data/Hora': []
             }
         
         colunas_numericas = self.df.select_dtypes(include=['int64', 'int32', 'int16', 'int8', 'float64', 'float32', 'float16']).columns.tolist()
@@ -213,7 +213,7 @@ class AnalisadorChatBot:
         self._cache_tipos = {
             'Numéricas': colunas_numericas,
             'Categóricas': colunas_categoricas,
-            'V/F': colunas_booleanas,
+            'Verdadeiro/Falso': colunas_booleanas,
             'Data/Hora': colunas_data_hora
         }
         
@@ -246,7 +246,7 @@ class AnalisadorChatBot:
         if np.issubdtype(tipo_dado, np.number):
             return "Numérica"
         elif np.issubdtype(tipo_dado, np.bool_):
-            return "V/F"
+            return "Verdadeiro/Falso"
         elif np.issubdtype(tipo_dado, np.datetime64) or np.issubdtype(tipo_dado, np.timedelta64):
             return "Data/Hora"
         else:
@@ -292,7 +292,7 @@ class AnalisadorChatBot:
         
         # Colunas booleanas
         if tipos_simples['Verdadeiro/Falso']:
-            resumo_estatisticas += "## ✅ Colunas V/F\n\n"
+            resumo_estatisticas += "## ✅ Colunas Verdadeiro/Falso\n\n"
             for col in tipos_simples['Verdadeiro/Falso']:
                 resumo_estatisticas += self._gerar_estatisticas_booleanas(col)
         
