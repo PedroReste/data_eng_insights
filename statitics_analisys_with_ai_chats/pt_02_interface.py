@@ -180,10 +180,8 @@ st.markdown("""
     .analysis-card {
         background: #1e2130;
         border-radius: 15px;
-        padding: 1.5rem;
+        padding: 1rem;
         margin: 1rem 0;
-        border-left: 5px solid #e74c3c;
-        border-right: 1px solid #e74c3c;
         box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
         transition: all 0.3s ease;
     }
@@ -558,65 +556,31 @@ def exibir_cartoes_tipos_coluna(analisador):
     with col4:
         st.markdown(criar_cartao_tipo(str(contagem_data_hora), "Colunas Data/Hora", "#f39c12"), unsafe_allow_html=True)
 
-# ... (mantenha as outras funções como criar_scatterplot_interativo, exibir_analise_exploratoria, etc.)
-
-# A PARTE CRÍTICA: CORRIGINDO O ERRO NA FUNÇÃO exibir_aba_visao_geral
 def exibir_aba_visao_geral(resultados):
-    """Exibir conteúdo da aba de visão geral - CORRIGIDA"""
     df = resultados['dataframe']
     analisador = st.session_state.analisador
     
-    # Primeiras 10 linhas vs Últimas 10 linhas
     col1, col2 = st.columns(2)
     
     with col1:
         st.markdown("#### 📋 Primeiras 10 Linhas")
-        st.markdown("""
-        <div class="card">
-            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-            Visualização das primeiras linhas do dataset
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
         df_primeiras = df.head(10)
         st.dataframe(df_primeiras, use_container_width=True, height=350, hide_index=True)
     
     with col2:
         st.markdown("#### 📋 Últimas 10 Linhas")
-        st.markdown("""
-        <div class="card">
-            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-            Visualização das últimas linhas do dataset
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
         df_ultimas = df.tail(10)
         st.dataframe(df_ultimas, use_container_width=True, height=350, hide_index=True)
     
-    # Informações das Colunas vs Linhas Duplicadas
     col3, col4 = st.columns(2)
     
     with col3:
         st.markdown("#### 🔧 Informações das Colunas")
-        st.markdown("""
-        <div class="card">
-            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-            Detalhes sobre tipos de dados e valores
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
         info_coluna = analisador.obter_info_coluna_detalhada()
         st.dataframe(info_coluna, use_container_width=True, height=350, hide_index=True)
     
     with col4:
         st.markdown("#### 🔍 Linhas Duplicadas")
-        st.markdown("""
-        <div class="card">
-            <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-            Identificação de registros duplicados
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
         linhas_duplicadas = df[df.duplicated(keep=False)]
         
         if len(linhas_duplicadas) > 0:
@@ -629,14 +593,7 @@ def exibir_aba_visao_geral(resultados):
             """, unsafe_allow_html=True)
     
     # Gráfico de dados vazios por variável
-    st.markdown("### 📊 Volume de Dados Vazios por Variável")
-    st.markdown("""
-    <div class="card">
-        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-        Distribuição de valores ausentes no dataset
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 📊 Dados Vazios")
     
     dados_vazios = df.isnull().sum()
     dados_vazios = dados_vazios[dados_vazios > 0]
@@ -682,27 +639,13 @@ def exibir_aba_visao_geral(resultados):
     
     # Gráfico de dispersão interativo
     st.markdown("### 📈 Gráfico de Dispersão Interativo")
-    st.markdown("""
-    <div class="card">
-        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-        Explore relações entre diferentes variáveis
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
     
     fig_scatter = criar_scatterplot_interativo(df)
     if fig_scatter:
         st.plotly_chart(fig_scatter, use_container_width=True)
     
-    # CORREÇÃO DO ERRO: Análise de Correlação
-    st.markdown("### 🔗 Análise de Correlação - Múltiplos Métodos")
-    st.markdown("""
-    <div class="card">
-        <p style="font-size: 0.9rem; color: #bbb; margin-bottom: 0.5rem;">
-        Explore relações entre variáveis usando diferentes métodos
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+    #Gráfico de correlação
+    st.markdown("### 🔗 Análise de Correlação")
     
     metodos_correlacao = [
         "Automático", "Pearson", "Spearman", "Kendall Tau",
@@ -724,15 +667,15 @@ def exibir_aba_visao_geral(resultados):
             "Pearson": "Correlação linear entre variáveis numéricas",
             "Spearman": "Correlação de postos para relações monotônicas",
             "Kendall Tau": "Correlação de postos mais robusta a outliers",
-            "Cramers V": "Associação entre variáveis categóricas (0-1)",
-            "Theils U": "Associação assimétrica entre categóricas (0-1)",
-            "Phi": "Associação entre variáveis binárias (-1 a +1)",
-            "Correlation Ratio": "Relação entre categórica e numérica (0-1)"
+            "Cramers V": "Associação entre variáveis categóricas",
+            "Theils U": "Associação assimétrica entre categóricas",
+            "Phi": "Associação entre variáveis binárias",
+            "Correlation Ratio": "Relação entre categórica e numérica"
         }
         
         st.markdown(f"""
         <div class="card">
-            <h4 style="margin-top: 0;">ℹ️ {metodo_selecionado}</h4>
+            <h5 style="margin-top: 0;">ℹ️ {metodo_selecionado}</h5>
             <p style="font-size: 0.9rem; margin: 0;">{info_metodos[metodo_selecionado]}</p>
         </div>
         """, unsafe_allow_html=True)
@@ -744,7 +687,6 @@ def exibir_aba_visao_geral(resultados):
         )
     
     with col_viz:
-        # CORREÇÃO: Usar o método do analisador corretamente
         try:
             fig, matriz_corr = analisador.criar_mapa_calor_correlacao_completo(metodo_selecionado)
             
@@ -771,10 +713,6 @@ def exibir_aba_visao_geral(resultados):
         except Exception as e:
             st.error(f"❌ Erro ao calcular correlação: {str(e)}")
             st.info("Tente selecionar um método diferente ou verificar os tipos de dados")
-
-# ... (mantenha as outras funções como exibir_aba_numericas, exibir_aba_categoricas, etc.)
-
-# A FUNÇÃO criar_scatterplot_interativo deve ser mantida igual da versão anterior
 
 def criar_scatterplot_interativo(df):
     """Criar gráfico de dispersão interativo otimizado para todos os tipos de variáveis"""
