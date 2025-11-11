@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import tempfile
 import os
+import time
 import base64
 import plotly.express as px
 import plotly.graph_objects as go
@@ -194,6 +195,86 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #3498db;
         height: 100%;
+    }
+    
+    /* Estilização das abas principais */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: #1e2130;
+        padding: 8px;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #2d3256;
+        border-radius: 8px;
+        gap: 8px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border: 1px solid #3498db;
+        transition: all 0.3s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #3498db;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: #3498db !important;
+        color: white !important;
+        border: 1px solid #3498db !important;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+    }
+
+    /* Estilização das sub-abas (seções dentro da análise exploratória) */
+    .sub-tabs [data-baseweb="tab-list"] {
+        background-color: #1e2130;
+        padding: 4px;
+        border-radius: 8px;
+        margin: 10px 0;
+    }
+
+    .sub-tabs [data-baseweb="tab"] {
+        height: 40px;
+        font-size: 0.8rem;
+        background-color: #1e2130;
+        border: 1px solid #2ecc71;
+        border-radius: 6px;
+    }
+
+    .sub-tabs [data-baseweb="tab"]:hover {
+        background-color: #2ecc71;
+        color: white;
+    }
+
+    .sub-tabs [aria-selected="true"] {
+        background-color: #2ecc71 !important;
+        color: white !important;
+        border: 1px solid #2ecc71 !important;
+    }
+
+    /* Destaque especial para aba Insights IA */
+    .stTabs [data-baseweb="tab"]:first-child:nth-last-child(2),
+    .stTabs [data-baseweb="tab"]:last-child {
+        border: 2px solid #e74c3c;
+    }
+
+    .stTabs [data-baseweb="tab"]:first-child:nth-last-child(2):hover,
+    .stTabs [data-baseweb="tab"]:last-child:hover {
+        background-color: #e74c3c;
+    }
+
+    .stTabs [aria-selected="true"]:first-child:nth-last-child(2),
+    .stTabs [aria-selected="true"]:last-child {
+        background-color: #e74c3c !important;
+        border: 2px solid #e74c3c !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -1441,6 +1522,16 @@ def exibir_insights_ia(resultados):
     """Exibir análise da IA com seções estruturadas"""
     st.markdown('<div class="section-header">🤖 Insights Gerados</div>', unsafe_allow_html=True)
     
+    # NOVO: Exibir tempo de análise
+    if 'tempo_analise' in resultados:
+        st.markdown(f"""
+        <div class="card" style="border-left: 4px solid #2ecc71;">
+            <p style="font-size: 1rem; margin: 0.5rem 0; color: #2ecc71;">
+                ⏱️ <strong>Tempo de análise:</strong> {resultados['tempo_analise']:.2f} segundos
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     # Botão de download
     if 'analise_ia' in resultados and 'estatisticas' in resultados:
         relatorio_combinado = f"# Relatório de Análise de Dados\n\n## Estatísticas Descritivas\n\n{resultados['estatisticas']}\n\n## Análise IA\n\n{resultados['analise_ia']}"
@@ -1637,11 +1728,35 @@ def main():
         
         if analise_clicada:
             if st.session_state.analisador.df is not None:
+                # NOVO: Criar placeholder para o timer
+                timer_placeholder = st.empty()
+                
                 with st.spinner("🤖 Analisando conjunto de dados com IA..."):
                     try:
-                        # NOVO: Passar o contexto do usuário para a análise
+                        inicio_tempo = time.time()
+                        
+                        # Atualizar timer em tempo real
+                        while True:
+                            tempo_decorrido = time.time() - inicio_tempo
+                            timer_placeholder.markdown(f"""
+                            <div class="card" style="border-left: 4px solid #f39c12;">
+                                <p style="font-size: 1rem; margin: 0.5rem 0; color: #f39c12;">
+                                    ⏱️ <strong>Tempo decorrido:</strong> {tempo_decorrido:.1f} segundos
+                                </p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            
+                            # Verificar se a análise terminou (não é perfeito, mas funciona)
+                            if 'resultados_analise' in st.session_state and st.session_state.resultados_analise is not None:
+                                break
+                            time.sleep(0.5)
+                        
                         contexto_usuario = st.session_state.get('contexto_usuario', '')
                         resultados = st.session_state.analisador.analisar_conjunto_dados(contexto_usuario)
+                        
+                        # Limpar placeholder do timer
+                        timer_placeholder.empty()
+                        
                         if resultados:
                             st.session_state.resultados_analise = resultados
                             st.success("✅ Análise concluída com sucesso!")
@@ -1649,6 +1764,7 @@ def main():
                         else:
                             st.error("❌ Análise falhou. Por favor, verifique seus dados e tente novamente.")
                     except Exception as e:
+                        timer_placeholder.empty()
                         st.error(f"❌ Erro durante a análise: {str(e)}")
             else:
                 st.error("❌ Por favor, carregue e carregue um arquivo de dados primeiro.")

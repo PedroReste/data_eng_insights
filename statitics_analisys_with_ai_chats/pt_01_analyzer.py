@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import json
 import os
+import time
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -436,7 +437,6 @@ class AnalisadorChatBot:
                 resumo_estatisticas += f"- **Máximo**: {self.df[col].max():.2f}\n"
                 resumo_estatisticas += f"- **Intervalo**: {self.df[col].max() - self.df[col].min():.2f}\n"
                 resumo_estatisticas += f"- **Valores Ausentes**: {self.df[col].isnull().sum()}\n"
-
                 resumo_estatisticas += f"- **Percentil 05**: {self.df[col].quantile(0.05):.2f}\n"
                 resumo_estatisticas += f"- **Percentil 25**: {self.df[col].quantile(0.25):.2f}\n"
                 resumo_estatisticas += f"- **Percentil 75**: {self.df[col].quantile(0.75):.2f}\n"
@@ -710,7 +710,7 @@ class AnalisadorChatBot:
                     "content": prompt
                 }
             ],
-            "temperature": 0.2,
+            "temperature": 0.1,
             "max_tokens": 4000,
             "stream": False
         }
@@ -734,6 +734,7 @@ class AnalisadorChatBot:
             return None
         
         print("🚀 Iniciando Análise de Dados...")
+        inicio_tempo = time.time()  # Iniciar contagem de tempo
         
         # Gerar estatísticas descritivas
         print("📈 Gerando estatísticas descritivas...")
@@ -750,17 +751,21 @@ class AnalisadorChatBot:
         print("🤖 Chamando API para análise detalhada...")
         resultado_analise = self.chamar_api_open_router(prompt)
         
+        tempo_decorrido = time.time() - inicio_tempo  # Calcular tempo decorrido
+        
         if resultado_analise:
             resultados = {
                 'dataframe': self.df,
                 'estatisticas': resumo_estatisticas,
                 'analise_ia': resultado_analise,
-                'visualizacoes': visualizacoes
+                'visualizacoes': visualizacoes,
+                'tempo_analise': tempo_decorrido  # Adicionar tempo de análise aos resultados
             }
             
+            print(f"✅ Análise concluída em {tempo_decorrido:.2f} segundos")
             return resultados
         else:
-            print("❌ Falha ao obter análise da API")
+            print(f"❌ Falha ao obter análise da API (tempo: {tempo_decorrido:.2f}s)")
         return None
     
     def analisar_arquivo(self, caminho_arquivo: str, nome_planilha: str = None, salvar_saida: bool = False, diretorio_saida: str = None) -> Dict[str, Any]:
